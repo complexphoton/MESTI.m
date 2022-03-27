@@ -50,7 +50,7 @@ n_extra_for_plot = 10; % Extra pixels on side for plotting
 y = [0 ny*dx];
 x = [-n_extra_for_plot*dx (nx+n_extra_for_plot)*dx]; 
 
-clf
+figure
 imagesc(x, y, [syst.epsilon_L*ones(ny,n_extra_for_plot), epsilon_meta_atom, 1*syst.epsilon_R*ones(ny,n_extra_for_plot)])
 colormap(flipud(pink));
 xlabel('{\itx} (nm)');
@@ -88,7 +88,7 @@ rel_phi_over_pi_list = mod(angle(t_list)-phi0, 2*pi)/pi; % Relative phase over d
 
 ```matlab:Code
 % Plot the relative phase of meta-atom with different ridge width
-clf
+figure
 plot(ridge_width_list, rel_phi_over_pi_list, '-','linewidth', 2)
 xlabel('Ridge width (nm)')
 ylabel('Phase (\pi)')
