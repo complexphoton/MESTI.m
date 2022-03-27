@@ -35,11 +35,11 @@ Two of the examples of <code>make.inc</code> is provided below for Linux cluster
 1. [Linux cluster](./linux/make.inc)
 2. [MacOS](./masOS/make.inc)
 
-Here we also note that original <code>mumpsmex.c</code> could cause segfault for large systems. This comes from two lines in that file that try to modify the ordering. The users may want to replace original <code>mumpsmex.c</code> with the modified <code>mumpsmex.c</code>. The modified <code>mumpsmex.c</code> can be found in the following link. 
+For large systems the MATLAB interface could cause segfault. We suggest replacing the original <code>mumpsmex.c</code> with the modified file here. The modified interface will disable the scaling array functionality of MUMPS, which is not used in MESTI. Please refer to MUMPS user guide if you plan to use MUMPS for other packages. The modified <code>mumpsmex.c</code> can be found in the following link. 
 
 [mumpsmex.c](mumpsmex.c)
 
-After modifying make.inc and having modified <code>mumpsmex.c</code>, preload MATLAB, and then type
+After modifying make.inc and replacing <code>mumpsmex.c</code>, preload MATLAB, and then type
 
 <code>make</code>
 
