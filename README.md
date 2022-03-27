@@ -57,13 +57,13 @@ Users can go through the examples to get familiar with the package.
 
 ## Galleries
 1. Wave propagation in Fabry-Perot etalon
-<img src="https://github.com/complexphoton/MESTI.m/blob/main/examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="400" height="300"> 
+<img src="./examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="400" height="300"> 
 
-2. Reflection spectrum in distributed Bragg reflector
-<img src="https://github.com/complexphoton/MESTI.m/blob/main/examples/1d_distributed_bragg_reflector/distributed_bragg_reflector_spectrum.png" width="400" height="300"> 
+2. Open channel through disorder
+<img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="400" height="300"> 
 
-3. Open channel through disorder
-<img src="https://github.com/complexphoton/MESTI.m/blob/main/examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="400" height="300"> 
+3. Intensity profile for a mm-wide hyperbolic metalens 
+<img src="./examples/2d_metalens_full/metalens_intensity_profile_0_degree.png" width="400" height="300"> 
 
-4. Relative phase in meta-atom design 
-<img src="https://github.com/complexphoton/MESTI.m/blob/main/examples/2d_metalens_meta_atom/meta_atom_relative_phase.png" width="400" height="300"> 
+4. Transmission efficiency and Strehl ratio scanning all angles for a mm-wide hyperbolic metalens 
+<img src="./examples/2d_metalens_full/metalens_Strehl_ratio_and_transmission_eff.png" width="400" height="300"> 
