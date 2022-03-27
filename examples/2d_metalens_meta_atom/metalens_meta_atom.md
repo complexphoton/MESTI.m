@@ -117,9 +117,8 @@ fprintf(['Relative phase.(pi) %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f\n'
          phi_over_pi_design_list,ridge_width_desgin_list);
 ```
 
-`Relative phase.(pi)  0.25  0.50  0.75  1.00  1.25  1.50  1.75  0.00`
-
-`Ridge width....(nm)  45.2  55.1  68.1  79.8  98.4 125.1 156.9 194.0`
+Relative phase.(pi)  0.25  0.50  0.75  1.00  1.25  1.50  1.75  0.00<br>
+Ridge width....(nm)  45.2  55.1  68.1  79.8  98.4 125.1 156.9 194.0<br>
 
 
 ```matlab:Code
