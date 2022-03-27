@@ -13,7 +13,7 @@ Use MESTI2S() to compute the transmission coefficient of meta-atom with differen
 
 ```matlab:Code
 clear
-addpath C:\Users\hcusc\Documents\USC_meeting\20220327\2022_0325
+
 % System parameters
 n_air = 1; % Refractive index of air
 n_silica = 1.46; % Refractive index of silica
