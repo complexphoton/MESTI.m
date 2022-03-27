@@ -148,15 +148,15 @@ time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for
 [S, stat] = mesti(syst, B_tilde, [], [], opts);
 ```
 
-System size: ny = 75304, nx = 148
-UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
-Building B,C... elapsed time:   0.002 secs
-Building A...    elapsed time:   5.367 secs
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
-Building K...   elapsed time:   2.477 secs
-Analyzing...    elapsed time:  11.387 secs
-Factorizing...  elapsed time:  67.009 secs
-              Total elapsed time:  87.555 secs
+System size: ny = 75304, nx = 148<br>
+UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC<br>
+Building B,C... elapsed time:   0.002 secs<br>
+Building A...&nbsp;&nbsp;&nbsp;   elapsed time:   5.367 secs<br>
+< Method: SCSA using MUMPS with AMD ordering (symmetric K) ><br>
+Building K...&nbsp;&nbsp;&nbsp;   elapsed time:   2.477 secs<br>
+Analyzing...&nbsp;&nbsp;&nbsp;&nbsp;   elapsed time:  11.387 secs<br>
+Factorizing...&nbsp;&nbsp;  elapsed time:  67.009 secs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Total elapsed time:  87.555 secs<br>
 
 # Post-processing for SCSA-c
 
