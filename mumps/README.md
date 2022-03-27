@@ -12,8 +12,8 @@ The rule of thumb is that the users should modify the environmental variables in
 
 Two of the examples of <code>Makefile.inc</code> is provided below for Linux cluster and MacOS systems, but users may still need to modify the environmental variables according to the local machine.
 
-1. [Linux cluster](/linux/Makefile.inc)
-2. [MacOS](/masOS/Makefile.inc)
+1. [Linux cluster](./linux/Makefile.inc)
+2. [MacOS](./masOS/Makefile.inc)
 
 After properly modifying the <code>Makefile.inc</code>, and then type
 
@@ -32,8 +32,8 @@ Similarly, the rule of thumb is that the users should modify the environmental v
 
 Two of the examples of <code>make.inc</code> is provided below for Linux cluster and MacOS systems, but users may still need to modify the environmental variables according to the local machine.
 
-1. [Linux cluster](/linux/make.inc)
-2. [MacOS](/masOS/make.inc)
+1. [Linux cluster](./linux/make.inc)
+2. [MacOS](./masOS/make.inc)
 
 Here we also note that original <code>mumpsmex.c</code> could cause segfault for large systems. This comes from two lines in that file that try to modify the ordering. The users may want to replace original <code>mumpsmex.c</code> with the modified <code>mumpsmex.c</code>. The modified <code>mumpsmex.c</code> can be found in the following link. 
 
