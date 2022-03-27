@@ -22,7 +22,6 @@ Use MESTI2S() to compute
 
 ```matlab:Code
 clear
-addpath C:\Users\hcusc\Documents\USC_meeting\20220327\2022_0325
 
 % System parameters
 n_bg = 1; % Refractive index of background material (air)
