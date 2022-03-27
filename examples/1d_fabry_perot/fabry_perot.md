@@ -188,8 +188,7 @@ fprintf(['The energy conservation is checked numerically\n' ...
 ,max(abs(1-R_list-T_list)))
 ```
 
-The energy conservation is checked numerically
-through the max(|1 - T - R|) = 2.78e-15 over the spectrum 
+``The energy conservation is checked numerically through the max(|1 - T - R|) = 2.78e-15 over the spectrum`` 
 
 #  L2 norm ratio error for r and t over resolution
 
