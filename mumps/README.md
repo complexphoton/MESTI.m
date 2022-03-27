@@ -35,7 +35,7 @@ Two of the examples of <code>make.inc</code> is provided below for Linux cluster
 1. [Linux cluster](./linux/make.inc)
 2. [MacOS](./masOS/make.inc)
 
-For large systems the MATLAB interface could cause segfault. We suggest replacing the original <code>mumpsmex.c</code> with the modified file here. The modified interface will disable the scaling array functionality of MUMPS, which is not used in MESTI. Please refer to MUMPS user guide if you plan to use MUMPS for other packages. The modified <code>mumpsmex.c</code> can be found in the following link. 
+For large systems the MATLAB interface could cause segmentation fault. We suggest replacing the original <code>mumpsmex.c</code> with the modified file here. The new <code>mumpsmex.c</code> modifies four lines such that it disables reading scaling array from the user and it no longer outputs the scaling array to MATLAB. This appears to be the lines where the segmentation fault happens. MESTI do not use user-specified scaling arrays thus those modifications will not affect its functionality. Please refer to MUMPS user guide if you plan to use MUMPS for other packages. The modified <code>mumpsmex.c</code> can be found in the following link. 
 
 [mumpsmex.c](mumpsmex.c)
 
