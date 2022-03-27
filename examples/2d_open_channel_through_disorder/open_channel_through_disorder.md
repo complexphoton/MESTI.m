@@ -48,16 +48,26 @@ syst.yBC = 'periodic';
 ```
 
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
+
 xBC = {self-energy, self-energy}; yBC = periodic
+
 Building G0...  elapsed time:   0.050 secs
+
 Building B,C... elapsed time:   0.001 secs
-                      ... elapsed time:   0.008 secs
+
+​                      ... elapsed time:   0.008 secs
+
 Building   A...   elapsed time:   0.069 secs
+
 < Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+
 Building K...   elapsed time:   0.058 secs
+
 Analyzing...    elapsed time:   0.107 secs
+
 Factorizing...  elapsed time:   0.740 secs
-               Total elapsed time:   1.084 secs
+
+​               Total elapsed time:   1.084 secs
 
 # Compare an open channel and a plane-wave input
 
@@ -77,7 +87,9 @@ fprintf('T_avg  = %f\nT_PW   = %f\nT_open = %f\n', T_avg, T_PW, T_open)
 ```
 
 T_avg  = 0.113158
+
 T_PW   = 0.177535
+
 T_open = 0.989225
 
 
@@ -99,17 +111,28 @@ opts.nx_R = opts.nx_L;
 ```
 
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
+
 xBC = {self-energy, self-energy}; yBC = periodic
+
 Building G0...  elapsed time:   0.054 secs
+
 Building B,C... elapsed time:   0.001 secs
-                     ... elapsed time:   0.000 secs
+
+​                     ... elapsed time:   0.000 secs
+
 Building  A...   elapsed time:   0.067 secs
+
 < Method: factorize_and_solve using MUMPS with AMD ordering >
+
 Analyzing...    elapsed time:   0.172 secs
+
 Factorizing...  elapsed time:   0.816 secs
+
 Solving...         elapsed time:   0.104 secs
-                ...      elapsed time:   0.064 secs
-               Total elapsed time:   1.324 secs
+
+​                ...      elapsed time:   0.064 secs
+
+​               Total elapsed time:   1.324 secs
 
 # Animate the field profiles
 
