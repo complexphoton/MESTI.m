@@ -1,69 +1,54 @@
 # MESTI.m
 
-## Overview
-**MESTI.m**  is a finite-difference frequency-domain (FDFD) package implementing **Schur complement scattering analysis (SCSA)** algorithm, which is described in [arXiv2203.xxxxx](https://arxiv.org/abs/2203.xxxxx). MESTI.m (an acronym for Maxwell's Equations Solver with Thousands of Inputs) enables users to solve the Maxwell's equations with multiple inputs by orders-of-magnitude speedup and reduced memory usage.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is a finite-difference frequency-domain (FDFD) solver that implements the **Schur complement scattering analysis (SCSA)** method described in [arXiv2203.xxxxx](https://arxiv.org/abs/2203.xxxxx). It allows users to solve Maxwell's equations with thousands of inputs while using computing time and memory that is even less than what a typical direct solver uses to solve with just one input.
 
-MESTI.m is written in MATLAB and specifically solves the scalar wave equation in 2D transverse-magnetic wave. 3D vectorial MESTI version is under development in Julia language and will be available soon.  
+MESTI.m is written in MATLAB and considers transverse-magnetic waves in 2D. A 3D vectorial version of MESTI written in Julia is under development and will be released later.  
 
-
-MESTI.m includes two main interfaces for users to use the package: <code>mesti()</code> and <code>mesti2s()</code>.
-
-- <code>mesti()</code> computes field profile or scattering matrix with multiple inputs and deals with the outgoing boundary conditions through perfectly matched layer (PML).
-
-- <code>mesti2s()</code> computes field profile or the scattering matrix with multiple inputs in two-sided geometry and can deal with the outgoing boundary conditions through perfectly matched layer (PML) or self-energy.
-
+With MESTI.m, the user can specify arbitrary permittivity profiles of the system, arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). MESTI.m implements all of the common boundary conditions, perfectly matched layer (PML) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to SCSA, MESTI.m also implements several conventional direct solvers.
 
 ## Installation
 
-MESTI.m is written in MATLAB and is not required specifically installation as long as users have installed MATLAB 2019b or later in their machine. 
+No installation is required for MESTI.m itself; just download it and add the <code>MESTI.m/src</code> folder to the search path using the <code>addpath</code> command in MATLAB. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to fully utilize SCSA algorithm, users need to install MUMPS package. Currently, MESTI.m implement SCSA algorithm through calling MUMP as solver. Without MUMPS, MESTI.m would not really solve problems through SCSA.
-
-For the better performance and fully utilize the feature of MESTI.m, install MUMPS is required and highly recommended. Please look at the following page for the steps to install MUMPS: 
-
-[MUMPS installation](./mumps/README.md)
-
+However, to use the SCSA method (which is the key distinguishing feature of MESTI), the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI.m will still run but will only use slower conventional solvers that are not based on the Schur complement. So, MUMPS installation is strongly recommended.  See this [MUMPS installation](./mumps/README.md) page for steps to install MUMPS.
 
 ## Available Functions 
-The functions in MESTI.m can be separated into two parts: external functions and internal functions. Users are expected to use the external functions as interfaces to run MESTI.m. On the other hand, users may not need to use the internal functions directly. 
 
-### External functions
--   <code>mesti()</code> solves frequency-domain scattering problem in general 2D geometry.
--   <code>mesti2s()</code> solves frequency-domain scattering problem specifically in a two-sided geometry.
--   <code>mesti_build_channels()</code> sets up properties of channels in the homogeneous space.
+The function <code>mesti(syst, B, C, D)</code> provides the most flexibility. The user can specify arbitrary permittivity profiles, arbitrary boundary conditions, PML on any or all sides, with any lists of sources and any lists of output projections (or no output projection). But the user needs to build the source and/or projection profiles beforehand.
 
-### Internal functions
--   <code>mesti_build_fdfd_matrix.m</code> builds up the finite-difference frequency-domain operator in 2D.
--   <code>mesti_matrix_solver.m</code> computes matrices CA<sup>-1</sup>B or A<sup>-1</sup>B.
+The function <code>mesti2s(syst, in, out)</code> deals specifically with two-sided or one-sided geometries where the boundary condition in y is closed (e.g. periodic or PEC)  and the boundary condition in x is outgoing. It builds the lists of sources and lists of output projections for the user, so it is simpler to use when such geometries are of interest. <code>mesti2s()</code> also provides (1) exact outgoing boundaries implemented through the self-energy, which is not available in <code>mesti()</code>, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository which is efficient in 1D and for systems with small-to-medium transverse widths. 
 
-For more details about the functions, please see the documentations in the codes. Or users can see more details about in each function by typing help and the function name in MATLAB, for example,
-<code>help mesti2s</code>. Users can also go through some examples to get familiar with the external functions.
+For field-profile computations, simply omit the argument <code>C</code> or  <code>out</code>, or set it to <code>[]</code>.
 
+Detailed usage of these functions are given in the documentation section (comment lines at the beginning) of the <code>.m</code> function files. One can, for example, type <code>help mesti</code> in MATLAB to see such documentation.
+
+In addition, the user can use the function <code>mesti_build_channels()</code> to build the input and/or output matrices when using <code>mesti()</code>, or to determine which subset of the channels are of interest when using <code>mesti2s()</code>.
+
+MESTI.m has two other general-purpose functions <code>mesti_build_fdfd_matrix()</code> and <code>mesti_matrix_solver()</code>, which are called by <code>mesti()</code>. A typical user shouldn't need to directly use these two functions, but they are available.
 
 ## Examples
 
-There are several examples available <code>examples/*</code>. They are listed in the following:
+Several examples are provided in the <code>examples</code> folder, which are useful for learning the functionalities and usage of MESTI.m. Each example has its own folder, with its <code>.m</code> script, a Markdown page that shows the output of the example, and auxiliary files specific to that example. Below are links to their Markdown pages:
 
-1D
-1. [Fabry-Perot etalon](./examples/1d_fabry_perot/fabry_perot.md)
-2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector/distributed_bragg_reflector.md)
+1. [Fabry–Pérot etalon](./examples/1d_fabry_perot/fabry_perot.md) (1D)
+2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector/distributed_bragg_reflector.md) (1D)
+3. [Open channel in a scattering medium](./examples/2d_open_channel_through_disorder/open_channel_through_disorder.md) (2D)
+4. [Meta-atom design for metasurfaces](./examples/2d_metalens_meta_atom/metalens_meta_atom.md) (2D)
+6. [Millimeter-wide metalens](./examples/2d_metalens_full/metalens_full.md) (2D)
 
-2D 
-1. [Open Channel Through Disorder](./examples/2d_open_channel_through_disorder/open_channel_through_disorder.md)
-2. [Meta-atom in metalens](./examples/2d_metalens_meta_atom/metalens_meta_atom.md)
-
-Users can go through the examples to get familiar with the package.
-
+More examples will be added later.
 
 ## Galleries
-1. Wave propagation in Fabry-Perot etalon
-<img src="./examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="400" height="300"> 
+Below are some images from the <code>examples</code> folder:
 
-2. Open channel through disorder
-<img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="400" height="300"> 
+1. Propagation through a Fabry–Pérot etalon
+<img src="./examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="336" height="264"> 
 
-3. Intensity profile for a mm-wide hyperbolic metalens 
+2. Open channel propagating through a strongly scattering medium
+<img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="530" height="398"> 
+
+3. Full-wave simulation of a mm-wide hyperbolic metalens 
 <img src="./examples/2d_metalens_full/metalens_intensity_profile_0_degree.png" width="400" height="300"> 
 
-4. Transmission efficiency and Strehl ratio scanning all angles for a mm-wide hyperbolic metalens 
+4. Angle dependence of the metalens above
 <img src="./examples/2d_metalens_full/metalens_Strehl_ratio_and_transmission_eff.png" width="400" height="300"> 
