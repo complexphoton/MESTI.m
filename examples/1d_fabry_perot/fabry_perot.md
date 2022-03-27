@@ -109,7 +109,7 @@ slab_y = [-4 4 4 -4];
 for ii = 1:3
     for jj = 1:50
         plot(x, real(Ez*exp(-1i*2*pi*jj/50)),'linewidth',2)
-        patch(slab_x, slab_y, 'black', 'FaceColor', 'black', 'FaceAlpha', 0.1)
+        patch(slab_x, slab_y, 'black', 'FaceColor', 'black', 'FaceAlpha', 0.1, 'LineStyle', 'none')
         xlim([x(1), x(end)])
         ylim([-4, 4])        
         xlabel('{\itx} (nm)')
