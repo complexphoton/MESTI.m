@@ -4,18 +4,13 @@
 Example of a dielectric slab (also called a Fabry-Perot etalon) using SCSA 
 
 
-
-
 Use MESTI2S() to compute 
-
-
 
 1.The field profile of the system and showing the field propagation 
 
 2.The wavelength-dependent reflectance spectrum from Fabry-Perot etalon and the conservation of energy (T + R = 1)
 
-
-3.Discretization error with respect to the resolution
+3.The convergence of the numerical results with respect to resolution
 
 
 # System parameters
@@ -24,9 +19,9 @@ Use MESTI2S() to compute
 clear
 
 % System parameters
-n_bg = 1; % Refractive index of background material (air)
-n_slab = 1.5; % Refractive index of the dielectric slab (glass)
-thickness = 500; % Thickness of the dielectric slab [nm]
+n_bg = 1;         % Refractive index of background material (air)
+n_slab = 1.5;     % Refractive index of the dielectric slab (glass)
+thickness = 500;  % Thickness of the dielectric slab [nm]
 
 % Here is free-space wavelength.
 lambda_min = 300; % Minimum wavelength [nm]
@@ -42,8 +37,6 @@ n_lambda= size(lambda_list,2); % Total number of wavelength
 
 Calculate the analytical results for this system. 
 
-
-
 ```matlab:Code
 % Please refer to the function fp_analytical.
 [r_list_analytical, t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list);
@@ -56,14 +49,12 @@ R_list_analytical = abs(r_list_analytical).^2; % Analytical reflectance
 
 Set up general input argument for the mesti2s() for this system.
 
-
-
 ```matlab:Code
 % Setup input arguments for mesti2s(). 
 syst.epsilon_L = n_bg^2;  % Relative permittivity on the left hand side
 syst.epsilon_R = n_bg^2;  % Relative permittivity on the right hand side
-syst.yBC = 'periodic'; % Periodic boundary along transverse direction
-syst.length_unit = 'nm'; % Length unit
+syst.yBC = 'periodic';    % Periodic boundary along transverse direction
+syst.length_unit = 'nm';  % Length unit
 ```
 
 # Field profile
@@ -71,11 +62,11 @@ syst.length_unit = 'nm'; % Length unit
 
 Calculate field profile of the system for resolution = 30 in wavelength = 550 nm.
 
-
-
 ```matlab:Code
 % Setup discrete system for resolution = 30 with respect to central wavelength. 
-resolution = 30; % Resolution at the central wavelength \lambda_0
+% The resolution is chosen based on lambda/dx = lambda_0/(n*dx) = 20 in the 
+% highest refractive index material in this system.
+resolution = 30; % Resolution at the central wavelength \lambda_0 
 dx = lambda_0/resolution; % Grid size [nm]
 syst.dx = dx; % Grid size as an input argument for mesti2s().
 syst.wavelength = lambda_0; % Wavelength as an input argument for mesti2s() [nm]
@@ -109,7 +100,7 @@ slab_y = [-4 4 4 -4];
 for ii = 1:3
     for jj = 1:50
         plot(x, real(Ez*exp(-1i*2*pi*jj/50)),'linewidth',2)
-        patch(slab_x, slab_y, 'black', 'FaceColor', 'black', 'FaceAlpha', 0.1, 'LineStyle', 'none')
+        patch(slab_x, slab_y, 'r', 'FaceColor', 'black', 'FaceAlpha', 0.1, 'LineStyle','none')
         xlim([x(1), x(end)])
         ylim([-4, 4])        
         xlabel('{\itx} (nm)')
@@ -132,16 +123,14 @@ end
 
 Calculate reflectance spectrum over visible wavelength for resolution = 30 with respect to central wavelength.
 
-
-
 ```matlab:Code
 opts = [];
 in = {'left'}; % Specify input channel on the left.
 out = {'left', 'right'}; % Specify output channel on the left and the right.
 opts.verbal = false; % Suppress output information.
 
-R_list = zeros(n_lambda,1); % List of reflectance
-T_list = zeros(n_lambda,1); % List of transmittance
+R_list = zeros(1,n_lambda); % List of reflectance
+T_list = zeros(1,n_lambda); % List of transmittance
 
 % Looping over different wavelength to calculate reflectance spectrum
 for ii = 1:n_lambda
@@ -167,10 +156,10 @@ plot(lambda_list,R_list,'o','linewidth',1)
 hold on
 plot(lambda_list,R_list_analytical,'linewidth',1)
 xlabel('Wavelength (nm)')
+ylabel('Reflectance{\it R}')
 xlim([300,800])
 ylim([0,0.15])
 legend('Numeric', 'Analytic', 'Location','northeast')
-ylabel('Reflectance{\it R}')
 set(gca, 'fontsize', 15, 'FontName','Arial')
 set(gca,'linewidth',1)
 ```
@@ -180,28 +169,26 @@ set(gca,'linewidth',1)
 
 
 ```matlab:Code
-
 % Print out the numerical confirmation of energy conservation
 fprintf(['The energy conservation is checked numerically\n' ...
-'through the max(|1 - T - R|) = %6.3g over the spectrum \n'] ...
+'through the max(|1 - T - R|) = %6.3g over the spectrum.\n'] ...
 ,max(abs(1-R_list-T_list)))
 ```
 
-``The energy conservation is checked numerically through the max(|1 - T - R|) = 2.78e-15 over the spectrum`` 
+The energy conservation is checked numerically through the max(|1 - T - R|) = 2.78e-15 over the spectrum.
 
-#  L2 norm ratio error for r and t over resolution
-
-
-Over different resolution, compute L2 norm ratio error of numerical result with respect to the analytical to show discretization error.
+# Convergence with resolution
 
 
+Over different resolution, compute root-mean-square error (RMSE) of numerical result with respect to the analytical to show convergence.
 
 ```matlab:Code
-resolution_list = round(exp(linspace(log(2e1),log(1e3),8))); % Resolution list to be used
+resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
 n_resolution= size(resolution_list,2); % Total number of resolutions to be used
-l2_norm_ratio_t = zeros(n_resolution,1); % L2 norm ratio list for t to be calculated
-l2_norm_ratio_r = zeros(n_resolution,1); % L2 norm ratio list for r to be calculated
+RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
+RMSE_T = zeros(1,n_resolution); % RMSE for T to be calculated
 
+% Looping over different resolution
 for ii = 1:n_resolution
     resolution = resolution_list(ii); % Resolution at the central wavelength (550 nm)
     dx = lambda_0/resolution; % Grid size of system [nm]
@@ -217,50 +204,45 @@ for ii = 1:n_resolution
     % Average permittivity in last pixel of slab.
     syst.epsilon(:, nx) = (n_slab^2*last_pixel_slab_ratio+ n_bg^2*last_pixel_bg_ratio); 
 
-    r_list = zeros(1,n_lambda); % List of reflection coefficient
-    t_list = zeros(1,n_lambda); % List of transmission coefficient
+    R_list = zeros(1,n_lambda); % List of reflectance
+    T_list = zeros(1,n_lambda); % List of transmittance
 
-    % Looping over different wavelength to calculate reflectance spectrum    
+    % Looping over different wavelength
     for jj = 1:n_lambda
         syst.wavelength = lambda_list(jj); % Wavelength [nm]
 
         % Call mesti2s() to calculate the scattering matrix.
         [smatrix, channels, stat] = mesti2s(syst, in, out, opts);
-    
-        r = smatrix(1,1); % Reflection coefficient
-        t = smatrix(2,1); % Transmission coefficient
 
-        % Shift the reference plane for transmission coefficient.
-        t_list(jj) = t/exp(1i*last_pixel_bg_ratio*channels.R.kxdx_prop); 
-        r_list(jj) = r;
+        R_list(jj) = abs(smatrix(1,1)).^2; % Numerical reflectance
+        T_list(jj) = abs(smatrix(2,1)).^2; % Numerical transmittance
     end
-    % Compute the L2 norm ratio error for r and t.
-    l2_norm_ratio_r(ii) = norm(abs(r_list_analytical-r_list))/norm(abs(r_list_analytical));
-    l2_norm_ratio_t(ii) = norm(abs(t_list_analytical-t_list))/norm(abs(t_list_analytical));
+    % Compute the RMSE for R and T.
+    RMSE_R(ii) = sqrt(mean((R_list-R_list_analytical).^2));
+    RMSE_T(ii) = sqrt(mean((T_list-T_list_analytical).^2));
 end
 
-% Plot L2 norm ratio error with respect to resolution
+% Plot RMSE with respect to resolution
 clf
-loglog(resolution_list,l2_norm_ratio_r,'o','linewidth',1)
+loglog(resolution_list,RMSE_R,'o','linewidth',1)
 hold on
-loglog(resolution_list,l2_norm_ratio_t,'o','linewidth',1)
-hold on
+loglog(resolution_list,RMSE_T,'x','linewidth',1)
 % Reference asymptotic line
 X = 10.^(1:4);
-Y = 8*X.^(-2)*10;
+Y = 0.7*X.^(-2)*10;
 loglog(X,Y,'-','linewidth',1, 'Color', '#77AC30')
 grid on
-xticks([2e1 1e2 1e3])
-yticks([1e-4 1e-3 1e-2 1e-1 1e0])
+xticks([1e1 1e2 1e3])
+yticks([1e-5 1e-4 1e-3 1e-2 1e-1 1e0])
 xlabel('Resolution \lambda_0/\Delta{\itx}')
-ylabel('Relative {\itL}^2 error')
-xlim([2e1, 1e3])
-ylim([5e-5, 1e0])
-legend('{\itr}','{\itt}','O(\Delta{\itx}^2)')
+ylabel('Difference with analytic')
+xlim([1e1, 1e3])
+ylim([5e-6, 1e-1])
+legend('{\itR}_{numeric}','{\itT}_{numeric}','O(\Delta{\itx}^2)')
 set(gca, 'fontsize', 15, 'FontName','Arial')
 set(gca,'linewidth',1)
 ```
 
 
-![fabry_perot_discretization_error.png](fabry_perot_discretization_error.png)
+![fabry_perot_RMSE.png](fabry_perot_RMSE.png)
 
