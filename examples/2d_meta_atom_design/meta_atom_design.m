@@ -103,6 +103,7 @@ save('meta_atom.mat','ridge_width_desgin_list','phi_over_pi_design_list')
 syst.yBC = 'Bloch'; % Bloch periodic boundary along transverse direction
 
 ridge_width_list = 40:4:200; % List of ridge width: from 40 nm to 200 nm with 4 nm increment
+% Note that this incident angle is with respect to air, theta_in = asin(n_sub*sin(theta_sub)).
 theta_in_list = -89:1:89; % List of incident angle [degree]
 
 k0dx = 2*pi/lambda*dx; % Dimensionless frequency k0dx
