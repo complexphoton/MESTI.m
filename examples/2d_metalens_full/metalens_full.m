@@ -37,7 +37,7 @@ NA = sin(atan(D/(2*focal_length))); % Numerical aperture of the metalens
 y_mid_cell = ((0.5:n_meta_atom) - (n_meta_atom/2))*w/1000; % Middle position of each meta-atom inside metalens [micron] 
 target_phase = (2*pi/(lambda/1000))*(focal_length - sqrt(focal_length^2 + y_mid_cell.^2)); % Target phase of the hyperbolic metalens over each meta-atom 
 
-% Load the 8 discrete ridge width list and its phase from metalens_meta_atom.mlx.
+% Load the 8 discrete ridge width list and its phase from meta_atom_design.mlx.
 load('meta_atom.mat', 'ridge_width_desgin_list', 'phi_over_pi_design_list');
 
 % Number of pixels for the meta-atom 
