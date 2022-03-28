@@ -13,7 +13,7 @@ The rule of thumb is that the users should modify the environmental variables in
 Two of the examples of <code>Makefile.inc</code> is provided below for Linux cluster and MacOS systems, but users may still need to modify the environmental variables according to the local machine.
 
 1. [Linux cluster](./linux/Makefile.inc)
-2. [MacOS](./masOS/Makefile.inc)
+2. [MacOS](./macOS/Makefile.inc)
 
 After properly modifying the <code>Makefile.inc</code>, and then type
 
@@ -33,7 +33,7 @@ Similarly, the rule of thumb is that the users should modify the environmental v
 Two of the examples of <code>make.inc</code> is provided below for Linux cluster and MacOS systems, but users may still need to modify the environmental variables according to the local machine.
 
 1. [Linux cluster](./linux/make.inc)
-2. [MacOS](./masOS/make.inc)
+2. [MacOS](./macOS/make.inc)
 
 For large systems the MATLAB interface could cause segmentation fault. We suggest replacing the original <code>mumpsmex.c</code> with the modified file here. The new <code>mumpsmex.c</code> modifies four lines such that it disables reading scaling array from the user and it no longer outputs the scaling array to MATLAB. This appears to be the lines where the segmentation fault happens. MESTI do not use user-specified scaling arrays thus those modifications will not affect its functionality. Please refer to MUMPS user guide if you plan to use MUMPS for other packages. The modified <code>mumpsmex.c</code> can be found in the following link. 
 
