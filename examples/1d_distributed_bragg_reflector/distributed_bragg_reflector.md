@@ -4,17 +4,12 @@
 Example of a alternating sequence of layers of two dielectric material (also called a distributed Bragg reflector (DBR)) using SCSA 
 
 
-
-
 Use MESTI2S() to compute 
-
-
 
 1.The wavelength-dependent reflectance spectrum from DBR and the conservation of energy (T + R = 1)
 
-2.Discretization error with respect to the resolution
 
-
+2.The convergence of the numerical results with respect to resolution
 
 
 # System parameters
@@ -22,13 +17,13 @@ Use MESTI2S() to compute
 ```matlab:Code
 clear
 
-n_bg = 1; % Refractive index of background material (air)
-n1 = 1.5; % Refractive index of material 1
-n2 = 3; % Refractive index for material 2
-lambda_mid_gap = 550; % Mid-gap wavelength for DBR [nm]
+n_bg = 1;                   % Refractive index of background material (air)
+n1 = 1.5;                   % Refractive index of material 1
+n2 = 3;                     % Refractive index for material 2
+lambda_mid_gap = 550;       % Mid-gap wavelength for DBR [nm]
 d1 = lambda_mid_gap/(4*n1); % Thickness of material 1 in a pair [nm]
 d2 = lambda_mid_gap/(4*n2); % Thickness of material 2 in a pair [nm]
-n_pair = 5; % Number of pair in DBR
+n_pair = 5;                 % Number of pair in DBR
 
 % Here is free-space wavelength.
 lambda_min = 300; % Minimum wavelength [nm]
@@ -44,8 +39,6 @@ n_lambda= size(lambda_list,2); % Total number of wavelength
 
 Calculate the analytical results for this system. 
 
-
-
 ```matlab:Code
 % Calculate the analytical reflection coefficient and transmission coefficient for this system. 
 % Please refer to the function dbr_analytical.
@@ -58,8 +51,6 @@ R_list_analytical = abs(r_list_analytical).^2; % Analytical reflectance
 
 
 Set up general input argument for the mesti2s() for this system.
-
-
 
 ```matlab:Code
 % Setup input arguments for mesti2s(). 
@@ -77,9 +68,9 @@ out = {'left', 'right'}; % Specify output channel on the left and the right.
 
 Calculate reflectance spectrum over visible wavelength for resolution = 60 with respect to central wavelength.
 
-
-
 ```matlab:Code
+% The resolution is chosen based on lambda/dx = lambda_0/(n*dx) = 20 in the 
+% highest refractive index material in this system.
 resolution = 60; % Resolution at the central wavelength \lambda_0
 dx = lambda_0/resolution; % Grid size [nm]
 syst.dx = dx; % Grid size as an input argument for mesti2s().
@@ -99,10 +90,10 @@ colormap(flipud(pink));
 xlabel('Position (nm)');
 yticks([])
 text(-50,1,'air','FontSize',15,'Rotation',90)
-text(310,1.1,'material 1','FontSize',15,'Rotation',90)
-text(385,1.1,'material 2','FontSize',15,'color','white','Rotation',90)
-title(['Distributed Bragg reflector'],'FontSize',15)
+text(320,1.1,'material 1','FontSize',15,'Rotation',90)
+text(390,1.1,'material 2','FontSize',15,'color','white','Rotation',90)
 text(730,1,'air','FontSize',15,'Rotation',90)
+title(['Distributed Bragg reflector'],'FontSize',15)
 set(gca, 'fontsize', 15, 'FontName','Arial')
 ```
 
@@ -138,10 +129,10 @@ plot(lambda_list,R_list,'o','linewidth',1)
 hold on
 plot(lambda_list,R_list_analytical,'linewidth',1)
 xlabel('Wavelength (nm)');
+ylabel('Reflectance{\it R}');
 xlim([300,800])
 ylim([0,1])
 legend('Numeric', 'Analytic', 'Location','northeast')
-ylabel('Reflectance{\it R}');
 set(gca, 'fontsize', 15, 'FontName','Arial')
 set(gca,'linewidth',1)
 ```
@@ -151,28 +142,26 @@ set(gca,'linewidth',1)
 
 
 ```matlab:Code
-
 % Print out the numerical confirmation of energy conservation
 fprintf(['The energy conservation is checked numerically\n' ...
-'through the max(|1 - T - R|) = %6.3g over the spectrum \n'], ...
+'through the max(|1 - T - R|) = %6.3g over the spectrum.\n'], ...
 max(abs(1-R_list-T_list)));
 ```
 
-`The energy conservation is checked numerically through the max(|1 - T - R|) =  4e-15 over the spectrum`
+The energy conservation is checked numerically through the max(|1 - T - R|) =  4e-15 over the spectrum.
 
-# L2 norm ratio error for r and t over resolution
-
-
-Over different resolution, compute L2 norm ratio error of numerical result with respect to the analytical to show discretization error.
+# Convergence with resolution
 
 
+Over different resolution, compute root-mean-square error (RMSE) of numerical result with respect to the analytical to show convergence.
 
 ```matlab:Code
-resolution_list = round(exp(linspace(log(2e1),log(1e3),8))); % Resolution list to be used
+resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
 n_resolution= size(resolution_list,2); % Total number of resolutions to be used
-l2_norm_ratio_t = zeros(1,n_resolution); % L2 norm ratio list for t to be calculated
-l2_norm_ratio_r = zeros(1,n_resolution); % L2 norm ratio list for r to be calculated
+RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
+RMSE_T = zeros(1,n_resolution); % RMSE for T to be calculated
 
+% Looping over different resolution
 for ii = 1:n_resolution
     resolution = resolution_list(ii); % Resolution at the central wavelength \lambda_0
     dx = lambda_0/resolution; % Grid size of system [nm]
@@ -184,48 +173,45 @@ for ii = 1:n_resolution
 
     last_pixel_bg_ratio = ceil((d2+d1)*n_pair/dx)-(d2+d1)*n_pair/dx; % Ratio of last pixel is background
 
-    r_list = zeros(1,n_lambda); % List of reflection coefficient
-    t_list = zeros(1,n_lambda); % List of transmission coefficient
+    R_list = zeros(1,n_lambda); % List of reflectance
+    T_list = zeros(1,n_lambda); % List of transmittance
+
+    % Looping over different wavelength    
     for jj = 1:n_lambda
         syst.wavelength = lambda_list(jj); % Wavelength [nm]
     
         % Call mesti2s() to calculate the scattering matrix.
         [smatrix, channels, stat] = mesti2s(syst, in, out, opts);
     
-        r = smatrix(1,1); % Reflection coefficient
-        t = smatrix(2,1); % Transmission coefficient
-
-        % Shift the extra background ratio (if any) to compare analytical result.
-        t_list(jj) = t/exp(1i*last_pixel_bg_ratio*channels.R.kxdx_prop); 
-        r_list(jj) = r;
+        R_list(jj) = abs(smatrix(1,1)).^2; % Numerical reflectance
+        T_list(jj) = abs(smatrix(2,1)).^2; % Numerical transmittance
     end
-    % Compute the L2 norm ratio error for r and t.
-    l2_norm_ratio_r(ii) = norm(abs(r_list_analytical-r_list))/norm(abs(r_list_analytical));
-    l2_norm_ratio_t(ii) = norm(abs(t_list_analytical-t_list))/norm(abs(t_list_analytical));
+    % Compute the RMSE for R and T.
+    RMSE_R(ii) = sqrt(mean((R_list-R_list_analytical).^2));
+    RMSE_T(ii) = sqrt(mean((T_list-T_list_analytical).^2));
 end
 
-% Plot L2 norm ratio error with respect to resolution
+% Plot RMSE with respect to resolution
 clf
-loglog(resolution_list,l2_norm_ratio_r,'o','linewidth',1)
+loglog(resolution_list,RMSE_R,'o','linewidth',1)
 hold on
-loglog(resolution_list,l2_norm_ratio_t,'o','linewidth',1)
-hold on
+loglog(resolution_list,RMSE_T,'x','linewidth',1)
 % Reference asymptotic line
 X = 10.^(1:4);
-Y = 450*X.^(-2);
+Y = 120*X.^(-2);
 loglog(X,Y,'-','linewidth',1, 'Color', '#77AC30')
 grid on
-xticks([2e1 1e2 1e3]);
-yticks([1e-4 1e-3 1e-2 1e-1 1e0]);
-xlabel('Resolution \lambda_0/\Deltax');
-ylabel('Relative L^2 error');
-xlim([2e1, 1e3])
-ylim([3e-4, 2e0])
-legend('{\itr}','{\itt}','O(\Deltax^2)')
+xticks([1e1 1e2 1e3]);
+yticks([1e-4 1e-3 1e-2 1e-1 1e0 1e1]);
+xlabel('Resolution \lambda_0/\Delta{\itx}');
+ylabel('Difference with analytic')
+xlim([1e1, 1e3])
+ylim([1e-4, 2e0])
+legend('{\itR}_{numeric}','{\itT}_{numeric}','O(\Delta{\itx}^2)')
 set(gca, 'fontsize', 15, 'FontName','Arial')
 set(gca,'linewidth',1)
 ```
 
 
-![distributed_bragg_reflector_discretization_error.png](distributed_bragg_reflector_discretization_error.png)
+![distributed_bragg_reflector_RMSE.png](distributed_bragg_reflector_RMSE.png)
 
