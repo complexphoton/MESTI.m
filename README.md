@@ -33,7 +33,7 @@ Several examples are provided in the <code>examples</code> folder, which are use
 1. [Fabry–Pérot etalon](./examples/1d_fabry_perot/fabry_perot.md) (1D)
 2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector/distributed_bragg_reflector.md) (1D)
 3. [Open channel in a scattering medium](./examples/2d_open_channel_through_disorder/open_channel_through_disorder.md) (2D)
-4. [Meta-atom design for metasurfaces](./examples/2d_metalens_meta_atom/metalens_meta_atom.md) (2D)
+4. [Meta-atom design for metasurfaces](./examples/meta_atom_design/meta_atom_design.md) (2D)
 6. [Millimeter-wide metalens](./examples/2d_metalens_full/metalens_full.md) (2D)
 
 More examples will be added later.
