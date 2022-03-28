@@ -38,7 +38,7 @@ Several examples are provided in the <code>examples</code> folder, which are use
 
 More examples will be added later.
 
-## Galleries
+## Gallery
 Below are some images from the <code>examples</code> folder:
 
 1. Propagation through a Fabry–Pérot etalon
