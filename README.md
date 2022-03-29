@@ -33,7 +33,8 @@ Several examples are provided in the <code>examples</code> folder, which are use
 1. [Fabry–Pérot etalon](./examples/1d_fabry_perot/fabry_perot.md) (1D)
 2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector/distributed_bragg_reflector.md) (1D)
 3. [Open channel in a scattering medium](./examples/2d_open_channel_through_disorder/open_channel_through_disorder.md) (2D)
-4. [Meta-atom design for metasurfaces](./examples/2d_meta_atom_design/meta_atom_design.md) (2D)
+4. [Reflection Matrix in Gaussian-Beam Basis](./examples/2d_reflection_matrix_Gaussian_beams/reflection_matrix_Gaussian_beams.md) (2D) 
+5. [Meta-atom design for metasurfaces](./examples/2d_meta_atom_design/meta_atom_design.md) (2D)
 6. [Millimeter-wide metalens](./examples/2d_metalens_full/metalens_full.md) (2D)
 
 More examples will be added later.
@@ -47,8 +48,11 @@ Below are some images from the <code>examples</code> folder:
 2. Open channel propagating through a strongly scattering medium
 <img src="./examples/2d_open_channel_through_disorder/disorder_open_channel.gif" width="530" height="398"> 
 
-3. Full-wave simulation of a mm-wide hyperbolic metalens 
-<img src="./examples/2d_metalens_full/metalens_intensity_profile_0_degree.png" width="400" height="300"> 
+3. Field profile of Gaussian beams focused at different locations
+<img src="./examples/2d_reflection_matrix_Gaussian_beams/reflection_matrix_Gaussian_beams.gif" width="596" height="343"> 
 
-4. Angle dependence of the metalens above
-<img src="./examples/2d_metalens_full/metalens_Strehl_ratio_and_transmission_eff.png" width="400" height="300"> 
+4. Full-wave simulation of a mm-wide hyperbolic metalens 
+<img src="./examples/2d_metalens_full/metalens_intensity_profile_0_degree.png" width="504" height="378"> 
+
+5. Angle dependence of the metalens above
+<img src="./examples/2d_metalens_full/metalens_Strehl_ratio_and_transmission_eff.png" width="504" height="378"> 
