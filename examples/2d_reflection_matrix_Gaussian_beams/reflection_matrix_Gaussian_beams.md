@@ -48,7 +48,7 @@ set(gca, 'FontSize', 18)
 ```
 
 
-![reflection_matrix_Gaussian_beams_permittivity profile.png](reflection_matrix_Gaussian_beams_permittivity profile.png)
+![reflection_matrix_Gaussian_beams_permittivity_profile.png](reflection_matrix_Gaussian_beams_permittivity_profile.png)
 
 # Build the input sources
 
