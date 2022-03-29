@@ -184,19 +184,24 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         B_struct.pos (four-element integer vector): B_struct.pos =
 %            [m1, n1, h, w] specifies the location and the size of the
 %            rectangle. Here, (m1, n1) is the index of the (y,x) coordinate of
-%            the lower-index corner of the rectangle, at the location of
-%            syst.epsilon(m1, n1); (h, w) is the height and width of the
+%            the smaller-y, smaller-x corner of the rectangle, at the location
+%            of syst.epsilon(m1, n1); (h, w) is the height and width of the
 %            rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index of
 %            the higher-index corner of the rectangle, at the location of
 %            syst.epsilon(m2, n2).
-%         B_struct.data (3D numeric array): non-zero elements of matrix B within
-%            the rectangle specified by B_struct.pos. Specifically,
-%            B_struct.data(m',n',a) is the a-th input source at the location of
-%            syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes B(m+(n-1)*ny, a).
-%            In other words, B_struct.data(:,:,a) gives the sources at the
-%            rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))). So,
-%            size(B_struct.data, [1,2]) must equal [h, w], and
-%            size(B_struct.data, 3) is the number of inputs.
+%         B_struct.data (2D or 3D numeric array): non-zero elements of matrix B
+%            within the rectangle specified by B_struct.pos. When it is a 3D
+%            array, B_struct.data(m',n',a) is the a-th input source at the
+%            location of syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes
+%            B(m+(n-1)*ny, a). In other words, B_struct.data(:,:,a) gives the
+%            sources at the rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))).
+%            So, size(B_struct.data, [1,2]) must equal [h, w], and
+%            size(B_struct.data, 3) is the number of inputs. Alternatively,
+%            B_struct.data can be a 2D array that is equivalent to
+%            reshape(data_in_3D_array, h*w, []), in which case
+%            size(B_struct.data, 2) is the number of inputs; in this case,
+%            B_struct.data can be a sparse matrix, and its sparsity will be
+%            preserved when building matrix B.
 %         If different inputs are located within different rectangles (e.g.,
 %      inputs from line sources on the left and separate inputs from line
 %      sources on the right), B_struct can be a structure array with multiple
@@ -244,19 +249,24 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         C_struct.pos (four-element integer vector): C_struct.pos =
 %            [m1, n1, h, w] specifies the location and the size of the
 %            rectangle. Here, (m1, n1) is the index of the (y,x) coordinate of
-%            the lower-index corner of the rectangle, at the location of
-%            syst.epsilon(m1, n1); (h, w) is the height and width of the
+%            the smaller-y, smaller-x corner of the rectangle, at the location
+%            of syst.epsilon(m1, n1); (h, w) is the height and width of the
 %            rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index of
 %            the higher-index corner of the rectangle, at the location of
 %            syst.epsilon(m2, n2).
-%         C_struct.data (3D numeric array): non-zero elements of matrix C within
-%            the rectangle specified by C_struct.pos. Specifically,
-%            C_struct.data(m',n',b) is the b-th projection at the location of
-%            syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes C(b, m+(n-1)*ny).
-%            In other words, C_struct.data(:,:,b) gives the projection at the
-%            rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))). So,
-%            size(C_struct.data, [1,2]) must equal [h, w], and
-%            size(C_struct.data, 3) is the number of outputs.
+%         C_struct.data (2D or 3D numeric array): non-zero elements of matrix C
+%            within the rectangle specified by C_struct.pos. When it is a 3D
+%            array, C_struct.data(m',n',b) is the b-th output projection at the
+%            location of syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes
+%            C(b, m+(n-1)*ny). In other words, C_struct.data(:,:,b) gives the
+%            projection at the rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))).
+%            So, size(C_struct.data, [1,2]) must equal [h, w], and
+%            size(C_struct.data, 3) is the number of outputs. Alternatively,
+%            C_struct.data can be a 2D array that is equivalent to
+%            reshape(data_in_3D_array, h*w, []), in which case
+%            size(C_struct.data, 2) is the number of outputs; in this case,
+%            C_struct.data can be a sparse matrix, and its sparsity will be
+%            preserved when building matrix C.
 %         If the non-zero elements of matrix C do not have rectangular shapes in
 %      space [e.g., for near-field-to-far-field transformations], one can set C
 %      to a structure array with the following fields:
@@ -775,6 +785,7 @@ if isstruct(B)
             n1 = pos(2); % first index in x
             m2 = m1 + pos(3) - 1; % last index in y
             n2 = n1 + pos(4) - 1; % last index in x
+            nxy_data = pos(3)*pos(4); % number of elements in this rectangle
             if m1 > ny
                 error('B(%d).pos(1) = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, m1, ny);
             elseif n1 > nx
@@ -784,12 +795,14 @@ if isstruct(B)
             elseif n2 > nx
                 error('B(%d).pos(2) + B(%d).pos(4) - 1 = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, ii, n2, nx);
             elseif ~(ndims(data) <= 3 && isnumeric(data))
-                error('B(%d).data must be a 3D numeric array when B.pos is given.', ii);
-            elseif ~isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
-                error('size(B(%d).data, [1,2]) = [%d, %d] does not match [B(%d).pos(3), B(%d).pos(4)] = [%d, %d]', ii, size(data, 1), size(data, 2), ii, ii, pos(3), pos(4));
+                error('B(%d).data must be a 2D or 3D numeric array when B.pos is given.', ii);
+            elseif isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
+                M_ii = size(data, 3); % number of inputs
+            elseif size(data, 1) == nxy_data
+                M_ii = size(data, 2); % number of inputs
+            else
+                error('size(B(%d).data) = [%d, %d, %d] is not compatible with [B(%d).pos(3), B(%d).pos(4)] = [%d, %d].', ii, size(data, 1), size(data, 2), size(data, 3), ii, ii, pos(3), pos(4));
             end
-            nxy_data = pos(3)*pos(4); % number of elements in this rectangle
-            M_ii = size(data, 3); % number of inputs
             if use_iv_pairs
                 % convert to linear indices
                 m_list = repmat((m1:m2).', 1, pos(4));
@@ -904,6 +917,7 @@ if isstruct(C)
             n1 = pos(2); % first index in x
             m2 = m1 + pos(3) - 1; % last index in y
             n2 = n1 + pos(4) - 1; % last index in x
+            nxy_data = pos(3)*pos(4); % number of elements in this rectangle
             if m1 > ny
                 error('C(%d).pos(1) = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, m1, ny);
             elseif n1 > nx
@@ -913,12 +927,14 @@ if isstruct(C)
             elseif n2 > nx
                 error('C(%d).pos(2) + C(%d).pos(4) - 1 = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, ii, n2, nx);
             elseif ~(ndims(data) <= 3 && isnumeric(data))
-                error('C(%d).data must be a 3D numeric array when C.pos is given.', ii);
-            elseif ~isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
-                error('size(C(%d).data, [1,2]) = [%d, %d] does not match [C(%d).pos(3), C(%d).pos(4)] = [%d, %d]', ii, size(data, 1), size(data, 2), ii, ii, pos(3), pos(4));
+                error('C(%d).data must be a 2D or 3D numeric array when C.pos is given.', ii);
+            elseif isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
+                M_ii = size(data, 3); % number of outputs
+            elseif size(data, 1) == nxy_data
+                M_ii = size(data, 2); % number of outputs
+            else
+                error('size(C(%d).data) = [%d, %d, %d] is not compatible with [C(%d).pos(3), C(%d).pos(4)] = [%d, %d].', ii, size(data, 1), size(data, 2), size(data, 3), ii, ii, pos(3), pos(4));
             end
-            nxy_data = pos(3)*pos(4); % number of elements in this rectangle
-            M_ii = size(data, 3); % number of outputs
             if use_iv_pairs
                 % convert to linear indices
                 m_list = repmat((m1:m2).', 1, pos(4));

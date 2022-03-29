@@ -250,6 +250,12 @@ elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
     error('opts.solver = ''%s'' but function zmumps() is not found.', opts.solver)
 end
 
+% When opts.method = 'SCSA' and opts.solver = 'MATLAB', the solution method is not actually SCSA, so we give it a more descriptive name
+str_method = opts.method;
+if strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MATLAB')
+    str_method = 'C*inv(U)*inv(L)*B';
+end
+
 if opts.iterative_refinement && ~(strcmpi(opts.method, 'factorize_and_solve') && strcmpi(opts.solver, 'MUMPS') && ~opts.return_X)
     error('To use opts.iterative_refinement = true, one must have opts.return_X = false, opts.method = ''factorize_and_solve'', opts.solver = ''MUMPS''.\nHere opts.return_X = %d, opts.method = ''%s'', opts.solver = ''%s''.', opts.return_X, opts.method, opts.solver);
 end
@@ -405,7 +411,7 @@ if (sz_B_2 == 0 || (sz_C_1 == 0 && use_C)) && ~opts.store_ordering
     opts.solver = 'None';
     if opts.verbal; fprintf('No computation needed\n'); end
 elseif opts.verbal
-    fprintf('< Method: %s using %s%s%s%s%s >\n', opts.method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K);
+    fprintf('< Method: %s using %s%s%s%s%s >\n', str_method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K);
 end
 
 if strcmpi(opts.method, 'None')

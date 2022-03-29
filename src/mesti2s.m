@@ -19,10 +19,23 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   [S, stat] = MESTI2S(syst, in, out, opts) allow detailed options to be
 %   specified with structure 'opts' of the input arguments.
 %
+%   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
+%   PEC). Given the closed boundary, the set of transverse modes forms a
+%   complete and orthonormal basis of propagating and evanescent channels,
+%   and the inputs and outputs are both specified in the basis of thsoe
+%   propagating channels. Properties of those channels are given by
+%   mesti_build_channels().
+%
+%   When an open boundary in y is of interest, the appropriate input/output
+%   channel basis to use is application specific and requires more care. So, the
+%   user needs to use the more general function mesti() for such problems, and
+%   will need to build the input and output matrices B and C, as in the example
+%   on reflection matrix computation in Gaussian beam basis.
+%
 %   This file builds the input and output channels using mesti_build_channels(),
-%   builds the input and output matrices B and C, and then calls mesti() to
-%   solve the scattering problems. For scattering-matrix computations, the
-%   recusrive Green's function method can also be used instead of mesti().
+%   builds the matrices B and C, and then calls mesti() to solve the scattering
+%   problems. For scattering-matrix computations, mesti2s() can also use the
+%   recusrive Green's function method instead of calling mesti().
 %
 %   === Input Arguments ===
 %   syst (scalar structure; required):
@@ -69,13 +82,12 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %            'PMCPEC'    - E_z(0,n) = E_z(1,n); E_z(ny+1,n) = 0
 %            'Dirichlet' - same as 'PEC'
 %            'Neumann'   - same as 'PMC'
-%         This yBC also defines a complete and orthonormal set of transverse
-%         modes, upon which the input and output channels used in input
-%         arguments 'in' and 'out' are defined.
-%            Note that mesti2s() does not support PML in y direction because an
-%         open boundary in y leads to an infinite set of transverse modes that
-%         are no longer clearled defined and no longer orthonormal.
-%            syst.yBC is required here with no default choice (except when
+%         Note that this yBC also defines a complete and orthonormal set of
+%         transverse modes, upon which the input and output channels in input
+%         arguments 'in' and 'out' are defined; mesti2s() does not support PML
+%         in y direction because a closed boundary is necessary for defining
+%         such a transverse basis.
+%            Here, syst.yBC is required, with no default choice (except when
 %         syst.ky_B is given, in which case syst.yBC = 'Bloch' is automatically
 %         used).
 %      syst.ky_B (real scalar; optional):
