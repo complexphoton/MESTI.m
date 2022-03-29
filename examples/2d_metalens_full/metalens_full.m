@@ -1,9 +1,9 @@
 %% Full-wave Transmission-Matrix Computation on a mm-wide Metalens
+
 % In this example, we:
-%
+% 
 % * Build a mm-diameter high-NA hyperbolic metalens from the meta-atom results 
-% in <https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_metalens_meta_atom. 
-% https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_metalens_meta_atom.>
+% in https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_meta_atom_design 
 % * Use mesti() to compute the transmission matrix of that mm-diameter metalens 
 % through SCSA-c.
 % * Use angular spectrum propagation to obtain field profiles away from the 
@@ -92,8 +92,8 @@ syst.epsilon = [epsilon_L*ones(ny+2*nspacer+2*npml,nspacer+npml+1),[epsilon_R*on
 opts.use_continuous_dispersion = true; % Use continuous dispersion relation.
 opts.use_transpose_B = true; % Transpose(B) will be used as C.
 opts.prefactor = -2i;   % Prefactor for the source B
-opts.clear_syst = true; % syst is not needed afterwards and can be cleared.
-opts.clear_BC = true;   % B is not needed afterwards and can be cleared.
+opts.clear_syst = true; % syst is not needed afterwards and can be cleared
+opts.clear_BC = true;   % B is not needed afterwards and can be cleared
 
 %% Pre-processing for SCSA-c
 % Here we build the transformed input matrix phi*Q*F in Eq. (S38) and \tilde{B}.
@@ -106,7 +106,10 @@ k0dx = 2*pi/lambda_over_dx;  % Dimensionless frequency k0dx
 channels = mesti_build_channels(ny, BC, k0dx, epsilon_L, epsilon_R, opts.use_continuous_dispersion); % Set up the channels
 % Number of channels considering in the scattering matrix
 N_channel = channels.R.N_prop;
-M_L = N_channel;  %Number of channels considered on the left; note we only consider channels that can propagate in air
+
+% In this example, M_L and M_R are set to equal.
+% In general, users can set M_L and M_R to be different number.
+M_L = N_channel; % Number of channels considered on the left; note we only consider channels that can propagate in air
 M_R = N_channel; % Number of channels considered on the right
 
 M_L_pad_half = 1000; % Number of half extra padded channels on the left
@@ -126,15 +129,32 @@ N_R = min([ny, M_R + 2*M_R_pad_half]);
 % Please refer to the function build_phiQF.
 [phiQF_L ,phiQF_R] = build_phiQF(ny, N_L, N_R, w_t_over_dx_L, w_t_over_dx_R, use_Hann_Q);
 
-% Build up the whole matrix B_tilde; see Eq. (S26) in the supplementary of the SCSA paper paper.
-B_tilde = [[sparse((ny+2*nspacer+2*npml)*(nspacer+npml), N_L); sparse(nspacer+npml, N_L); phiQF_L; sparse(nspacer+npml, N_L); sparse((ny+2*nspacer+2*npml)*(nx), N_L); sparse((ny+2*nspacer+2*npml), N_L); sparse((ny+2*nspacer+2*npml)*(nspacer+npml), N_L)],...
-    [sparse((ny+2*nspacer+2*npml)*(nspacer+npml), N_L); sparse((ny+2*nspacer+2*npml), N_L); sparse((ny+2*nspacer+2*npml)*(nx), N_L); sparse(nspacer+npml, N_L); phiQF_R; sparse(nspacer+npml, N_L); sparse((ny+2*nspacer+2*npml)*(nspacer+npml), N_L)]];
+% Specify inputs from left and from right
+B = struct('pos', {[],[]}, 'data', {[],[]});
+
+% In mesti(), B.pos specifies the position of a block source: [m1, n1, h, w],
+% where (m1, n1) is the index of the smaller-(y,x) corner, and (h, w) is the 
+% height and width of the block. Here, we put line sources (w=1) with
+% height h = ny on the left surface and right surface.
+m1_source  = nspacer+npml+1; % y index for the beginning of the sources
+n_source_L = nspacer+npml+1; % x index for the sources on the left
+n_source_R = n_source_L + nx + 1; % x index for the sources on the right
+B(1).pos = [m1_source, n_source_L, ny, 1]; 
+B(2).pos = [m1_source, n_source_R, ny, 1]; 
+
+% B.data specifies the source profiles. It is a 3D array where B.data(:, :, a)
+% stores the a-th input, or its equivalence reshaped into a 2D matrix; the
+% latter is what we use here.
+B(1).data = phiQF_L;
+B(2).data = phiQF_R;
+
+clear phiQF_L phiQF_R; % these are no longer needed, and B will also be cleared when calling mesti()
 
 time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for the pre-processing
 
 %% Call mesti()
 
-[S, stat] = mesti(syst, B_tilde, [], [], opts);
+[S, stat] = mesti(syst, B, [], [], opts);
 
 %% Post-processing for SCSA-c
 % Perform decompression to obtain the scattering matrix. 
@@ -183,7 +203,7 @@ W_FT = 20; % Fourier window [mm]
 
 ny_source = ny; % Number of pixels for the source
 ny_Ft = floor(W_FT*1e6/dx); % Number of pixels for the Fourier window
-ny_pad = round((ny_Ft-ny_source)/2); % Extra pixels need to pad on one side
+ny_pad = round((ny_Ft-ny_source)/2); % Extra pixels need to be padding on one side
 y_FT = ((0.5:ny_Ft) - (ny_Ft/2)).'*dx; % Transform pixel to y coordinate.
 
 % kydx list for the angular spectrum propagation
@@ -216,7 +236,7 @@ n_inc_angle = size(inc_angle_list,2); % Number of incident angles
 
 n_ASP = 101; % Number of ASP steps 
 x_propagation_over_dx = 2*focal_length*1000/dx; % Propagation distance over dx along x direction (to 2*focal plane)
-x_plot_over_dx_list = linspace(0, x_propagation_over_dx,n_ASP); % List of position to plot for the ASP
+x_plot_over_dx_list = linspace(0, x_propagation_over_dx,n_ASP); % List ofposition to plot for the ASP
 
 % \theta_in = 0 [degree]
 Ez_SCSA_c = zeros(ny_Ft, size(x_plot_over_dx_list,2)); % Ez profile over space
@@ -270,7 +290,7 @@ for ii = 1: size(x_plot_over_dx_list,2)
     Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_propagation_over_dx).*fft(Ez_0_FT));
 end
 
-% Plot result of the intensity profile in 30 degree.
+% Plot result of the intensity profile in 30 degrees.
 clf
 imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
 set(gca,'YDir','normal')
