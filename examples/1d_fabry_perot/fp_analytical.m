@@ -1,6 +1,6 @@
 function [r_list_analytical,t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list)
 
-%FP_ANALYTICAL calculate analytical reflection and transmission coefficient in 1D Fabry-Perot (FP) etalon.
+%FP_ANALYTICAL calculate analytical reflection and transmission coefficient in 1D Fabry-Pérot (FP) etalon.
 %
 %   === Input Arguments ===
 %   n_bg (numeric scalar, real or complex):
