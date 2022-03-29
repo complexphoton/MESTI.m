@@ -1,9 +1,9 @@
-%% Fabry-Perot etalon
-% Example of a dielectric slab (also called a Fabry-Perot etalon) using SCSA 
+%% Fabry-Pérot etalon
+% Example of a dielectric slab (also called a Fabry-Pérot etalon) using SCSA 
 % 
 % Use MESTI2S() to compute 
 % 1.The field profile of the system and showing the field propagation 
-% 2.The wavelength-dependent reflectance spectrum from Fabry-Perot etalon and 
+% 2.The wavelength-dependent reflectance spectrum from Fabry-Pérot etalon and 
 % the conservation of energy (T + R = 1)
 % 3.The convergence of the numerical results with respect to resolution
 
