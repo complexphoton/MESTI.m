@@ -21,9 +21,10 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
 %   PEC). Given the closed boundary, the set of transverse modes forms a
-%   complete and orthonormal basis of propagating and evanescent channels,
-%   and the inputs and outputs are both specified in the basis of thsoe
-%   propagating channels. Properties of those channels are given by
+%   complete and orthonormal basis of propagating and evanescent channels.
+%   The inputs and outputs are therefore specified in the basis of those
+%   propagating channels, with coefficients normalized with respect to the flux
+%   in the longitudinal (x) direction. Properties of those channels are given by
 %   mesti_build_channels().
 %
 %   When an open boundary in y is of interest, the appropriate input/output
