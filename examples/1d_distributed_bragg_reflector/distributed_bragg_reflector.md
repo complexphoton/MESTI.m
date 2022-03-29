@@ -14,7 +14,7 @@ Use MESTI2S() to compute
 
 # System parameters
 
-```matlab:Code
+```matlab
 clear
 
 n_bg = 1;                   % Refractive index of background material (air)
@@ -39,7 +39,7 @@ n_lambda= size(lambda_list,2); % Total number of wavelength
 
 Calculate the analytical results for this system. 
 
-```matlab:Code
+```matlab
 % Calculate the analytical reflection coefficient and transmission coefficient for this system. 
 % Please refer to the function dbr_analytical.
 [r_list_analytical,t_list_analytical] = dbr_analytical(n_bg, n1, n2, d1, d2, n_pair, lambda_list);
@@ -52,7 +52,7 @@ R_list_analytical = abs(r_list_analytical).^2; % Analytical reflectance
 
 Set up general input argument for the mesti2s() for this system.
 
-```matlab:Code
+```matlab
 % Setup input arguments for mesti2s(). 
 syst.epsilon_L = n_bg^2;  % Relative permittivity on the left hand side
 syst.epsilon_R = n_bg^2;  % Relative permittivity on the right hand side
@@ -68,7 +68,7 @@ out = {'left', 'right'}; % Specify output channel on the left and the right.
 
 Calculate reflectance spectrum over visible wavelength for resolution = 60 with respect to central wavelength.
 
-```matlab:Code
+```matlab
 % The resolution is chosen based on lambda/dx = lambda_0/(n*dx) = 20 in the 
 % highest refractive index material in this system.
 resolution = 60; % Resolution at the central wavelength \lambda_0
@@ -101,7 +101,7 @@ set(gca, 'fontsize', 15, 'FontName','Arial')
 ![distributed_bragg_reflector_structure.png](distributed_bragg_reflector_structure.png)
 
 
-```matlab:Code
+```matlab
 R_list = zeros(1,n_lambda); % List of reflectance
 T_list = zeros(1,n_lambda); % List of transmittance
 
@@ -141,21 +141,21 @@ set(gca,'linewidth',1)
 ![distributed_bragg_reflector_spectrum.png](distributed_bragg_reflector_spectrum.png)
 
 
-```matlab:Code
+```matlab
 % Print out the numerical confirmation of energy conservation
 fprintf(['The energy conservation is checked numerically\n' ...
 'through the max(|1 - T - R|) = %6.3g over the spectrum.\n'], ...
 max(abs(1-R_list-T_list)));
 ```
-
+```
 The energy conservation is checked numerically through the max(|1 - T - R|) =  4e-15 over the spectrum.
-
+```
 # Convergence with resolution
 
 
 Over different resolution, compute root-mean-square error (RMSE) of numerical result with respect to the analytical to show convergence.
 
-```matlab:Code
+```matlab
 resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
 n_resolution= size(resolution_list,2); % Total number of resolutions to be used
 RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
