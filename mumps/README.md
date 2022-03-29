@@ -6,7 +6,7 @@ The SCSA method in MESTI requires the MUMPS package. Here are steps to install i
 Please go to the [MUMPS website](http://mumps.enseeiht.fr/index.php?page=dwnld) and fill out the form to request the MUMPS source code.
 
 ## Compile MUMPS
-After obtaining the MUMPS source code, read the <code>INSTALL</code> file to choose and modify the <code>Makefile.inc</code> to fit your environment and machine. You'll need to modify the environmental variables in <code>Makefile.inc</code> such as the paths of the BLAS library (required), LAPACK library (required), and METIS library (optional): <code>LIBBLAS</code>, <code>LAPACK</code>, and <code>LMETIS</code>.
+After obtaining the MUMPS source code, read the <code>INSTALL</code> file to choose and modify the <code>Makefile.inc</code> to fit your environment and machine. You'll need to modify the environmental variables in <code>Makefile.inc</code> such as the paths of the BLAS library (required), LAPACK library (required), and METIS ordering library (optional): <code>LIBBLAS</code>, <code>LAPACK</code>, and <code>LMETIS</code>.
 
 Two examples of <code>Makefile.inc</code> we use ourselves are provided below, one for installation on a Linux cluster, one for installation on MacOS. Note you still need to modify the environmental variables based on your machine.
 
@@ -25,7 +25,7 @@ If there is no error, go to the <code>lib</code> folder to check if the followin
 
 ## Compile MATLAB interface for MUMPS
 
-Go to the <code>MATLAB</code> folder inside the MUMPS folder and modify <code>make.inc</code>.  Similarly, you'll need to modify the environmental variables such as the paths of the MUMPS folder (required), BLAS library (required), and METIS library (optional): <code>MUMPS_DIR</code>, <code>LIBBLAS</code>, and <code>LMETIS</code>.
+Go to the <code>MATLAB</code> folder inside the MUMPS folder and modify <code>make.inc</code>.  Similarly, you'll need to modify the environmental variables such as the paths of the MUMPS folder (required), BLAS library (required), and the METIS ordering library (optional): <code>MUMPS_DIR</code>, <code>LIBBLAS</code>, and <code>LMETIS</code>.
 
 Two examples of <code>make.inc</code> are provided below:
 1. [Linux cluster](./linux/make.inc)
