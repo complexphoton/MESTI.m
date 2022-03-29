@@ -10,7 +10,7 @@ In this example, we:
 
 # System parameters
 
-```matlab:Code
+```matlab
 clear 
 
 % System parameters
@@ -25,7 +25,7 @@ l  = 600;        % Thickness of meta-atom cell [nm]
 
 # Construct the mm-wide hyperbolic metalens
 
-```matlab:Code
+```matlab
 D_target = 1000; % Target diameter for the metalens [micron]
 n_meta_atom = ceil(D_target*1e3/w); % Number of meta-atom to construct 1-mm metalens
 ny_tot = ceil(w/dx)*n_meta_atom; % Total number of pixel for the 1-mm metalens in y direction
@@ -75,7 +75,7 @@ end
 
 Set up general input argument for the mesti() for this system.
 
-```matlab:Code
+```matlab
 syst.length_unit = 'nm'; % Length unit
 syst.wavelength = lambda; % Free-space wavelength [nm]
 syst.dx = dx; % Grid size of system [nm]
@@ -106,7 +106,7 @@ opts.clear_BC = true;   % B is not needed afterwards and can be cleared.
 
 Here we build the transformed input matrix phi*Q*F in Eq. (S38) and \tilde{B}.
 
-```matlab:Code
+```matlab
 time1 = clock;
 
 lambda_over_dx = syst.wavelength/syst.dx; % Ratio between free-space wavelength and dx
@@ -144,26 +144,26 @@ time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for
 
 # Call mesti()
 
-```matlab:Code
+```matlab
 [S, stat] = mesti(syst, B_tilde, [], [], opts);
 ```
-
-System size: ny = 75304, nx = 148<br>
-UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC<br>
-Building B,C... elapsed time:   0.002 secs<br>
-Building A...&nbsp;&nbsp;&nbsp;   elapsed time:   5.367 secs<br>
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) ><br>
-Building K...&nbsp;&nbsp;&nbsp;   elapsed time:   2.477 secs<br>
-Analyzing...&nbsp;&nbsp;&nbsp;&nbsp;   elapsed time:  11.387 secs<br>
-Factorizing...&nbsp;&nbsp;  elapsed time:  67.009 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Total elapsed time:  87.555 secs<br>
-
+```
+System size: ny = 75304, nx = 148
+UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
+Building B,C... elapsed time:   0.002 secs
+Building A...   elapsed time:   5.367 secs
+< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+Building K...   elapsed time:   2.477 secs
+Analyzing...    elapsed time:  11.387 secs
+Factorizing...  elapsed time:  67.009 secs
+          Total elapsed time:  87.555 secs
+```
 # Post-processing for SCSA-c
 
 
 Perform decompression to obtain the scattering matrix. 
 
-```matlab:Code
+```matlab
 time1 = clock;
 
 ind_L = 1:N_L;
@@ -198,19 +198,19 @@ time2 = clock; timing_build_aft = etime(time2,time1); % Calculate the timing for
 
 fprintf('Total building and processing time: %7.3f secs\n', stat.timing.build+timing_build_pre+timing_build_aft);
 ```
-
+```
 Total building and processing time:  11.594 secs
-
-
-```matlab:Code
-fprintf('Total elapsed time: %7.3f secs\n', stat.timing.total+timing_build_pre+timing_build_aft);
 ```
 
+```matlab
+fprintf('Total elapsed time: %7.3f secs\n', stat.timing.total+timing_build_pre+timing_build_aft);
+```
+```
 Total elapsed time:  91.303 secs
-
+```
 # Angular spectrum propagation parameters
 
-```matlab:Code
+```matlab
 % System width used in the angular spectrum propagation.
 % Here a very wide width is used to reduce artifacts from period wrapping (aliasing)
 % This width can be greatly reduced using a window function or a PML.
@@ -251,7 +251,7 @@ n_inc_angle = size(inc_angle_list,2); % Number of incident angles
 
 Use angular spectrum propagation (ASP) to compute intensity profile away from the metalens, for incident angles of 0  degree and 30 degrees. 
 
-```matlab:Code
+```matlab
 n_ASP = 101; % Number of ASP steps 
 x_propagation_over_dx = 2*focal_length*1000/dx; % Propagation distance over dx along x direction (to 2*focal plane)
 x_plot_over_dx_list = linspace(0, x_propagation_over_dx,n_ASP); % List of position to plot for the ASP
@@ -297,8 +297,8 @@ set(gca,'fontsize',20);
 ![metalens_intensity_profile_0_degree.png](metalens_intensity_profile_0_degree.png)
 
 
-```matlab:Code
 
+```matlab
 % \theta_in = 30 [degree]
 Ez_SCSA_c = zeros(ny_Ft, size(x_plot_over_dx_list,2)); % Ez profile over space
 % Find the closest angle that satisfy the desired one.
@@ -351,7 +351,7 @@ Here we
 
 2. Loop over different incident angles to calculate the transmission efficiency and Strehl ratio of the hyperbolic metalens.
 
-```matlab:Code
+```matlab
 x_propagation_over_dx = focal_length*1000/dx; % Propagation distance over dx along x direction (to focal plane)
 
 %% Calculate the transmission efficiency and Ez field in the focal passing through ideal lens
