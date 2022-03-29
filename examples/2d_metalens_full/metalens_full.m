@@ -256,7 +256,7 @@ for ii = 1: size(x_plot_over_dx_list,2)
 end
 
 % Plot result of the intensity profile at 0 degree incidence.
-clf
+figure
 imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
 set(gca,'YDir','normal')
 hold on
@@ -293,7 +293,7 @@ for ii = 1: size(x_plot_over_dx_list,2)
 end
 
 % Plot result of the intensity profile in 30 degrees.
-clf
+figure
 imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
 set(gca,'YDir','normal')
 hold on
@@ -376,7 +376,7 @@ for a_R= 1:n_inc_angle
 end
 
 % Plot results for Strehl ratio and transmission efficiency.
-clf
+figure
 yyaxis left
 semilogy(inc_angle_list, strehl_ratio_hyperbolic_SCSA_c, 'linewidth', 1.5)
 xlabel('\theta_{in}')
