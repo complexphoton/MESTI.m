@@ -6,7 +6,7 @@ In this example, we show how to use mesti2s() to compute the transmission matrix
 
 # System parameters
 
-```matlab:Code
+```matlab
 clear
 
 % Dimensions of the system, in units of the wavelength lambda_0
@@ -34,7 +34,7 @@ epsilon_R    = 1.0^2; % frees space on the right
 
 # Compute the transmission matrix
 
-```matlab:Code
+```matlab
 syst.epsilon = epsilon;
 syst.epsilon_L = epsilon_L;
 syst.epsilon_R = epsilon_R;
@@ -44,24 +44,25 @@ syst.dx = dx;
 syst.yBC = 'periodic';
 
 % Transmission matrix: input from left, output to the right
-[t, channels, ~] = mesti2s(syst, {'left'}, {'right'});
+[t, channels] = mesti2s(syst, {'left'}, {'right'});
 ```
-
-System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}<br>
-xBC = {self-energy, self-energy}; yBC = periodic<br>
-Building G0...&nbsp;  elapsed time:   0.050 secs<br>
-Building B,C... elapsed time:   0.001 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ... elapsed time:   0.008 secs<br>
-Building A...&nbsp;&nbsp;&nbsp;   elapsed time:   0.069 secs<br>
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) ><br>
-Building K...&nbsp;&nbsp;&nbsp;   elapsed time:   0.058 secs<br>
-Analyzing...&nbsp;&nbsp;&nbsp;&nbsp;    elapsed time:   0.107 secs<br>
-Factorizing...&nbsp;&nbsp;  elapsed time:   0.740 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Total elapsed time:   1.084 secs<br>
+```
+System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
+xBC = {self-energy, self-energy}; yBC = periodic
+Building G0...  elapsed time:   0.050 secs
+Building B,C... elapsed time:   0.001 secs
+            ... elapsed time:   0.008 secs
+Building A...   elapsed time:   0.069 secs
+< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+Building K...   elapsed time:   0.058 secs
+Analyzing...    elapsed time:   0.107 secs
+Factorizing...  elapsed time:   0.740 secs
+          Total elapsed time:   1.084 secs
+```
 
 # Compare an open channel and a plane-wave input
 
-```matlab:Code
+```matlab
 % The most-open channels is the singular vector of the transmission matrix with 
 % the largest singular value.
 [~, sigma_max, v_max] = svds(t, 1, 'largest');
@@ -75,13 +76,13 @@ T_PW  = sum(abs(t(:,ind_normal)).^2); % normal-incident plane-wave
 T_open = sigma_max^2; % open channel
 fprintf('T_avg  = %f\nT_PW   = %f\nT_open = %f\n', T_avg, T_PW, T_open)
 ```
+```
+T_avg  = 0.113158
+T_PW   = 0.177535
+T_open = 0.989225
+```
 
-T_avg  = 0.113158<br>
-T_PW   = 0.177535<br>
-T_open = 0.989225<br>
-
-
-```matlab:Code
+```matlab
 % Specify two incident wavefronts:
 % (1) normal-incident plane-wave
 % (2) open channel
@@ -95,25 +96,26 @@ opts.nx_L = round((L_tot-L)/2/dx);
 opts.nx_R = opts.nx_L;
 
 % Set out = [] for field-profile computations
-[field_profiles, ~, ~] = mesti2s(syst, in, [], opts);
+field_profiles = mesti2s(syst, in, [], opts);
 ```
-
-System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}<br>
-xBC = {self-energy, self-energy}; yBC = periodic<br>
-Building G0...&nbsp;  elapsed time:   0.054 secs<br>
-Building B,C... elapsed time:   0.001 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ... elapsed time:   0.000 secs<br>
-Building  A...&nbsp;&nbsp;&nbsp;  elapsed time:   0.067 secs<br>
-< Method: factorize_and_solve using MUMPS with AMD ordering ><br>
-Analyzing...&nbsp;&nbsp;&nbsp;&nbsp;     elapsed time:   0.172 secs<br>
-Factorizing...&nbsp;&nbsp;  elapsed time:   0.816 secs<br>
-Solving...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      elapsed time:   0.104 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ...      elapsed time:   0.064 secs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Total elapsed time:   1.324 secs<br>
+```
+System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
+xBC = {self-energy, self-energy}; yBC = periodic
+Building G0...  elapsed time:   0.054 secs
+Building B,C... elapsed time:   0.001 secs
+            ... elapsed time:   0.000 secs
+Building A...   elapsed time:   0.067 secs
+< Method: factorize_and_solve using MUMPS with AMD ordering >
+Analyzing...    elapsed time:   0.172 secs
+Factorizing...  elapsed time:   0.816 secs
+Solving...      elapsed time:   0.104 secs
+       ...      elapsed time:   0.064 secs
+          Total elapsed time:   1.324 secs
+```
 
 # Animate the field profiles
 
-```matlab:Code
+```matlab
 % Normalize the field amplitude with respect to the plane-wave-input profile
 field_profiles = field_profiles/max(abs(field_profiles(:,:,1)), [], 'all');
 
@@ -134,7 +136,7 @@ animate_field_profile(field_profiles(:,:,1), x0_list, y0_list, r0_list, x, y, ..
 ![disorder_PW_input.gif](disorder_PW_input.gif)
 
 
-```matlab:Code
+```matlab
 % Aanimate the field profile of the open channel
 animate_field_profile(field_profiles(:,:,2), x0_list, y0_list, r0_list, x, y, ...
     nperiod, nframes_per_period);
