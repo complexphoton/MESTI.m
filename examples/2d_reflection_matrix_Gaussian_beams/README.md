@@ -6,8 +6,7 @@ In this example, we compute the reflection matrix of an open system with the inp
 
 # Build the system
 
-
-In this example, we consider a test system of a dielectric cylindrical scatterer located at $(x_0,y_0)$ in air.
+In this example, we consider a test system of a dielectric cylindrical scatterer located at (x<sub>0</sub>, y<sub>0</sub>) in air.
 
 ```matlab
 clear
@@ -53,13 +52,13 @@ set(gca, 'FontSize', 18)
 # Build the input sources
 
 
-We consider inputs being Gaussian beams focused at $(x_f,y_f)$. In this example, we fix the focal depth at  $(x_f=x_0)$ (i.e., the depth of the scatterer), and scan the transverse coordinate $y_f$ of the focus.
+We consider inputs being Gaussian beams focused at (x<sub>f</sub>, y<sub>f</sub>). In this example, we fix the focal depth at  (x<sub>f</sub> = x<sub>0</sub>) (i.e., the depth of the scatterer), and scan the transverse coordinate y<sub>f</sub> of the focus.
 
 
-Perfect Gaussian beams can be generated with the total-field/scattered-field (TF/SF) method. But since the cross section of the beam decays exponentially in $y$, we can generate Gaussian beams to a high accuracy simply by placing line sources at a cross section on the left, which is what we do here. We place the line sources at $x=x_\rm{source}$, just in front of the PML.
+Perfect Gaussian beams can be generated with the total-field/scattered-field (TF/SF) method. But since the cross section of the beam decays exponentially in y, we can generate Gaussian beams to a high accuracy simply by placing line sources at a cross section on the left, which is what we do here. We place the line sources at x = x<sub>source</sub>, just in front of the PML.
 
 
-To determine the required line sources, we (1) take the the field profile of the desired incident Gaussian beam at the focal plane, $E_z^{{\rm{in}}}\left( {{x_f},y} \right) = {E_0}\exp \left[ { - \frac{{{{\left( {y - {y_f}} \right)}^2}}}{{w_0^2}}} \right]$, (2) project it onto the propagating channels (i.e., ignoring evanescent contributions) of free space, (3) back propagate it to the source plane to determine $E_z^{{\rm{in}}}\left( {{x_{{\rm{source}}}},y} \right)$ in the propagating-channel basis, and (4) determine the line source necessary to generate such $E_z^{{\rm{in}}}\left( {{x_{{\rm{source}}}},y} \right)$.
+To determine the required line sources, we (1) take the the field profile of the desired incident Gaussian beam at the focal plane, E<sup>in</sup>(x<sub>f</sub>, y) = E<sub>0</sub>exp(-(y - y<sub>f</sub>)<sup>2</sup>/w<sup>2</sup>), (2) project it onto the propagating channels (i.e., ignoring evanescent contributions) of free space, (3) back propagate it to the source plane to determine E<sup>in</sup>(x<sub>source</sub>, y) in the propagating-channel basis, and (4) determine the line source necessary to generate such E<sup>in</sup>(x<sub>source</sub>, y).
 
 ```matlab
 % Parameters of the input Gaussian beams
@@ -149,15 +148,15 @@ set(gca, 'FontSize', 18)
 # Build the output projections
 
 
-We consider output projections onto the same set of Gaussian beams focused at $(x_f,y_f)$, with the projection done at the same plane as the source plane $(x=x_\rm{source})$.
+We consider output projections onto the same set of Gaussian beams focused at (x<sub>f</sub>, y<sub>f</sub>), with the projection done at the same plane as the source plane (x = x<sub>source</sub>).
 
 
-When the system has a closed boundary in $y$, as is the case in mesti2s(), the set of transverse modes form a complete and orthonormal basis, so it is clear what the output projection should be. But the Gaussian beams here are not orthogonal to each other, are not normalized, and do not form a complete basis. So, it is not obvious how our output projection should be defined.
+When the system has a closed boundary in y, as is the case in mesti2s(), the set of transverse modes form a complete and orthonormal basis, so it is clear what the output projection should be. But the Gaussian beams here are not orthogonal to each other, are not normalized, and do not form a complete basis. So, it is not obvious how our output projection should be defined.
 
 
-What we do here is to convert everything onto the complete and orthonormal basis of transverse modes, and do the projection in such basis while accounting for the flux. Specifically, we (1) project the total field at the source plane, $E_z^{{\rm{tot}}}\left( {{x_{{\rm{source}}}},y} \right) = E_z^{{\rm{in}}}\left( {{x_{{\rm{source}}}},y} \right) + E_z^{{\rm{sca}}}\left( {{x_{{\rm{source}}}},y} \right)$, onto the propagating channels (i.e., ignoring evanescent contributions) of free space; the incident contribution will be subtracted later (2) back propagate such reflection to the focal plane at $x=x_f$ since the $E_z^{{\rm{sca}}}\left( {{x_{{\rm{source}}}},y} \right)$ component supposedly comes from reflection, (3) take the previously computed Gaussian beams at the focal plane projected onto propagating channels of free space, and (4) take the inner product between the two while accounting for the longitudinal flux of the different propagating channels.
+What we do here is to convert everything onto the complete and orthonormal basis of transverse modes, and do the projection in such basis while accounting for the flux. Specifically, we (1) project the total field at the source plane, E<sup>tot</sup>(x<sub>source</sub>, y) = E<sup>in</sup>(x<sub>source</sub>, y) + E<sup>sca</sup>(x<sub>source</sub>, y), onto the propagating channels (i.e., ignoring evanescent contributions) of free space; the incident contribution will be subtracted later (2) back propagate such reflection to the focal plane at x = x<sub>f</sub> since the E<sup>sca</sup>(x<sub>source</sub>, y) component supposedly comes from reflection, (3) take the previously computed Gaussian beams at the focal plane projected onto propagating channels of free space, and (4) take the inner product between the two while accounting for the longitudinal flux of the different propagating channels.
 
-Above, the incident field $E_z^{{\rm{in}}}\left( {x,y} \right)$ was not subtracted. Contribution from the incident field will be subtracted using matrix $D$ in the next step.
+Above, the incident field E<sup>in</sup>(x, y) was not subtracted. Contribution from the incident field will be subtracted using matrix $D$ in the next step.
 
 ```matlab
 % We perform the output projection on the same plane as the line source
@@ -204,7 +203,7 @@ opts.use_transpose_B = true;
 # Compute reflection matrix in Gaussian-beam basis
 
 
-The scattering matrix is given by $S = C{A^{ - 1}}B - D$, with $D = CA_0^{ - 1}B - {S_0}$ where $A_0$ is a reference system for which its scattering matrix $S_0$ is known. We consider $A_0$ to be a homogeneous space with no scatterers, for which the reflection matrix $S_0$ is zero.
+The scattering matrix is given by S = CA<sup>-1</sup>B - D, with D = CA<sub>0</sub><sup>-1</sup>B - S<sub>0</sub> where A<sub>0</sub> is a reference system for which its scattering matrix S<sub>0</sub> is known. We consider A<sub>0</sub> to be a homogeneous space with no scatterers, for which the reflection matrix S<sub>0</sub> is zero.
 
 ```matlab
 syst.PML.npixels = nPML; % Put PML on all four sides
@@ -251,7 +250,7 @@ Factorizing...  elapsed time:   0.242 secs
 # Compute the full field profile
 
 
-For most applications, it is not necessary to compute the full field profile, since most experiments measure properties in the far field. Here, we compute the full field profile for the purpose of visualizing the system as the incident Gaussian beams are scanned across $y$.
+For most applications, it is not necessary to compute the full field profile, since most experiments measure properties in the far field. Here, we compute the full field profile for the purpose of visualizing the system as the incident Gaussian beams are scanned across y.
 
 ```matlab
 opts.use_transpose_B = false; % C should not be used for field-profile computation
