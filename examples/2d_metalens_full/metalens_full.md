@@ -94,6 +94,8 @@ epsilon_R = n_air^2; % Relative permittivity on the right hand side
 % Include PML, homogeneous space, and source/detection region in permittivity profile.
 syst.epsilon = [epsilon_L*ones(ny+2*nspacer+2*npml,nspacer+npml+1),[epsilon_R*ones(nspacer+npml,nx); epsilon; epsilon_R*ones(nspacer+npml,nx)], epsilon_R*ones(ny+2*nspacer+2*npml,nspacer+npml+1)];
 
+clear epsilon; % epsilon is no longer needed and is cleared.
+
 opts.use_continuous_dispersion = true; % Use continuous dispersion relation.
 opts.use_transpose_B = true; % Transpose(B) will be used as C.
 opts.prefactor = -2i;   % Prefactor for the source B
@@ -157,7 +159,7 @@ B(2).pos = [m1_source, n_source_R, ny, 1];
 B(1).data = phiQF_L;
 B(2).data = phiQF_R;
 
-clear phiQF_L phiQF_R; % these are no longer needed, and B will also be cleared when calling mesti()
+clear phiQF_L phiQF_R; % These are no longer needed, and B will also be cleared when calling mesti().
 
 time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for the pre-processing
 ```

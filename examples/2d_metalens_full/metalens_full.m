@@ -89,6 +89,8 @@ epsilon_R = n_air^2; % Relative permittivity on the right hand side
 % Include PML, homogeneous space, and source/detection region in permittivity profile.
 syst.epsilon = [epsilon_L*ones(ny+2*nspacer+2*npml,nspacer+npml+1),[epsilon_R*ones(nspacer+npml,nx); epsilon; epsilon_R*ones(nspacer+npml,nx)], epsilon_R*ones(ny+2*nspacer+2*npml,nspacer+npml+1)];
 
+clear epsilon; % epsilon is no longer needed and is cleared.
+
 opts.use_continuous_dispersion = true; % Use continuous dispersion relation.
 opts.use_transpose_B = true; % Transpose(B) will be used as C.
 opts.prefactor = -2i;   % Prefactor for the source B
@@ -148,7 +150,7 @@ B(2).pos = [m1_source, n_source_R, ny, 1];
 B(1).data = phiQF_L;
 B(2).data = phiQF_R;
 
-clear phiQF_L phiQF_R; % these are no longer needed, and B will also be cleared when calling mesti()
+clear phiQF_L phiQF_R; % These are no longer needed, and B will also be cleared when calling mesti().
 
 time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for the pre-processing
 
@@ -254,7 +256,7 @@ for ii = 1: size(x_plot_over_dx_list,2)
 end
 
 % Plot result of the intensity profile at 0 degree incidence.
-figure
+clf
 imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
 set(gca,'YDir','normal')
 hold on
@@ -291,7 +293,7 @@ for ii = 1: size(x_plot_over_dx_list,2)
 end
 
 % Plot result of the intensity profile in 30 degrees.
-figure
+clf
 imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
 set(gca,'YDir','normal')
 hold on
@@ -374,7 +376,7 @@ for a_R= 1:n_inc_angle
 end
 
 % Plot results for Strehl ratio and transmission efficiency.
-figure
+clf
 yyaxis left
 semilogy(inc_angle_list, strehl_ratio_hyperbolic_SCSA_c, 'linewidth', 1.5)
 xlabel('\theta_{in}')
