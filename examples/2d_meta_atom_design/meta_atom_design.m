@@ -1,9 +1,11 @@
 %% Metalens: meta-atom
 % Example of TiO2 hyperbolic metalens using SCSA-c
 % 
-% Use MESTI2S() to compute the transmission coefficient of meta-atom with different 
-% ridge width and find meta-atoms satisfying 8 discrete ideal relative phase over 
-% [0, 2pi)
+% Use MESTI2S() to 
+% 1. Computing the transmission coefficient of meta-atom with different 
+% ridge width and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi).
+% 2. Scanning over ridge width and incident angle to get phase and amplitude 
+% map of transmission coefficient.
 
 %% System parameters
 clear
