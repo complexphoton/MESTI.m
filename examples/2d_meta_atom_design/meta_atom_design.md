@@ -4,12 +4,15 @@
 Example of TiO2 hyperbolic metalens using SCSA-c
 
 
-Use MESTI2S() to compute the transmission coefficient of meta-atom with different ridge width and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi)
+Use MESTI2S() to 
 
+1. Computing the transmission coefficient of meta-atom with different ridge width and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi). 
+
+2. Scanning over ridge width and incident angle to get phase and amplitude map of transmission coefficient.
 
 # System parameters
 
-```matlab:Code
+```matlab
 clear
 
 n_air    = 1;    % Refractive index of air
@@ -24,7 +27,7 @@ ridge_hight = l; % Ridge height is the thickness of meta-atom cell.
 
 # General setup for mesti2s()
 
-```matlab:Code
+```matlab
 % Setup input arguments for mesti2s(). 
 syst.epsilon_L = n_silica^2; % Relative permittivity on the left hand side
 syst.epsilon_R = n_air^2; % Relative permittivity on the right hand side
@@ -39,7 +42,7 @@ opts.verbal = false; % Suppress output information.
 
 # Structure of meta-atom
 
-```matlab:Code
+```matlab
 % Plot refractive index profile of meta-atom
 ridge_width = 79.8; % Ridge width of meta-atom [nm]
 % Build permittivity for the meta-atom. 
@@ -68,7 +71,7 @@ title(['Meta-atom'],'FontSize',20)
 
 # Transmission coefficient of meta-atom with different ridge width
 
-```matlab:Code
+```matlab
 ridge_width_list = 40:0.1:200; % List of ridge width: from 40 nm to 200 nm with 0.1 nm increment
 t_list = zeros(1,size(ridge_width_list,2)); % Transmission coefficient list
 
@@ -100,7 +103,7 @@ set(gca,'linewidth', 2)
 
 # Finding meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi)
 
-```matlab:Code
+```matlab
 ideal_rel_phase_over_pi_list = [linspace(0.25, 1.75, 7) 0]; % Have 8 discrete ideal relative phases over [0, 2pi).
 
 % Find meta-atoms which are closest to the ideal relative phase through nearest neighbor interpolation.
@@ -118,14 +121,14 @@ Relative phase.(pi) &nbsp; 0.25 &nbsp; 0.50 &nbsp; 0.75 &nbsp; 1.00 &nbsp; 1.25 
 Ridge width....(nm) &nbsp; 45.2 &nbsp; 55.1 &nbsp; 68.1 &nbsp; 79.8 &nbsp; 98.4 125.1 156.9 194.0<br>
 
 
-```matlab:Code
+```matlab
 % Save the phase list and the ridge width list.
 save('meta_atom.mat','ridge_width_desgin_list','phi_over_pi_design_list')
 ```
 
 # Phase and amplitude map of transmission coefficient of meta-atom with ridge width and incident angle
 
-```matlab:Code
+```matlab
 syst.yBC = 'Bloch'; % Bloch periodic boundary along transverse direction
 
 ridge_width_list = 40:4:200; % List of ridge width: from 40 nm to 200 nm with 4 nm increment
@@ -191,7 +194,7 @@ hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 ![meta_atom_design_phase_map.png](meta_atom_design_phase_map.png)
 
 
-```matlab:Code
+```matlab
 clf
 imagesc(ridge_width_list,theta_in_list, abs(t_list))
 caxis([0, 1]);
