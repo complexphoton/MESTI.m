@@ -17,7 +17,9 @@ In you are on a cluster, you may need to load the modules for the libraries used
 
 Then, type
 
-<code>make d z</code>
+```
+make d z
+```
 
 which will compile sequential MUMPS with double precision for real and complex variables (*i.e.*, <code>dmumps</code> and <code>zmumps</code>). 
 
@@ -37,7 +39,9 @@ In you are on a cluster, you may need to load the software module for MATLAB.
 
 Then, type
 
-<code>make</code>
+```
+make
+```
 
 which will compile the MATLAB interface for MUMPS. Check that files <code>dmumpsmex.mexa64</code> and <code>zmumpsmex.mexa64</code> have been generated in the <code>MATLAB</code> folder.
 
