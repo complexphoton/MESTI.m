@@ -20,7 +20,7 @@ The function <code>mesti2s(syst, in, out)</code> deals specifically with two-sid
 
 For field-profile computations, simply omit the argument <code>C</code> or  <code>out</code>, or set it to <code>[]</code>.
 
-Detailed usage of these functions are given in the documentation section (comment lines at the beginning) of the <code>.m</code> function files in the <code>MESTI.m/src</code> folder. One can, for example, type <code>help mesti</code> in MATLAB to see such documentation.
+Detailed usage of these functions are given in the documentation section (comment lines at the beginning) of the <code>.m</code> function files in the [MESTI.m/src](./src) folder. One can, for example, type <code>help mesti</code> in MATLAB to see such documentation.
 
 In addition, the user can use the function <code>mesti_build_channels()</code> to build the input and/or output matrices when using <code>mesti()</code>, or to determine which subset of the channels are of interest when using <code>mesti2s()</code>.
 
@@ -28,7 +28,7 @@ MESTI.m has two other general-purpose functions <code>mesti_build_fdfd_matrix()<
 
 ## Examples
 
-Several examples are given in the <code>MESTI.m/examples</code> folder, which illustrate the usage and functionalities of MESTI.m. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the code with its outputs:
+Several examples are given in the [MESTI.m/examples](./examples) folder, which illustrate the usage and functionalities of MESTI.m. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the code with its outputs:
 
 1. [Fabry–Pérot etalon](./examples/1d_fabry_perot): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
 2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
@@ -40,7 +40,7 @@ Several examples are given in the <code>MESTI.m/examples</code> folder, which il
 More examples will be added later.
 
 ## Gallery
-Here are some images from the <code>MESTI.m/examples</code> folder:
+Here are some images from the examples above:
 
 1. Propagation through a Fabry–Pérot etalon
 <img src="./examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="336" height="264"> 
@@ -63,4 +63,4 @@ For more information on the theory, capability, and benchmarks (*e.g.*, scaling 
 
 - Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively-multi-channel optics using Schur complement,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
 
-Please also cite the above paper if you use MESTI.m for your work.
+Please cite the above paper if you use MESTI.m for your work.
