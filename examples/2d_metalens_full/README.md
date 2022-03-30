@@ -3,8 +3,8 @@
 
 In this example, we:
 
-   -  Build a mm-diameter high-NA hyperbolic metalens from the meta-atom results in [https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_meta_atom_design](https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_meta_atom_design)[.](https://github.com/complexphoton/MESTI.m/tree/main/examples/2d_metalens_meta_atom.) 
-   -  Use mesti() to compute the transmission matrix of that mm-diameter metalens through SCSA-c. 
+   -  Build a mm-diameter high-NA hyperbolic metalens based on the [meta-atom design example](../2d_meta_atom_design).
+   -  Use mesti() to compute the transmission matrix of that mm-diameter metalens, using compressed input/output matrices (SCSA-c).
    -  Use angular spectrum propagation to obtain field profiles away from the metalens. 
    -  Map out the transmission efficiency and Strehl ratio for all incident angles. 
 
