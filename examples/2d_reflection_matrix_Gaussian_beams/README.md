@@ -52,7 +52,7 @@ set(gca, 'FontSize', 18)
 # Build the input sources
 
 
-We consider inputs being Gaussian beams focused at (x<sub>f</sub>, y<sub>f</sub>). In this example, we fix the focal depth at  (x<sub>f</sub> = x<sub>0</sub>) (i.e., the depth of the scatterer), and scan the transverse coordinate y<sub>f</sub> of the focus.
+We consider inputs being Gaussian beams focused at (x<sub>f</sub>, y<sub>f</sub>). In this example, we fix the focal depth at  x<sub>f</sub> = x<sub>0</sub> (i.e., the depth of the scatterer), and scan the transverse coordinate y<sub>f</sub> of the focus.
 
 
 Perfect Gaussian beams can be generated with the total-field/scattered-field (TF/SF) method. But since the cross section of the beam decays exponentially in y, we can generate Gaussian beams to a high accuracy simply by placing line sources at a cross section on the left, which is what we do here. We place the line sources at x = x<sub>source</sub>, just in front of the PML.
@@ -156,7 +156,7 @@ When the system has a closed boundary in y, as is the case in mesti2s(), the set
 
 What we do here is to convert everything onto the complete and orthonormal basis of transverse modes, and do the projection in such basis while accounting for the flux. Specifically, we (1) project the total field at the source plane, E<sup>tot</sup>(x<sub>source</sub>, y) = E<sup>in</sup>(x<sub>source</sub>, y) + E<sup>sca</sup>(x<sub>source</sub>, y), onto the propagating channels (i.e., ignoring evanescent contributions) of free space; the incident contribution will be subtracted later (2) back propagate such reflection to the focal plane at x = x<sub>f</sub> since the E<sup>sca</sup>(x<sub>source</sub>, y) component supposedly comes from reflection, (3) take the previously computed Gaussian beams at the focal plane projected onto propagating channels of free space, and (4) take the inner product between the two while accounting for the longitudinal flux of the different propagating channels.
 
-Above, the incident field E<sup>in</sup>(x, y) was not subtracted. Contribution from the incident field will be subtracted using matrix $D$ in the next step.
+Above, the incident field E<sup>in</sup>(x, y) was not subtracted. Contribution from the incident field will be subtracted using matrix D in the next step.
 
 ```matlab
 % We perform the output projection on the same plane as the line source
@@ -203,7 +203,7 @@ opts.use_transpose_B = true;
 # Compute reflection matrix in Gaussian-beam basis
 
 
-The scattering matrix is given by S = CA<sup>-1</sup>B - D, with D = CA<sub>0</sub><sup>-1</sup>B - S<sub>0</sub> where A<sub>0</sub> is a reference system for which its scattering matrix S<sub>0</sub> is known. We consider A<sub>0</sub> to be a homogeneous space with no scatterers, for which the reflection matrix S<sub>0</sub> is zero.
+The scattering matrix is given by S = C\*inv(A)\*B - D, with D = C*inv(A<sub>0</sub>)\*B - S<sub>0</sub> where A<sub>0</sub> is a reference system for which its scattering matrix S<sub>0</sub> is known. We consider A<sub>0</sub> to be a homogeneous space with no scatterers, for which the reflection matrix S<sub>0</sub> is zero.
 
 ```matlab
 syst.PML.npixels = nPML; % Put PML on all four sides
