@@ -67,7 +67,7 @@ title(['Meta-atom'],'FontSize',20)
 ```
 
 
-![meta_atom_design_structure.png](meta_atom_design_structure.png)
+<img src="meta_atom_design_structure.png" width="672" height="504"> 
 
 # Transmission coefficient of meta-atom with different ridge width
 
@@ -99,7 +99,7 @@ set(gca,'linewidth', 2)
 ```
 
 
-![meta_atom_design_relative_phase.png](meta_atom_design_relative_phase.png)
+<img src="meta_atom_design_relative_phase.png" width="672" height="504"> 
 
 # Finding meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi)
 
@@ -191,7 +191,7 @@ hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 ```
 
 
-![meta_atom_design_phase_map.png](meta_atom_design_phase_map.png)
+<img src="meta_atom_design_phase_map.png" width="672" height="504"> 
 
 
 ```matlab
@@ -206,5 +206,5 @@ colorbar
 ```
 
 
-![meta_atom_design_amplitude_map.png](meta_atom_design_amplitude_map.png)
+<img src="meta_atom_design_amplitude_map.png" width="672" height="504"> 
 
