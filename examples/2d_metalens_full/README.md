@@ -273,7 +273,7 @@ clear phi_R
 
 % Obtain list of incident angles with respect to background (air) [degree]
 ind = ((channels.L.N_prop-channels.R.N_prop)/2+1):(channels.L.N_prop+channels.R.N_prop)/2;
-inc_angle_list = asin(sin(atand(channels.L.kydx_prop(ind)./channels.L.kxdx_prop(ind)))*n_silica); 
+inc_angle_list = asind(sind(atand(channels.L.kydx_prop(ind)./channels.L.kxdx_prop(ind)))*n_silica); 
 n_inc_angle = size(inc_angle_list,2); % Number of incident angles
 ```
 
