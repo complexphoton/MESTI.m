@@ -47,7 +47,7 @@ set(gca, 'FontSize', 18)
 ```
 
 
-![reflection_matrix_Gaussian_beams_permittivity_profile.png](reflection_matrix_Gaussian_beams_permittivity_profile.png)
+<img src="reflection_matrix_Gaussian_beams_permittivity_profile.png" width="560" height="420"> 
 
 # Build the input sources
 
@@ -143,7 +143,7 @@ set(gca, 'FontSize', 18)
 ```
 
 
-![reflection_matrix_Gaussian_beams_abs_B_L.png](reflection_matrix_Gaussian_beams_abs_B_L.png)
+<img src="reflection_matrix_Gaussian_beams_abs_B_L.png" width="560" height="420"> 
 
 # Build the output projections
 
