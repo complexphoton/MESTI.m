@@ -325,7 +325,7 @@ set(gca,'fontsize',20);
 ```
 
 
-![metalens_intensity_profile_0_degree.png](metalens_intensity_profile_0_degree.png)
+<img src="metalens_intensity_profile_0_degree.png" width="604.8" height="453.6"> 
 
 
 ```matlab
@@ -368,7 +368,7 @@ set(gca,'fontsize',20);
 ```
 
 
-![metalens_intensity_profile_30_degrees.png](metalens_intensity_profile_30_degrees.png)
+<img src="metalens_intensity_profile_30_degrees.png" width="604.8" height="453.6"> 
 
 # Angle dependence of the transmission efficiency and Strehl ratio
 
@@ -458,5 +458,5 @@ set(gca, 'fontsize', 15, 'FontName','Arial')
 ```
 
 
-![metalens_Strehl_ratio_and_transmission_eff.png](metalens_Strehl_ratio_and_transmission_eff.png)
+<img src="metalens_Strehl_ratio_and_transmission_eff.png" width="604.8" height="453.6"> 
 
