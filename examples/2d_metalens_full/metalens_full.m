@@ -251,8 +251,8 @@ theta_in_real = asind(sind(atand(channels.L.kydx_prop(a_L)/channels.L.kxdx_prop(
 for ii = 1: size(x_plot_over_dx_list,2)
     x_plot_over_dx = x_plot_over_dx_list(1,ii);
     Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = [zeros(ny_pad,1); Ez_0; zeros(ny_Ft-ny_source-ny_pad,1)];
-    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_plot_over_dx).*fft(Ez_0_FT));
+    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
+    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_plot_over_dx).*Ez_0_FT);
 end
 
 % Plot result of the intensity profile at 0 degree incidence.
@@ -288,8 +288,8 @@ theta_in_real = asind(sind(atand(channels.L.kydx_prop(a_L)/channels.L.kxdx_prop(
 for ii = 1: size(x_plot_over_dx_list,2)
     x_propagation_over_dx = x_plot_over_dx_list(1,ii);
     Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = [zeros(ny_pad,1); Ez_0; zeros(ny_Ft-ny_source-ny_pad,1)];
-    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_propagation_over_dx).*fft(Ez_0_FT));
+    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
+    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_plot_over_dx).*Ez_0_FT);
 end
 
 % Plot result of the intensity profile in 30 degrees.
@@ -349,8 +349,8 @@ Teff_ideal = sum(abs(t_ideal).^2); % Transmission efficiency for ideal lens in n
 Ez_0 = phi_R_over_sqrt_mu_R*t_ideal;
 
 % Use angular spectrum propagation to let the field propagate to the focal plane
-Ez_0_FT = [zeros(ny_pad,1); Ez_0; zeros(ny_Ft-ny_source-ny_pad,1)];
-Ez_focal_ideal = ifft(exp(1i*kxdx*x_propagation_over_dx).*fft(Ez_0_FT));
+Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
+Ez_focal_ideal = ifft(exp(1i*kxdx*x_propagation_over_dx).*Ez_0_FT);
 
 %% Calculate the transmission efficiency and Ez field in the focal passing through hyperbolic metalens
 % Strehl ratio list for the hyperbolic lens to be calculated 
@@ -368,8 +368,8 @@ for a_R= 1:n_inc_angle
 
     % Use angular spectrum propagation to let the field propagate to the focal plane.
     Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = [zeros(ny_pad,1); Ez_0; zeros(ny_Ft-ny_source-ny_pad,1)];
-    Ez_focal_hyperbolic_SCSA_c(:,1) = ifft(exp(1i*kxdx*x_propagation_over_dx).*fft(Ez_0_FT)); % Ez profile in the focal plane after passing the hyperbolic lens
+    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
+    Ez_focal_hyperbolic_SCSA_c(:,1) = ifft(exp(1i*kxdx*x_propagation_over_dx).*Ez_0_FT); % Ez profile in the focal plane after passing the hyperbolic lens
 
     % Strehl ratio
     strehl_ratio_hyperbolic_SCSA_c(a_R) = max(abs(Ez_focal_hyperbolic_SCSA_c(:,1)))^2/max(abs(Ez_focal_ideal(:,1)))^2 * (Teff_ideal/Teff_hyperbolic); 
