@@ -1,22 +1,22 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetics simulations. It is a finite-difference frequency-domain (FDFD) solver that implements the **Schur complement scattering analysis (SCSA)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx). It provides full-wave solutions of Maxwell's equations, with the ability to complete the simulations for thousands of input source profiles while using less computing resources than what a typical direct method uses to deal with a single input.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetics simulations in frequency domain. It uses finite-difference discretization and implements the **Schur complement scattering analysis (SCSA)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx). It provides full-wave solutions of Maxwell's equations, with the ability to complete the simulations for thousands of input source profiles while using less computing resources than what a typical direct method uses to deal with a single input.
 
-MESTI.m is written in MATLAB and considers transverse-magnetic waves in 2D. A 3D vectorial version of MESTI written in Julia is under development and will be released later.  
+MESTI.m uses MATLAB and considers transverse-magnetic (TM) waves in 2D. A 3D vectorial version of MESTI written in Julia is under development and will be released later.
 
-The user can specify arbitrary permittivity profiles ε(*x*,*y*;ω), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion ε(ω). MESTI implements all of the common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to SCSA, MESTI also implements conventional direct methods.
+MESTI is written to provide maximal flexbility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all of the common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to SCSA, MESTI also implements conventional direct methods.
 
 ## Installation
 
 No installation is required for MESTI itself; just download it and add the <code>MESTI.m/src</code> folder to the search path using the <code>addpath</code> command in MATLAB. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the SCSA method (which is the key feature that distinguishes MESTI from other FDFD software), the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use slower conventional solvers that are not based on the Schur complement. So, MUMPS installation is strongly recommended.  See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the SCSA method (which is a key feature that distinguishes MESTI from other FDFD software), the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use slower conventional solvers that are not based on the Schur complement. So, MUMPS installation is strongly recommended.  See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Functions 
 
-The function <code>mesti(syst, B, C, D)</code> provides the most flexibility. The user can specify arbitrary permittivity profiles, arbitrary boundary conditions, PML on any or all sides, with any list of sources and any list of output projections (or no output projection) placed at any location. But the user needs to provide the source and projection profiles.
+The function <code>mesti(syst, B, C, D)</code> provides the most flexibility. The user can specify arbitrary permittivity profiles, arbitrary boundary conditions, PML on any or all sides, with any list of sources and any list of output projections (or no output projection) placed at any location. The user provides the source profiles in <code>B</code> and the projection profiles in <code>C</code>.
 
-The function <code>mesti2s(syst, in, out)</code> deals specifically with two-sided or one-sided geometries where the boundary condition in y is closed (*e.g.*, periodic or PEC)  and the boundary condition in x is outgoing. The user only needs to specify which channels or wavefronts are of interest; <code>mesti2s()</code> builds the list of input source profiles and output projection profiles, and then calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries implemented through the self-energy, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository; they are efficient for 1D systems and for 2D systems with small-to-medium transverse widths. 
+The function <code>mesti2s(syst, in, out)</code> deals specifically with two-sided or one-sided geometries where the boundary condition in *y* is closed (*e.g.*, periodic or PEC), the boundary condition in *x* is outgoing, and *ε*(*x*,*y*) consists of homogeneous spaces on the left (*-x*) and right (*+x*). The user only needs to specify which channels or wavefronts on the left/right are of interest through <code>in</code> and <code>out</code>; <code>mesti2s()</code> builds the list of input source profiles and output projection profiles, and then calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* implemented through the self-energy, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
 
 To compute the complete field profiles, simply omit the argument <code>C</code> or  <code>out</code>, or set it to <code>[]</code>.
 
@@ -24,7 +24,7 @@ Detailed usage of these functions are given in the documentation section (commen
 
 In addition, the user can use the function <code>mesti_build_channels()</code> to build the input and/or output matrices when using <code>mesti()</code>, or to determine which subset of the channels are of interest when using <code>mesti2s()</code>.
 
-MESTI has two other general-purpose functions <code>mesti_build_fdfd_matrix()</code> and <code>mesti_matrix_solver()</code>; most users shouldn't need to directly use these two functions.
+MESTI has two other functions <code>mesti_build_fdfd_matrix()</code> and <code>mesti_matrix_solver()</code> that are also general purpose, but most users shouldn't need to use them directly.
 
 ## Examples
 
