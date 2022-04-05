@@ -1,23 +1,29 @@
 function [S, channels, stat] = mesti2s(syst, in, out, opts)
-%MESTI2S Solves frequency-domain scattering problem in a two-sided geometry.
-%   [X, stat] = MESTI2S(syst, in) returns the spatial field profiles E_z(x,y)
-%   for scattering problems of 2D transverse-magnetic (TM) fields
-%      [(d/dx)^2 + (d/dy)^2 + (omega/c)^2*epsilon_r(x,y)] E_z(x,y) = 0
-%   with the two-sided system epsilon_r(x,y) specified by structure 'syst' of
-%   the input arguments and the incident wavefronts from left and/or left
-%   specified by variable 'in' of the input arguments. The system is discretized
-%   using center difference on the Yee grid. The statistics of the computation
-%   is returned in structure 'stat'.
+%MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
+%   [field_profiles, channels, stat] = MESTI2S(syst, in) returns the spatial
+%   field profiles E_z(x,y) for scattering problems of 2D transverse-magnetic
+%   (TM) fields:
+%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon_r(x,y)] E_z(x,y) = 0.
+%   The system epsilon_r(x,y) is specified by structure 'syst' and must have
+%   homogeneous spaces on the left (-x) and right (+x) sides, with an outgoing
+%   boundary in x for the scattered waves and a closed (e.g., periodic) boundary
+%   in y. The incident wavefronts from left and/or left are specified by
+%   variable 'in'. The returned 'field_profiles' is a 3D array, with
+%   field_profiles(:,:,i) being the field profile given the i-th input
+%   wavefront. The returned 'channels' is a structure containing properties of
+%   the propagating and evanescent channels in the homogeneous spaces on the
+%   left and right. The statistics of the computation is returned in structure
+%   'stat'.
 %
-%   [S, stat] = MESTI2S(syst, in, out) returns the scattering matrix S, where
-%   'in' and 'out' of the input arguments specify either the list of
-%   input/output channels or the input/output wavefronts. When the MUMPS
-%   function zmumps() is available, this is typically done by computing the
-%   Schur complement of an augmented matrix.
+%   [S, channels, stat] = MESTI2S(syst, in, out) returns the scattering matrix
+%   S, where 'in' and 'out' specify either the list of input/output channels or
+%   the input/output wavefronts. When the MUMPS function zmumps() is available,
+%   this is typically done by computing the Schur complement of an augmented
+%   matrix.
 %
-%   [X, stat] = MESTI2S(syst, in, [], opts) and
-%   [S, stat] = MESTI2S(syst, in, out, opts) allow detailed options to be
-%   specified with structure 'opts' of the input arguments.
+%   [field_profiles, channels, stat] = MESTI2S(syst, in, [], opts) and
+%   [S, channels, stat] = MESTI2S(syst, in, out, opts) allow detailed options to
+%   be specified with structure 'opts'.
 %
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
 %   PEC). Given the closed boundary, the set of transverse modes forms a
@@ -129,6 +135,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %            sigma_max_over_omega (non-negative scalar; optional):
 %               Conductivity at the end of the PML; defaults to
 %                  0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
+%               where epsilon_bg is either syst.epsilon_L or syst.epsilon_R.
 %               This is used to attenuate propagating waves.
 %            power_kappa (non-negative scalar; optional): Power of the
 %               polynomial grading for the real-coordinate-stretching factor
@@ -294,14 +301,15 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %                     but requires MUMPS to be installed. When opts.solver =
 %                     'MATLAB', C*inv(A)*B is obtained as C*inv(U)*inv(L)*B with
 %                     optimized grouping, which is not the true SCSA but is
-%                     slightly better than factorize_and_solve. Cannot be used
-%                     for computing X=inv(A)*B or with iterative refinement.
-%            'FS'   - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-%                     with forward and backward substitutions, and project with
-%                     C as C*inv(A)*B = C*X.
+%                     slightly better than 'factorize_and_solve'. SCSA is not
+%                     used for computing the full field profile inv(A)*B or with
+%                     iterative refinement.
+%            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
+%                     with forward and backward substitutions, and optionally
+%                     projec with C.
 %            'RGF'  - Recursive Green's function method. Cannot be used for
-%                     computing X=inv(A)*B or with iterative refinement, and
-%                     cannot be used with PML.
+%                     computing the full field profile or with iterative
+%                     refinement, and cannot be used with PML.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if the input argument 'out' is not given or if
 %         opts.iterative_refinement = true, then 'factorize_and_solve' is used.
@@ -625,23 +633,16 @@ if ~(isstruct(opts) && isscalar(opts))
 end
 
 % Check that the user did not accidentally use options only in mesti()
-if isfield(opts, 'use_transpose_B') && ~isempty(opts.use_transpose_B)
-    error('opts.use_transpose_B is not used in mesti2s(); output must be specified explicitly, and symmetrization will be performed automatically if possible.');
-elseif isfield(opts, 'prefactor') && ~isempty(opts.prefactor)
+if isfield(opts, 'prefactor') && ~isempty(opts.prefactor)
     error('opts.prefactor is not used in mesti2s(); the -2i prefactor is automatically included.');
-elseif isfield(opts, 'return_X') && ~isempty(opts.return_X)
-    % no need to throw error if the opts.return_X given is compatible with out
-    if ~((isequal(opts.return_X, true) && isempty(out)) || (isequal(opts.return_X, false) && ~isempty(out)))
-        error('opts.return_X is not used in mesti2s(); set out = [] to return spatial field profile.');
-    end
 end
 
-% By defulat, we return the scattering matrix S=C*inv(A)*B if out is given from input argument; else we return field profile X=inv(A)*B.
-% Set opts.return_X, to be used in mesti()
-opts.return_X = isempty(out);
+% We return the scattering matrix S=C*inv(A)*B if out is given from input argument; else we return the spatial field profiles
+% This opts.return_field_profile is not specified by the user; it will be returned as stat.opts.return_field_profile to help debugging
+opts.return_field_profile = isempty(out);
 
 % By default, for field profile computation, we only return result within the [ny, nx] box of syst.epsilon, setting nx_L = nx_R = 0.
-if opts.return_X
+if opts.return_field_profile
     if ~isfield(opts, 'nx_L') || isempty(opts.nx_L)
         opts.nx_L = 0;
     elseif ~(isreal(opts.nx_L) && isscalar(opts.nx_L) && opts.nx_L >= 0 && round(opts.nx_L) == opts.nx_L)
@@ -701,10 +702,10 @@ elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
 end
 
 if ~isfield(opts, 'method') || isempty(opts.method)
-    % By default, if opts.return_X = true or opts.iterative_refinement =
-    % true, then 'factorize_and_solve' is used. Otherwise, 'SCSA' is used if
+    % By default, if opts.return_field_profile = true or opts.iterative_refinement = true,
+    % then 'factorize_and_solve' is used. Otherwise, 'SCSA' is used if
     % ny is large or if PML has been specified; 'RGF' is used otherwise.
-    if opts.return_X || (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true))
+    if opts.return_field_profile || (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true))
         opts.method = 'factorize_and_solve';
     elseif n_PML > 0
         opts.method = 'SCSA';
@@ -730,8 +731,8 @@ elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) &
     error('opts.method must be a character vector or string, if given.');
 elseif ~ismember(lower(opts.method), {'scsa', 'factorize_and_solve', 'fs', 'rgf'})
     error('opts.method = ''%s'' is not a supported option; use ''SCSA'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
-elseif opts.return_X && (strcmpi(opts.method, 'SCSA') || strcmpi(opts.method, 'RGF'))
-    error('opts.method = ''%s'' cannot be used when input argument ''out'' is []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
+elseif opts.return_field_profile && (strcmpi(opts.method, 'SCSA') || strcmpi(opts.method, 'RGF'))
+    error('opts.method = ''%s'' cannot be used for field profile computations where out = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && (strcmpi(opts.method, 'SCSA') || strcmpi(opts.method, 'RGF'))
     error('opts.method = ''%s'' cannot be used when opts.iterative_refinement = true; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif strcmpi(opts.method, 'FS')
@@ -810,7 +811,7 @@ if use_self_energy(1) || use_self_energy(2)
     if syst.use_continuous_dispersion
         warning('Self-energy is not exact when syst.use_continuous_dispersion = true; consider using PML or setting syst.use_continuous_dispersion = false.');
     end
-    if opts.verbal; fprintf('Building G0...  '); end
+    if opts.verbal; fprintf('Building G0 ... '); end
 
     % Build ny-by-ny unitary matrix phi where the a-th column is the a-th transverse mode
     % This includes all the propagating and evanescent channels
@@ -1100,7 +1101,7 @@ if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'SCSA') &&
     elseif ~(islogical(opts.symmetrize_K) && isscalar(opts.symmetrize_K))
         error('opts.symmetrize_K must be a logical scalar, if given.');
     end
-    opts.use_transpose_B = opts.symmetrize_K; % to be used in mesti()
+    use_transpose_B = opts.symmetrize_K;
     opts = rmfield(opts, 'symmetrize_K'); % opts.symmetrize_K is not used in mesti()
 else
     % symmetrize K is not possible
@@ -1110,11 +1111,11 @@ else
         end
         opts = rmfield(opts, 'symmetrize_K');
     end
-    opts.use_transpose_B = false; % to be used in mesti()
+    use_transpose_B = false;
 end
 
 % No need to build C if we symmetrize K
-if opts.return_X || opts.use_transpose_B
+if opts.return_field_profile || use_transpose_B
     build_C = false;
 else
     build_C = true;
@@ -1132,7 +1133,7 @@ end
 % Note that the complex conjugation only applies to phi; the sqrt(mu) prefactor is not conjugated. (At real-valued frequency, mu is real-valued, so this doesn't matter. But at complex-valued frequency, mu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
 % When the input/output channels are specified by channel indices, we will multiply the sqrt(mu(a))*exp(-i*kxdx(a)/2) and sqrt(mu(b))*exp(-i*kxdx(b)/2) prefactors at the end, after C*inv(A)*B is computed.
 % When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_R, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(mu)*exp(-i*kxdx/2) prefactors included.
-if opts.use_transpose_B % when opts.symmetrize_K = true
+if use_transpose_B % when opts.symmetrize_K = true
     % Here, we pad channels and/or permutate them such that C = transpose(B); this makes matrix K = [A,B;C,0] symmetric.
     % To have C=transpose(B), the complex conjugate of the transverse field profiles of the list of output channels must equal the transverse field profiles of the list of input channels, and the list of input channels and the list of output channels must have the same prefactor mu.
     % So, we expand the list of input channels (ind_in_L) to include the conjugate pairs of the output channels (channels.L.ind_prop_conj(ind_out_L)). The conjugate pairs correspond to flipping the sign of ky, and they share the same mu (which only depends on ky^2).
@@ -1295,6 +1296,8 @@ else
             C(2).pos  = [1, nx_extra(1)+nx+1, ny, 1];
             C(2).data = reshape(C_R, ny, 1, M_out_R);
         end
+    elseif use_transpose_B
+        C = 'transpose_B';
     else
         C = [];
     end
@@ -1323,7 +1326,7 @@ S = (-2i)*S;
 %% Part 4: wrap up
 
 % Recover the original list of input and output channels if we symmetrized K = [A,B;C,0]
-if opts.use_transpose_B % when opts.symmetrize_K = true
+if use_transpose_B % when opts.symmetrize_K = true
     % Indicies for the original list of input channels on the left
     ind_in = ind_in_out_L(1:M_in_L);
 
@@ -1346,14 +1349,14 @@ if use_ind_in % input channels specified by ind_in_L and ind_in_R
     if two_sided
         prefactor = [prefactor, channels.R.sqrt_mu(ind_in_R).*exp(-0.5i*channels.R.kxdx_prop(ind_in_R))];
     end
-    if opts.return_X
+    if opts.return_field_profile
         S = S.*reshape(prefactor, 1, 1, []); % use implicit expansion
     else
         S = S.*prefactor; % use implicit expansion
     end
 end
 
-if ~opts.return_X
+if ~opts.return_field_profile
 
     % Include the sqrt(mu(b))*exp(-i*kxdx/2) prefactors that should have been in the output matrix C
     if use_ind_out % output channels specified by ind_out_L and ind_out_R
@@ -1365,21 +1368,39 @@ if ~opts.return_X
     end
 
     % Subtract D = C*inv(A_0)*B - S_0 where A_0 is a reference system and S_0 is its scattering matrix
-    if use_ind_in && use_ind_out
-        % When the input and output are both in channel basis, D is basically the identity matrix
-        % But because the n=0 and n=nx+1 are half a pixel away from x=0 and x=L, we need to shift the phase back, which means D_ba = delta_ba*exp(-i*kxdx(a))
-        % Look for the input/output pairs with the same channel indices
-        [ind_L_temp, ind_out_L_temp, ind_in_L_temp] = intersect(ind_out_L, ind_in_L); % ind_out_L_temp and ind_in_L_temp are column vectors
-        S = S - sparse(ind_out_L_temp.', ind_in_L_temp.', exp(-1i*channels.L.kxdx_prop(ind_L_temp)), size(S,1), size(S,2));
-        if two_sided
-            [ind_R_temp, ind_out_R_temp, ind_in_R_temp] = intersect(ind_out_R, ind_in_R); % ind_out_R_temp and ind_in_R_temp are column vectors
-            S = S - sparse(M_out_L + ind_out_R_temp.', M_in_L + ind_in_R_temp.', exp(-1i*channels.R.kxdx_prop(ind_R_temp)), size(S,1), size(S,2));
-        end
+    % When use_ind_in = use_ind_out = true, D is basically the identity matrix
+    % But because the source at n=0 and projection at n=nx+1 are half a pixel away from x=0 and x=L, we need to shift the phase back, which means D_ba = delta_ba*exp(-i*kxdx(a))
+    % When user-specified input and output wavefronts are used, we have D_L = (v_out_L')*diag(exp(-i*kxdx))*v_in_L
+    exp_ikxdx_L = reshape(exp(-1i*channels.L.kxdx_prop), [], 1);
+    if use_ind_in
+        D_L = spdiags(exp_ikxdx_L, 0, N_prop_L, N_prop_L);
+        D_L = D_L(:, ind_in_L);
     else
-        % TODO: implement D in this case
-        warning('D is not implemented yet when input and/or output wavefront is specified; will not be subtracted.');
+        D_L = exp_ikxdx_L .* v_in_L; % use implicit expansion
     end
-else % when opts.return_X = true
+    if use_ind_out
+        D_L = D_L(ind_out_L,:);
+    else
+        D_L = (v_out_L')*D_L;
+    end
+    if two_sided && (M_in_R ~= 0 || M_out_R ~= 0)
+        exp_ikxdx_R = reshape(exp(-1i*channels.R.kxdx_prop), [], 1);
+        if use_ind_in
+            D_R = spdiags(exp_ikxdx_R, 0, N_prop_R, N_prop_R);
+            D_R = D_R(:, ind_in_R);
+        else
+            D_R = exp_ikxdx_R .* v_in_R; % use implicit expansion
+        end
+        if use_ind_out
+            D_R = D_R(ind_out_R,:);
+        else
+            D_R = (v_out_R')*D_R;
+        end
+        S = S - [[D_L; sparse(M_out_R, M_in_L)], [sparse(M_out_L, M_in_R); D_R]];
+    else
+        S = S - D_L;
+    end
+else % when opts.return_field_profile = true
     % The S returned by mesti() has size [ny, nx+sum(nx_extra), M_in_L+M_in_R]
     % Here, we remove the npixels_PML and npixels_spacer pixels
     if n_PML > 0
@@ -1410,7 +1431,7 @@ else % when opts.return_X = true
             end
         end
     else
-        if opts.verbal; fprintf('       ...      '); end
+        if opts.verbal; fprintf('            ... '); end
 
         % phi is a ny-by-ny unitary matrix where the a-th column is the a-th transverse mode; it includes all the propagating and evanescent channels
         phi = channels.fun_phi(channels.kydx_all);
@@ -1529,7 +1550,7 @@ M_out_R = size(C_R, 1);
 % To avoid unnecessary steps, we pick the scheme based on which parts of the S-matrix are needed
 if opts.verbal
     fprintf('< Method: RGF >\n');
-    fprintf('Iterating...    ');
+    fprintf('Iterating   ... ');
 end
 if M_in_R==0 && M_out_R==0
     % input and output both on the left; loop from right to left
