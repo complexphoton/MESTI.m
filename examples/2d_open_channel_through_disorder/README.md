@@ -1,8 +1,6 @@
 # Open Channel Through Disorder
 
-
 In this example, we show how to use mesti2s() to compute the transmission matrix of a strongly scattering disordered medium, analyze the transmission matrix to determine an incident wavefront that can penetrate the disorder with almost 100% transmission (called an "open channel"), and then use mesti2s() again to compute the field profile of the open channel while comparing to that of a typical plane-wave input.
-
 
 # System parameters
 
@@ -49,14 +47,14 @@ syst.yBC = 'periodic';
 ```
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
 xBC = {self-energy, self-energy}; yBC = periodic
-Building G0...  elapsed time:   0.050 secs
+Building G0 ... elapsed time:   0.050 secs
 Building B,C... elapsed time:   0.001 secs
             ... elapsed time:   0.008 secs
-Building A...   elapsed time:   0.069 secs
+Building A  ... elapsed time:   0.069 secs
 < Method: SCSA using MUMPS with AMD ordering (symmetric K) >
-Building K...   elapsed time:   0.058 secs
-Analyzing...    elapsed time:   0.107 secs
-Factorizing...  elapsed time:   0.740 secs
+Building K  ... elapsed time:   0.058 secs
+Analyzing   ... elapsed time:   0.107 secs
+Factorizing ... elapsed time:   0.740 secs
           Total elapsed time:   1.084 secs
 ```
 
@@ -101,15 +99,15 @@ field_profiles = mesti2s(syst, in, [], opts);
 ```
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
 xBC = {self-energy, self-energy}; yBC = periodic
-Building G0...  elapsed time:   0.054 secs
+Building G0 ... elapsed time:   0.054 secs
 Building B,C... elapsed time:   0.001 secs
             ... elapsed time:   0.000 secs
-Building A...   elapsed time:   0.067 secs
+Building A  ... elapsed time:   0.067 secs
 < Method: factorize_and_solve using MUMPS with AMD ordering >
-Analyzing...    elapsed time:   0.172 secs
-Factorizing...  elapsed time:   0.816 secs
-Solving...      elapsed time:   0.104 secs
-       ...      elapsed time:   0.064 secs
+Analyzing   ... elapsed time:   0.172 secs
+Factorizing ... elapsed time:   0.816 secs
+Solving     ... elapsed time:   0.104 secs
+            ... elapsed time:   0.064 secs
           Total elapsed time:   1.324 secs
 ```
 
@@ -132,9 +130,7 @@ animate_field_profile(field_profiles(:,:,1), x0_list, y0_list, r0_list, x, y, ..
     nperiod, nframes_per_period);
 ```
 
-
 ![disorder_PW_input.gif](disorder_PW_input.gif)
-
 
 ```matlab
 % Aanimate the field profile of the open channel
@@ -142,6 +138,4 @@ animate_field_profile(field_profiles(:,:,2), x0_list, y0_list, r0_list, x, y, ..
     nperiod, nframes_per_period);
 ```
 
-
 ![disorder_open_channel.gif](disorder_open_channel.gif)
-

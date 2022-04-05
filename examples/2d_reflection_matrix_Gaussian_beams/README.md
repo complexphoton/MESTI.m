@@ -1,8 +1,6 @@
 # Reflection Matrix in Gaussian-Beam Basis
 
-
 In this example, we compute the reflection matrix of an open system with the input and output bases being Gaussian beams focused to different spatial locations. The magnitude of the diagonal elements of this matrix corresponds to what is measured in confocal microscopy. We first build the list of inputs B and list of outputs C, and then use mesti() to compute the reflection matrix.
-
 
 # Build the system
 
@@ -46,17 +44,13 @@ axis image
 set(gca, 'FontSize', 18)
 ```
 
-
 <img src="reflection_matrix_Gaussian_beams_permittivity_profile.png" width="560" height="420"> 
 
 # Build the input sources
 
-
 We consider inputs being Gaussian beams focused at (*x*<sub>f</sub>, *y*<sub>f</sub>). In this example, we fix the focal depth at  *x*<sub>f</sub> = *x*<sub>0</sub> (i.e., the depth of the scatterer), and scan the transverse coordinate *y*<sub>f</sub> of the focus.
 
-
 Perfect Gaussian beams can be generated with the total-field/scattered-field (TF/SF) method. But since the cross section of the beam decays exponentially in *y*, we can generate Gaussian beams to a high accuracy simply by placing line sources at a cross section on the left, which is what we do here. We place the line sources at *x* = *x*<sub>source</sub>, just in front of the PML.
-
 
 To determine the required line sources, we (1) take the the field profile of the desired incident Gaussian beam at the focal plane, *E*<sup>in</sup>(*x*<sub>f</sub>, *y*) = *E*<sub>0</sub>exp(-(*y* - *y*<sub>f</sub>)<sup>2</sup>/*w*<sup>2</sup>), (2) project it onto the propagating channels (i.e., ignoring evanescent contributions) of free space, (3) back propagate it to the source plane to determine *E*<sup>in</sup>(*x*<sub>source</sub>, *y*) in the propagating-channel basis, and (4) determine the line source necessary to generate such *E*<sup>in</sup>(*x*<sub>source</sub>, *y*).
 
@@ -142,17 +136,13 @@ ylabel('y (µm)')
 set(gca, 'FontSize', 18)
 ```
 
-
 <img src="reflection_matrix_Gaussian_beams_abs_B_L.png" width="560" height="420"> 
 
 # Build the output projections
 
-
 We consider output projections onto the same set of Gaussian beams focused at (*x*<sub>f</sub>, *y*<sub>f</sub>), with the projection done at the same plane as the source plane (*x* = *x*<sub>source</sub>).
 
-
 When the system has a closed boundary in *y*, as is the case in mesti2s(), the set of transverse modes form a complete and orthonormal basis, so it is clear what the output projection should be. But the Gaussian beams here are not orthogonal to each other, are not normalized, and do not form a complete basis. So, it is not obvious how our output projection should be defined.
-
 
 What we do here is to convert everything onto the complete and orthonormal basis of transverse modes, and do the projection in such basis while accounting for the flux. Specifically, we (1) project the total field at the source plane, *E*<sup>tot</sup>(*x*<sub>source</sub>, *y*) = *E*<sup>in</sup>(*x*<sub>source</sub>, *y*) + *E*<sup>sca</sup>(*x*<sub>source</sub>, *y*), onto the propagating channels (i.e., ignoring evanescent contributions) of free space; the incident contribution will be subtracted later (2) back propagate such reflection to the focal plane at *x* = *x*<sub>f</sub> since the *E*<sup>sca</sup>(*x*<sub>source</sub>, *y*) component supposedly comes from reflection, (3) take the previously computed Gaussian beams at the focal plane projected onto propagating channels of free space, and (4) take the inner product between the two while accounting for the longitudinal flux of the different propagating channels.
 
@@ -185,23 +175,19 @@ C_L = (E_f_prop') * (mu.*C_L); % size(C_L) = [M_in, ny]
 fprintf('max(|C_L-transpose(B_L)|) = %g\n', max(abs(C_L - B_L.'), [], 'all'));
 ```
 
-
 ```text:Output
 max(|C_L-transpose(B_L)|) = 1.38778e-16
 ```
-
 
 ```matlab
 % That means we will have C = transpose(B). So, we can save some computing
 % time and memory usage by specifying C = transpose(B).
 % This is expected by reciprocity -- when the set of inputs equals the set
 % of outputs, we typically have C = transpose(B) or its permutation.
-C = [];
-opts.use_transpose_B = true;
+C = 'transpose_B';
 ```
 
 # Compute reflection matrix in Gaussian-beam basis
-
 
 The scattering matrix is given by S = C\*inv(A)\*B - D, with D = C\*inv(A<sub>0</sub>)\*B - S<sub>0</sub> where A<sub>0</sub> is a reference system for which its scattering matrix S<sub>0</sub> is known. We consider A<sub>0</sub> to be a homogeneous space with no scatterers, for which the reflection matrix S<sub>0</sub> is zero.
 
@@ -214,19 +200,17 @@ syst.epsilon = n_bg^2*ones(ny, n_source + nPML);
 D = mesti(syst, B, C, [], opts);
 ```
 
-
 ```text:Output
 System size: ny = 400, nx = 41
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.001 secs
-Building A...   elapsed time:   0.016 secs
+Building A  ... elapsed time:   0.016 secs
 < Method: SCSA using MUMPS with AMD ordering (symmetric K) >
-Building K...   elapsed time:   0.005 secs
-Analyzing...    elapsed time:   0.012 secs
-Factorizing...  elapsed time:   0.035 secs
+Building K  ... elapsed time:   0.005 secs
+Analyzing   ... elapsed time:   0.012 secs
+Factorizing ... elapsed time:   0.035 secs
           Total elapsed time:   0.080 secs
 ```
-
 
 ```matlab
 % Compute the reflection matrix
@@ -234,39 +218,35 @@ syst.epsilon = epsilon;
 r = mesti(syst, B, C, D, opts);
 ```
 
-
 ```text:Output
 System size: ny = 400, nx = 200
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.000 secs
-Building A...   elapsed time:   0.040 secs
+Building A  ... elapsed time:   0.040 secs
 < Method: SCSA using MUMPS with AMD ordering (symmetric K) >
-Building K...   elapsed time:   0.017 secs
-Analyzing...    elapsed time:   0.048 secs
-Factorizing...  elapsed time:   0.242 secs
+Building K  ... elapsed time:   0.017 secs
+Analyzing   ... elapsed time:   0.048 secs
+Factorizing ... elapsed time:   0.242 secs
           Total elapsed time:   0.374 secs
 ```
 
 # Compute the full field profile
 
-
 For most applications, it is not necessary to compute the full field profile, since most experiments measure properties in the far field. Here, we compute the full field profile for the purpose of visualizing the system as the incident Gaussian beams are scanned across *y*.
 
 ```matlab
-opts.use_transpose_B = false; % C should not be used for field-profile computation
 field_profiles = mesti(syst, B, [], [], opts);
 ```
-
 
 ```text:Output
 System size: ny = 400, nx = 200
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.000 secs
-Building A...   elapsed time:   0.046 secs
+Building A  ... elapsed time:   0.046 secs
 < Method: factorize_and_solve using MUMPS with AMD ordering >
-Analyzing...    elapsed time:   0.086 secs
-Factorizing...  elapsed time:   0.227 secs
-Solving...      elapsed time:   0.341 secs
+Analyzing   ... elapsed time:   0.086 secs
+Factorizing ... elapsed time:   0.227 secs
+Solving     ... elapsed time:   0.341 secs
           Total elapsed time:   0.732 secs
 ```
 
@@ -311,6 +291,4 @@ for ii = 1:M_in
 end
 ```
 
-
 ![reflection_matrix_Gaussian_beams.gif](reflection_matrix_Gaussian_beams.gif)
-
