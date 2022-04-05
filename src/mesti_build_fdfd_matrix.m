@@ -1,5 +1,87 @@
 function [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(epsilon, k0dx, xBC, yBC, xPML, yPML, use_UPML)
-% TODO: Documentation.
+%MESTI_BUILD_FDFD_MATRIX The finite-difference frequency-domain operator in 2D.
+%   A = mesti_build_fdfd_matrix(epsilon, k0dx, xBC, yBC, xPML, yPML, use_UPML)
+%   returns A as a sparse matrix representing wave operator
+%      [- (d/dx)^2 - (d/dy)^2 - k0^2*epsilon(x,y)]*(dx^2)
+%   discretized on a square grid with grid size dx through center difference.
+%
+%   === Input Arguments ===
+%   epsilon (ny-by-nx numeric matrix, real or complex; required):
+%      Relative permittivity of the system.
+%   k0dx (numeric scalar, real or complex; required):
+%      Normalized frequency k0*dx = (2*pi/vacuum_wavelength)*dx.
+%   xBC (character vector or numcric scalar; required):
+%      Boundary condition (BC) in x direction.
+%      For character inputs, the options are:
+%         'periodic'  - E_z(m,n+nx) = E_z(m,n)
+%         'PEC'       - E_z(m,0) = E_z(m,nx+1) = 0
+%         'PMC'       - E_z(m,0) = E_z(m,1); E_z(m,nx+1) = E_z(m,nx)
+%         'PECPMC'    - E_z(m,0) = 0; E_z(m,nx+1) = E_z(m,nx)
+%         'PMCPEC'    - E_z(m,0) = E_z(m,1); E_z(m,nx+1) = 0
+%         'Dirichlet' - same as 'PEC'
+%         'Neumann'   - same as 'PMC'
+%      When xBC is a numeric scalar, the Bloch periodic boundary condition is
+%      used with E_z(m,n+nx) = E_z(m,n)*exp(1i*xBC); in other words, xBC =
+%      kx_B*nx*dx = kx_B*p where kx_B is the Bloch wave number and p = nx*dx is
+%      the periodicity in x.
+%   yBC (character vector or numcric scalar; required):
+%      Boundary condition in y direction, analogous to xBC.
+%   xPML (two-element cell array or scalar structure or []; optional):
+%      Parameters for perfectly matched layer (PML) in x direction.
+%      xPML = [] or {[], []} means no PML on either side (default).
+%      xPML = {[], PML} means no PML on the left.
+%      xPML = {PML, []} means no PML on the right.
+%      xPML = {PML1, PML2} means PML on both sides.
+%      xPML = PML means PML on both sides with the same parameters, equivalent
+%         to xPML = {PML, PML}.
+%      In each case, PML is a scalar structure with the following fields:
+%         npixels (non-negative integer scalar; required): Number of PML pixels.
+%            Note this is within epsilon(x,y).
+%         power_sigma (non-negative scalar; optional): Power of the polynomial 
+%            grading for the conductivity sigma; defaults to 3.
+%         sigma_max_over_omega (non-negative scalar; optional):
+%            Conductivity at the end of the PML; defaults to
+%               0.8*(power_sigma+1)/(k0dx*sqrt(epsilon_bg)).
+%            where epsilon_bg is the average relative permittivity along the
+%            last slice of epsilon of the PML. This is used to attenuate
+%            propagating waves.
+%         power_kappa (non-negative scalar; optional): Power of the polynomial
+%            grading for the real-coordinate-stretching factor kappa; defaults
+%            to 3.
+%         kappa_max (real scalar no smaller than 1; optional):
+%            Real-coordinate-stretching factor at the end of the PML; defaults
+%            to 15. This is used to accelerate the attenuation of evanescent 
+%            waves. kappa_max = 1 means no real-coordinate stretching.
+%         power_alpha (non-negative scalar; optional): Power of the polynomial
+%            grading for the CFS alpha factor; defaults to 1.
+%         alpha_max_over_omega (non-negative scalar; optional): Complex-
+%            frequency-shifting (CFS) factor at the beginning of the PML. This
+%            is typically used in time-domain simulations to suppress late-time
+%            (low-frequency) reflections. We don't use it by default 
+%            (alpha_max_over_omega = 0) since we are in frequency domain.
+%      We use the following PML coordinate-stretching factor:
+%         s(u) = kappa(u) + sigma(u)./(alpha(u) - i*omega)
+%      with
+%         sigma(u)/omega = sigma_max_over_omega*(u.^power_sigma),
+%         kappa(u) = 1 + (kappa_max-1)*(u.^power_kappa),
+%         alpha(u)/omega = alpha_max_over_omega*((1-u).^power_alpha),
+%      where omega is frequency, and u goes linearly from 0 at the beginning of
+%      the PML to 1 at the end of the PML. 
+%   yPML (two-element cell array or scalar structure or []; optional):
+%      Parameters for PML in y direction, analogous to xPML.
+%   use_UPML (logical scalar; optional, defaults to true):
+%      Whether to use uniaxial PML (UPML) or not. If not, stretched-coordinate
+%      PML (SC-PML) will be used.
+%
+%   === Output Arguments ===
+%   A (sparse matrix):
+%      Matrix representation of the FDFD operator.
+%   is_symmetric_A (logical scalar):
+%      Whether matrix A is symmetric or not.
+%   xPML (two-element cell array or []):
+%      PML parameters used on the low and high sides of x direction, if any.
+%   yPML (two-element cell array or []):
+%      PML parameters used on the low and high sides of y direction, if any.
 
 % Check input arguments
 % xBC and yBC are checked in build_laplacian_1d(); xPML and yPML are checked in set_PML_params()

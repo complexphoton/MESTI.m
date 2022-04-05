@@ -30,8 +30,9 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %         'DirichletNeumann' - same as 'PECPMC'
 %         'NeumannDirichlet' - same as 'PMCPEC'
 %      When yBC is a scalar number, the Bloch periodic boundary condition is
-%      used with f(m+ny) = f(m)*exp(1i*yBC); in other words, yBC = ky_B*p where
-%      ky_B is the Bloch wave number and p is the periodicity.
+%      used with f(m+ny) = f(m)*exp(1i*yBC); in other words, yBC = ky_B*ny*dx =
+%      ky_B*p where ky_B is the Bloch wave number and p = ny*dx is the
+%      periodicity in y.
 %   k0dx (numeric scalar, real or complex; required):
 %      Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx.
 %   epsilon_L (numeric scalar, real or complex; required):

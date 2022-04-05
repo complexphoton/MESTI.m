@@ -14,35 +14,25 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %
 %   === Input Arguments ===
 %   A (sparse matrix; required):
-%      Matrix A in returned C*inv(A)*B or inv(A)*B.
-%   B (sparse or full numeric matrix; required):
-%      Matrix B in returned C*inv(A)*B or inv(A)*B.
-%   C (sparse or full numeric matrix, or []; optional):
-%      Matrix C in returned C*inv(A)*B. If nargin > 2 (i.e., C is given as an
-%      input argument), C must be set to an empty array [] when opts.return_X =
-%      true or when opts.use_transpose_B = true.
+%      Matrix A in the C*inv(A)*B or inv(A)*B returned.
+%   B (numeric matrix; required):
+%      Matrix B in the C*inv(A)*B or inv(A)*B returned.
+%   C (numeric matrix or 'transpose_B' or []; optional):
+%      Matrix C in the C*inv(A)*B returned.
+%         If C = transpose(B), the user can set C = 'transpose_B' as a character
+%      vector, and it will be replaced by transpose(B) in the code. Doing so has
+%      an advantage: if matrix A is symmetric, C = 'transpose_B', opts.solver =
+%      'MUMPS', and opts.method = 'SCSA', the matrix K = [A,B;C,0] will be
+%      treated as symmetric when computing its Schur complement to lower
+%      computing time and memory usage.
+%         To compute X = inv(A)*B, the user can simply omit C from the input
+%      argument if there is no need to change the default opts. If opts is
+%      needed, the user can set C = [] here.
 %   opts (scalar structure; optional):
 %      A structure that specifies the options of computation; defaults to an
 %      empty strucgture. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
 %         Whether to print info and timing to the standard output.
-%      opts.use_transpose_B (logical scalar; optional, defaults to false):
-%         Whether to use C = transpose(B) or not. When opts.use_transpose_B =
-%         false (default), the input argument C is used. When
-%         opts.use_transpose_B = true, transpose(B) will be used as C; C in the
-%         input argument must be [], and opts.return_X must be false in this
-%         case. If opts.use_transpose_B = true, opts.is_symmetric_A = true,
-%         opts.solver = 'MUMPS', and opts.method = 'SCSA', the matrix K =
-%         [A,B;C,0] will be treated as symmetric when computing its Schur
-%         complement; this lowers computing time and memory usage.
-%      opts.return_X (logical scalar; optional):
-%         Whether to return X=inv(A)*B or not. Defaults to false when C is given
-%         (when input argument C is nonempty or when opts.use_transpose_B =
-%         true), true otherwise. When opts.return_X = false, S=C*inv(A)*B is
-%         returned. When opts.return_X = true, X=inv(A)*B is returned; C in the
-%         input argument must be [], and opts.use_transpose_B must be false in
-%         this case. Since the default choice is the only sensible option, the
-%         user should never need to specify opts.return_X.
 %      opts.is_symmetric_A (logical scalar; optional):
 %         Whether matrix A is symmetric or not. This is only used when
 %         opts.solver = 'MUMPS', in which case opts.is_symmetric_A will be
@@ -71,8 +61,8 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %                     with forward and backward substitutions, and project with
 %                     C as C*inv(A)*B = C*X.
 %            'factorize_and_solve' - Same as 'FS'.
-%         By default, if opts.return_X = false and opts.iterative_refinement =
-%         false, then 'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
+%         By default, if C is given and opts.iterative_refinement = false, then
+%         'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
 %      opts.verbal_solver (logical scalar; optional, defaults to false):
 %         Whether to have the solver print detailed information to the standard
 %         output. Note the behavior of output from MUMPS depends on compiler.
@@ -89,7 +79,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      opts.nrhs (positive integer scalar; optional):
 %         The number of right-hand sides (number of columns of matrix B) to
 %         consider simultaneously, used only when opts.method =
-%         'factorize_and_solve' and opts.return_X = false. Defaults to 1 if
+%         'factorize_and_solve' and C is given. Defaults to 1 if
 %         opts.iterative_refinement = true, 10 if opts.solver = 'MUMPS' with
 %         opts.iterative_refinement = false, 4 otherwise.
 %      opts.store_ordering (logical scalar; optional, defaults to false):
@@ -108,10 +98,10 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
 %         errors. Iterative refinement can only be used when opts.solver =
-%         'MUMPS' and opts.method = 'factorize_and_solve' and opts.return_X =
-%         false, in which case opts.nrhs must equal 1. When iterative refinement
-%         is used, the relevant information will be returned in
-%         stat.itr_ref_nsteps, stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
+%         'MUMPS' and opts.method = 'factorize_and_solve' and C is given, in
+%         case opts.nrhs must equal 1. When iterative refinement is used, the
+%         relevant information will be returned in stat.itr_ref_nsteps,
+%         stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
 %
 %   === Output Arguments ===
 %   S (full numeric matrix):
@@ -160,8 +150,16 @@ B_name = inputname(2); % name of the variable we call B in the caller's workspac
 if nargin < 3
     C = [];
 end
-if ~((ismatrix(C) && isnumeric(C)) || isempty(C))
-    error('Input argument ''C'' must be a numeric matrix or [], if given.');
+if isempty(C)  % return_X = isempty(C), but is easier to understand the meaning when we use return_X
+    return_X = true;
+elseif ismatrix(C) && isnumeric(C)
+    return_X = false;
+    use_transpose_B = false;
+elseif isequal(C, 'transpose_B')
+    return_X = false;
+    use_transpose_B = true;
+else
+    error('Input argument ''C'' must be a numeric matrix or ''transpose_B'' or [], if given.');
 end
 C_name = inputname(3); % name of the variable we call C in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
@@ -175,7 +173,7 @@ end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], use opts.use_transpose_B = true, set input argument C to [], make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
+    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
 end
 
 % Turn on verbal output by default
@@ -183,28 +181,6 @@ if ~isfield(opts, 'verbal') || isempty(opts.verbal)
     opts.verbal = true;
 elseif ~(islogical(opts.verbal) && isscalar(opts.verbal))
     error('opts.verbal must be a logical scalar, if given.');
-end
-
-% By default, we don't set C = transpose(B)
-if ~isfield(opts, 'use_transpose_B') || isempty(opts.use_transpose_B)
-    opts.use_transpose_B = false;
-elseif ~(islogical(opts.use_transpose_B) && isscalar(opts.use_transpose_B))
-    error('opts.use_transpose_B must be a logical scalar, if given.');
-elseif opts.use_transpose_B && ~isempty(C)
-    error('Input argument ''C'' must be empty when opts.use_transpose_B = true.');
-end
-
-% By defulat, we return S=C*inv(A)*B if C is given (from input argument or from opts.use_transpose_B); else we return X=inv(A)*B
-if ~isfield(opts, 'return_X') || isempty(opts.return_X)
-    if ~isempty(C) || opts.use_transpose_B 
-        opts.return_X = false;
-    else
-        opts.return_X = true;
-    end
-elseif ~(islogical(opts.return_X) && isscalar(opts.return_X))
-    error('opts.return_X must be a logical scalar, if given.');
-elseif opts.return_X && ~isempty(C)
-    error('Input argument ''C'' must be empty when opts.return_X = true.');
 end
 
 % No iterative refinement by default; only used in factorize_and_solve when computing S=C*inv(A)*B with MUMPS
@@ -217,9 +193,9 @@ elseif opts.iterative_refinement
     str_itr_ref = ' with iterative refinement';
 end
 
-% Use SCSA for opts.method unless opts.return_X = true or opts.iterative_refinement = true
+% Use SCSA for opts.method unless return_X = true or opts.iterative_refinement = true
 if ~isfield(opts, 'method') || isempty(opts.method)
-    if opts.return_X || opts.iterative_refinement
+    if return_X || opts.iterative_refinement
         opts.method = 'factorize_and_solve';
     else
         opts.method = 'SCSA';
@@ -228,8 +204,8 @@ elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) &
     error('opts.method must be a character vector or string, if given.');
 elseif ~ismember(lower(opts.method), {'scsa', 'factorize_and_solve', 'fs'})
     error('opts.method = ''%s'' is not a supported option; use ''SCSA'' or ''factorize_and_solve''.', opts.method);
-elseif opts.return_X && strcmpi(opts.method, 'SCSA')
-    error('opts.method = ''%s'' cannot be used when opts.return_X = true; use opts.method = ''factorize_and_solve'' instead.', opts.method)
+elseif return_X && strcmpi(opts.method, 'SCSA')
+    error('opts.method = ''%s'' cannot be used when C = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif strcmpi(opts.method, 'FS')
     opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
 end
@@ -256,8 +232,8 @@ if strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MATLAB')
     str_method = 'C*inv(U)*inv(L)*B';
 end
 
-if opts.iterative_refinement && ~(strcmpi(opts.method, 'factorize_and_solve') && strcmpi(opts.solver, 'MUMPS') && ~opts.return_X)
-    error('To use opts.iterative_refinement = true, one must have opts.return_X = false, opts.method = ''factorize_and_solve'', opts.solver = ''MUMPS''.\nHere opts.return_X = %d, opts.method = ''%s'', opts.solver = ''%s''.', opts.return_X, opts.method, opts.solver);
+if opts.iterative_refinement && ~(~return_X && strcmpi(opts.method, 'factorize_and_solve') && strcmpi(opts.solver, 'MUMPS'))
+    error('To use opts.iterative_refinement = true, input argument ''C'' must not be empty, opts.method must be ''factorize_and_solve'', and opts.solver must be ''MUMPS''.\nHere isempty(C) = %d, opts.method = ''%s'', opts.solver = ''%s''.', isempty(C), opts.method, opts.solver);
 end
 
 % Turn off solver's verbal output by default
@@ -267,26 +243,22 @@ elseif ~(islogical(opts.verbal_solver) && isscalar(opts.verbal_solver))
     error('opts.verbal_solver must be a logical scalar, if given.');
 end
 
-if opts.use_transpose_B && opts.return_X
-    error('opts.use_transpose_B and opts.return_X cannot both be true.')
-end
-
 % Determine whether matrix C will be used
-use_C = true;
-if opts.return_X
+if return_X
     use_C = false;
-elseif opts.use_transpose_B
+elseif use_transpose_B
     if strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MUMPS')
-        % In this case, we keep C=[] here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
+        % In this case, we keep C = 'transpose_B' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
         use_C = false;
     else
         % In other cases, we may as well allocate the memory for C now
         C = transpose(B);
+        use_C = true;
     end
 end
-% At this point, there are two possibilites for which use_C=false (and C=[]):
-% (1) opts.return_X = true,  opts.use_transpose_B = false, opts.method = 'factorize_and_solve'
-% (2) opts.return_X = false, opts.use_transpose_B = true,  opts.method = 'SCSA', opts.solver = 'MUMPS'
+% At this point, there are two possibilites for which use_C=false:
+% (1) C = [], return_X = true, opts.method = 'factorize_and_solve'
+% (2) C = 'transpose_B', return_X = false, use_transpose_B = true, opts.method = 'SCSA', opts.solver = 'MUMPS'
 
 % Check matrix sizes
 [sz_A_1, sz_A_2] = size(A);
@@ -317,7 +289,7 @@ if strcmpi(opts.solver, 'MUMPS')
     end
 
     % Whether matrix K = [A,B;C,0] will be treated as symmetric
-    if opts.use_transpose_B && opts.is_symmetric_A && strcmpi(opts.method, 'SCSA')
+    if strcmpi(opts.method, 'SCSA') && use_transpose_B && opts.is_symmetric_A
         str_sym_K = ' (symmetric K)';
     end
 
@@ -379,7 +351,7 @@ end
 
 % Number of columns to solve for simultaneously; only used in factorize_and_solve when computing S=C*inv(A)*B
 str_nrhs = [];
-if strcmpi(opts.method, 'factorize_and_solve') && ~opts.return_X
+if strcmpi(opts.method, 'factorize_and_solve') && ~return_X
     if ~isfield(opts, 'nrhs') || isempty(opts.nrhs)
         if strcmpi(opts.solver, 'MUMPS')
             if opts.iterative_refinement
@@ -397,7 +369,7 @@ if strcmpi(opts.method, 'factorize_and_solve') && ~opts.return_X
     end
     str_nrhs = sprintf(' with nrhs = %d', opts.nrhs);
 elseif isfield(opts, 'nrhs') && ~isempty(opts.nrhs)
-    warning('opts.nrhs is not used when opts.method = ''%s'' and opts.return_X = %d; will be ignored.', opts.method, opts.return_X);
+    warning('opts.nrhs is not used when opts.method = ''%s'' and isempty(C) = %d; will be ignored.', opts.method, isempty(C));
     opts = rmfield(opts, 'nrhs');
 end
 
@@ -424,11 +396,11 @@ elseif strcmpi(opts.method, 'SCSA')
 %% Compute S=C*inv(A)*B with SCSA (Schur complement scattering analysis)
     if strcmpi(opts.solver, 'MUMPS') % Build matrix K=[A,B;C,0] and use MUMPS to compute its Schur complement -C*inv(A)*B with the LU factors discarded.
         t1 = clock;
-        if opts.verbal; fprintf('Building K...   '); end
+        if opts.verbal; fprintf('Building K  ... '); end
 
         N = size(A,1);
         is_symmetric_K = opts.is_symmetric_A;
-        if opts.use_transpose_B
+        if use_transpose_B
             M_tot = size(B, 2);
             D = sparse(M_tot, M_tot); % zero matrix
             K = [[A; transpose(B)], [B; D]];  % C = transpose(B)
@@ -446,7 +418,7 @@ elseif strcmpi(opts.method, 'SCSA')
             end
             D = sparse(M_tot, M_tot); % zero matrix
             K = [[A; C], [B; D]];
-            is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set opts.use_transpose_B = true if C=B.'
+            is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set C = 'transpose_B' if C=B.'
         end
         if opts.clear_memory
             clear A B C D
@@ -470,7 +442,7 @@ elseif strcmpi(opts.method, 'SCSA')
         S = -(id.SCHUR);
 
         % Remove the padded zeros
-        if ~opts.use_transpose_B
+        if ~use_transpose_B
             if M_tot > M_in
                 S = S(:, 1:M_in);
             elseif M_tot > M_out
@@ -500,7 +472,7 @@ elseif strcmpi(opts.method, 'SCSA')
         % Here, we evalulate C*inv(A)*B, not necessarily as C*[inv(A)*B], but more generally as C*inv(U)*inv(L)*B.
         % The full expression is C*inv(A)*B = C*Q*inv(U)*inv(L)*P*inv(R)*B.
         % There are a few ways to group the mldivide or mrdivide operations. Like matrix multiplications, it is generally faster and more memory efficient to group such that we operate onto the side with fewer elements first.
-        if opts.verbal; fprintf('Solving...      '); end
+        if opts.verbal; fprintf('Solving     ... '); end
         t1 = clock;
         nnz_B = nnz(B);
         nnz_C = nnz(C);
@@ -555,9 +527,9 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
     stat.timing.build = 0;  % the build time for A, B, C will be added in addition to this
 
     % Solve stage (forward and backward substitutions)
-    if opts.verbal; fprintf('Solving...      '); end
+    if opts.verbal; fprintf('Solving     ... '); end
     t1 = clock;
-    if opts.return_X % Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
+    if return_X % Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
         if strcmpi(opts.solver, 'MUMPS')
             id.JOB = 3;  % what to do: solve
             id.RHS = B;  % no need to loop since we keep everything
@@ -642,7 +614,7 @@ end
 %% Call MATLAB's lu() to factorize matrix A
 function [L, U, P, Q, R, stat] = MATLAB_factorize(A, opts)
 
-if opts.verbal; fprintf('Factorizing...  '); end
+if opts.verbal; fprintf('Factorizing ... '); end
 t1 = clock;
 
 if opts.verbal_solver
@@ -711,7 +683,7 @@ elseif opts.iterative_refinement
 end
 
 %% Analysis stage
-if opts.verbal; fprintf('Analyzing...    '); end
+if opts.verbal; fprintf('Analyzing   ... '); end
 t1 = clock;
 id.JOB = 1;  % what to do: analysis
 if opts.use_given_ordering
@@ -745,7 +717,7 @@ if opts.store_ordering
 end
 
 t2 = clock; stat.timing.analyze = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing...  ', stat.timing.analyze); end
+if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing ... ', stat.timing.analyze); end
 
 %% Factorization stage
 t1 = clock;

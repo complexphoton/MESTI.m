@@ -1,18 +1,23 @@
 function [S, stat] = mesti(syst, B, C, D, opts)
-%MESTI Solves frequency-domain scattering problem.
-%   [X, stat] = MESTI(syst, B) returns X = reshape(inv(A)*B, ny, nx, []) where
-%   matrix A is the differential operator
-%      (d/dx)^2 + (d/dy)^2 + (omega/c)^2*epsilon_r(x,y)
-%   of the system specified by structure 'syst' of the input arguments,
-%   discretized using center difference on the Yee grid into an (nx*ny)^2
-%   matrix. Matrix B specifies the input; each column of matrix B is a distinct
-%   source profile, discretized into an (nx*ny)-by-1 vector in the same oreder
-%   as matrix A and reshape(syst.epsilon, [], 1). The statistics of the
+%MESTI Frequency-domain electromagnetics simulations.
+%   [field_profiles, stat] = MESTI(syst, B) returns the spatial field profiles
+%   E_z(x,y) for 2D transverse-magnetic (TM) waves satisfying
+%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon_r(x,y)] E_z(x,y) = 0.
+%   The frequency omega, the relative permittivity profile epsilon_r(x,y), and
+%   the boundary conditions are aspecified by structure 'syst'. Each column of
+%   matrix 'B' specifies a distinct input source profile. The returned
+%   'field_profiles' is a 3D array, with field_profiles(:,:,i) being the field
+%   profile given the i-th input source profile. The statistics of the
 %   computation is returned in structure 'stat'.
+%
+%   MESTI uses finite-difference discretization, after which the differential
+%   operator becomes an nx*ny-by-nx*ny sparse matrix A where [ny, nx] =
+%   size(syst.epsilon), and the field profiles are given by
+%   reshape(inv(A)*B, ny, nx, []).
 %
 %   [S, stat] = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
 %   inv(A)*B is projected onto the output channels or locations of interest
-%   throught matrix C; each row of matrix C is a distinct output profile,
+%   throught matrix C; each row of matrix 'C' is a distinct output profile,
 %   discretized into a 1-by-(nx*ny) vector in the same oreder as matrix A and
 %   reshape(syst.epsilon, 1, []). When the MUMPS function zmumps() is
 %   available, this is done by computing the Schur complement of matrix K =
@@ -24,10 +29,10 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   C*inv(A0)*B - S0 from a reference system A0 for which the scattering matrix
 %   S0 is known.
 %
-%   [X, stat] = MESTI(syst, B, [], [], opts),
+%   [field_profiles, stat] = MESTI(syst, B, [], [], opts),
 %   [S, stat] = MESTI(syst, B, C, [], opts), and
 %   [S, stat] = MESTI(syst, B, C, D, opts) allow detailed options to be specified
-%   with structure 'opts' of the input arguments.
+%   with structure 'opts'.
 %
 %   This file checks and parses the parameters, and it can build matrices B and
 %   C from the non-zero parts specified by the user (see details below). It
@@ -91,7 +96,9 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %            sigma_max_over_omega (non-negative scalar; optional):
 %               Conductivity at the end of the PML; defaults to
 %                  0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
-%               This is used to attenuate propagating waves.
+%               where epsilon_bg is the average relative permittivity along the
+%               last slice of syst.epsilon of the PML. This is used to attenuate
+%               propagating waves.
 %            power_kappa (non-negative scalar; optional): Power of the
 %               polynomial grading for the real-coordinate-stretching factor
 %               kappa; defaults to 3.
@@ -229,16 +236,23 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      have the same fields [e.g., one cannot specify B_struct(1).pos and
 %      B_struct(2).ind], so the more general B_struct.ind syntax should be used
 %      when some of the inputs are rectangular and some are not.
-%   C (numeric matrix or structure array or []; optional):
-%      Matrix specifying the output in the C*inv(A)*B - D or C*inv(A)*B
-%      returned. When the input argument C is a matrix, it is directly used, and
-%      size(C,2) must equal ny*nx = numel(syst.epsilon); different rows of C
-%      correspond to different outputs.
-%         When C=[] or when C is omitted as in input argument (i.e., when
-%      nargin <= 2), no output projection is used, and X = inv(A)*B is returned
-%      (unless opts.use_transpose_B = true which specifies what C should be).
-%         If nargin > 2 (i.e., C is given as an input argument), C must be set
-%      to [] when opts.return_X = true or when opts.use_transpose_B = true.
+%   C (numeric matrix or structure array or 'transpose_B' or []; optional):
+%      Matrix specifying the output projections in the C*inv(A)*B - D or
+%      C*inv(A)*B returned. When the input argument C is a matrix, it is
+%      directly used, and size(C,2) must equal ny*nx = numel(syst.epsilon);
+%      different rows of C correspond to different outputs.
+%         Scattering matrix computations often have C = transpose(B); if that
+%      is the case, the user can set C = 'transpose_B' as a character vector,
+%      and it will be replaced by transpose(B) in the code. Doing so has an
+%      advantage: if matrix A is symmetric (which is the case with UPML without
+%      Bloch periodic boundary), C = 'transpose_B', opts.solver = 'MUMPS', and
+%      opts.method = 'SCSA', the matrix K = [A,B;C,0] will be treated as
+%      symmetric when computing its Schur complement to lower computing time and
+%      memory usage.
+%         For field profile computations, the user can simply omit C from the
+%      input argument, as in mesti(syst, B), if there is no need to change the
+%      default opts. If opts is needed, the user can use
+%      mesti(syst, B, [], [], opts), namely setting C = [] and D = [].
 %         Similar to B, here one can specify only the non-zero parts of the
 %      output matrix C, from which mesti() will build the sparse matrix C. The
 %      syntax is the same as for B, summarized below. If for every row of matrix
@@ -285,39 +299,19 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   D (numeric matrix or []; optional):
 %      Matrix specifying the background in the absence of scatterers for
 %      scattering matrix computations in the form of C*inv(A)*B - D; size(D,1)
-%      must equal size(C,1), and size(D,2) must equal size(B,2). If nargin > 3
-%      (i.e., D is given as an input argument), D must be set to an empty array
-%      [] when opts.return_X = true. When D = [], it will not be subtracted from
-%      C*inv(A)*B.
+%      must equal size(C,1), and size(D,2) must equal size(B,2).
+%         When D = [], it will not be subtracted from C*inv(A)*B. For field
+%      profile computations where C = [], the user must also set D = [].
 %   opts (scalar structure; optional, defaults to an empty struct):
 %      A structure that specifies the options of computation; defaults to an
 %      empty strucgture. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
 %         Whether to print info and timing to the standard output.
-%      opts.use_transpose_B (logical scalar; optional, defaults to false):
-%         Whether to use C = transpose(B) or not. When opts.use_transpose_B =
-%         false (default), the input argument C is used. When
-%         opts.use_transpose_B = true, transpose(B) will be used as C; C in the
-%         input argument must be [], and opts.return_X must be false in this
-%         case. In a reciprocal system (with UPML without Bloch periodic
-%         boundary), matrix A is symmetric; if opts.use_transpose_B = true,
-%         opts.solver = 'MUMPS', and opts.method = 'SCSA', the matrix K =
-%         [A,B;C,0] will be treated as symmetric when computing its Schur
-%         complement to lower computing time and memory usage.
 %      opts.prefactor (numeric scalar, real or complex; optional):
 %         When opts.prefactor is given, mesti() will return
 %         opts.prefactor*C*inv(A)*B - D or opts.prefactor*C*inv(A)*B or
 %         opts.prefactor*inv(A)*B. Such prefactor makes it easier to use C =
 %         transpose(B) to take advantage of reciprocity. Defaults to 1.
-%      opts.return_X (logical scalar; optional):
-%         Whether to return X=reshape(inv(A)*B, ny, nx, []) or not. Defaults to
-%         false when C is given (when input argument C is nonempty or when
-%         opts.use_transpose_B = true), true otherwise. When opts.return_X =
-%         false, S=C*inv(A)*B is returned. When opts.return_X = true, the
-%         reshaped X=inv(A)*B is returned; C and D in the input argument must be
-%         [], and opts.use_transpose_B must be false in this case. Since the
-%         default choice is the only sensible option, the user should never need
-%         to specify opts.return_X.
 %      opts.solver (character vector; optional):
 %         The software used for sparse matrix factorization. Available choices
 %         are (case-insensitive):
@@ -336,14 +330,15 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %                     but requires MUMPS to be installed. When opts.solver =
 %                     'MATLAB', C*inv(A)*B is obtained as C*inv(U)*inv(L)*B with
 %                     optimized grouping, which is not the true SCSA but is
-%                     slightly better than factorize_and_solve. Cannot be used
-%                     for computing X=inv(A)*B or with iterative refinement.
-%            'FS'   - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-%                     with forward and backward substitutions, and project with
-%                     C as C*inv(A)*B = C*X.
+%                     slightly better than 'factorize_and_solve'. SCSA is not
+%                     used for computing the full field profile inv(A)*B or with
+%                     iterative refinement.
+%            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
+%                     with forward and backward substitutions, and optionally
+%                     projec with C.
 %            'factorize_and_solve' - Same as 'FS'.
-%         By default, if opts.return_X = false and opts.iterative_refinement =
-%         false, then 'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
+%         By default, if C is given and opts.iterative_refinement = false, then
+%         'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
 %      opts.clear_BC (logical scalar; optional, defaults to false):
 %         When opts.clear_BC = true, variables 'B' and 'C' will be cleared in
 %         the caller's workspace to reduce peak memory usage. Can be used when B
@@ -368,7 +363,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      opts.nrhs (positive integer scalar; optional):
 %         The number of right-hand sides (number of columns of the input matrix
 %         B) to consider simultaneously, used only when opts.method =
-%         'factorize_and_solve' and opts.return_X = false. Defaults to 1 if
+%         'factorize_and_solve' and C is given. Defaults to 1 if
 %         opts.iterative_refinement = true, 10 if opts.solver = 'MUMPS' with
 %         opts.iterative_refinement = false, 4 otherwise.
 %      opts.store_ordering (logical scalar; optional, defaults to false):
@@ -387,10 +382,10 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
 %         errors. Iterative refinement can only be used when opts.solver =
-%         'MUMPS' and opts.method = 'factorize_and_solve' and opts.return_X =
-%         false, in which case opts.nrhs must equal 1. When iterative refinement
-%         is used, the relevant information will be returned in
-%         stat.itr_ref_nsteps, stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
+%         'MUMPS' and opts.method = 'factorize_and_solve' and C is given, in
+%         case opts.nrhs must equal 1. When iterative refinement is used, the
+%         relevant information will be returned in stat.itr_ref_nsteps,
+%         stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
 %
 %   === Output Arguments ===
 %   S (full numeric matrix or 3d array):
@@ -616,9 +611,6 @@ end
 if nargin < 3
     C = [];
 end
-if ~((ismatrix(C) && isnumeric(C)) || (isstruct(C) && ~isempty(C)) || (isempty(C) && ~isstruct(C)))
-    error('Input argument ''C'' must be a numeric matrix or a non-empty structure array or [], if given.');
-end
 
 % D is an optional argument
 if nargin < 4
@@ -636,9 +628,21 @@ if ~(isstruct(opts) && isscalar(opts))
     error('Input argument ''opts'' must be a scalar structure or [], if given.');
 end
 
+if isempty(C) && ~isstruct(C)
+    opts.return_field_profile = true;
+elseif (ismatrix(C) && isnumeric(C)) || (isstruct(C) && ~isempty(C))
+    opts.return_field_profile = false;
+    use_transpose_B = false;
+elseif isequal(C, 'transpose_B')
+    opts.return_field_profile = false;
+    use_transpose_B = true;
+else
+    error('Input argument ''C'' must be a numeric matrix or a non-empty structure array or ''transpose_B'' or [], if given.');
+end
+
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], use opts.use_transpose_B = true, set input argument C to [], make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
+    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
 end
 
 % Turn on verbal output by default
@@ -678,8 +682,6 @@ elseif ~(islogical(opts.clear_memory) && isscalar(opts.clear_memory))
 end
 
 % The following fields of opts are not used in mesti() and will be checked/initialized in mesti_matrix_solver():
-%    opts.use_transpose_B
-%    opts.return_X
 %    opts.solver
 %    opts.method
 %    opts.verbal_solver
@@ -990,7 +992,7 @@ end
 % Check matrix sizes
 [sz_B_1, sz_B_2] = size(B);
 if sz_B_1~=nxy; error('size(B,1) must equal nx*ny; size(B,1) = %d, nx*ny = %d.', sz_B_1, nxy); end
-if ~isempty(C)
+if ~opts.return_field_profile && ~use_transpose_B
     [sz_C_1, sz_C_2] = size(C);
     if sz_C_2~=nxy; error('size(C,2) must equal nx*ny; size(C,2) = %d, nx*ny = %d.', sz_C_2, nxy); end
 elseif ~isempty(D)
@@ -998,11 +1000,11 @@ elseif ~isempty(D)
 end
 
 t2 = clock; timing_build_BC = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\nBuilding A...   ', timing_build_BC); end
+if opts.verbal; fprintf('elapsed time: %7.3f secs\nBuilding A  ... ', timing_build_BC); end
 
 %% Part 2.2: Build matrix A by calling mesti_build_fdfd_matrix()
 
-if (sz_B_2 == 0 || (~isempty(C) && sz_C_1 == 0)) && ~(isfield(opts, 'store_ordering') && opts.store_ordering)
+if (sz_B_2 == 0 || (~opts.return_field_profile && ~use_transpose_B && sz_C_1 == 0)) && ~(isfield(opts, 'store_ordering') && opts.store_ordering)
     % No need to build A if numel(S) = 0 and we don't need to keep the ordering
     A = sparse(nxy, nxy);
     is_symmetric_A = true;
@@ -1052,14 +1054,14 @@ t1 = clock;
 % Include the prefactor
 S = (opts.prefactor)*S;
 
-if stat.opts.return_X
+if opts.return_field_profile
     % Reshape each of the sz_B_2 field profiles from a vector to a matrix
     S = reshape(S, [ny, nx, sz_B_2]);
 end
 
 % subtract D
 if ~isempty(D)
-    if stat.opts.return_X; error('Input argument ''D'' must be empty when opts.return_X = true.'); end
+    if opts.return_field_profile; error('Input argument ''D'' must be empty for field profile computations where C = [].'); end
     [sz_D_1, sz_D_2] = size(D);
     if sz_D_1~=sz_C_1; error('size(D,1) must equal size(C,1); size(D,1) = %d, size(C,1) = %d.', sz_D_1, sz_C_1); end
     if sz_D_2~=sz_B_2; error('size(D,2) must equal size(B,2); size(D,2) = %d, size(B,2) = %d.', sz_D_2, sz_B_2); end
