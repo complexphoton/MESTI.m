@@ -38,7 +38,7 @@ y_mid_cell = ((0.5:n_meta_atom) - (n_meta_atom/2))*w/1000; % Middle position of 
 target_phase = (2*pi/(lambda/1000))*(focal_length - sqrt(focal_length^2 + y_mid_cell.^2)); % Target phase of the hyperbolic metalens over each meta-atom 
 
 % Load the 8 discrete ridge width list and its phase from meta_atom_design.mlx.
-load('meta_atom.mat', 'ridge_width_desgin_list', 'phi_over_pi_design_list');
+load('meta_atom.mat', 'ridge_width_design_list', 'phi_over_pi_design_list');
 
 % Number of pixels for the meta-atom 
 nx = ceil(l/dx);    
@@ -46,18 +46,18 @@ ny = ceil(w/dx);
 ridge_hight = l; % Ridge height is the thickness of meta-atom cell.
 
 % Construct epsilon library for 8 different meta-atom.
-ridge_width_libaray = ridge_width_desgin_list;
-epsilon_libaray = zeros(ny,nx,size(ridge_width_desgin_list,2)); % Storing the permittivity profile for 8 different meta-atoms.
-for jj =1:length(ridge_width_desgin_list)
-    ridge_width = ridge_width_desgin_list(jj); % Ridge width [nm]
+ridge_width_libaray = ridge_width_design_list;
+epsilon_libaray = zeros(ny,nx,size(ridge_width_design_list,2)); % Storing the permittivity profile for 8 different meta-atoms.
+for jj =1:length(ridge_width_design_list)
+    ridge_width = ridge_width_design_list(jj); % Ridge width [nm]
     epsilon_libaray(:,:,jj)= build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_hight, w);
 end
 
 % Find the ridge width of each meta-atom in the metalens closest to the target phase. 
 phi_over_pi_design_list(end) = 2; 
 phi_over_pi_design_list = [0 phi_over_pi_design_list]; % Wrap up the phase.
-ridge_width_desgin_list = [ridge_width_desgin_list(end)  ridge_width_desgin_list];
-ridge_width_list_lens = interp1(phi_over_pi_design_list, ridge_width_desgin_list, mod(target_phase, 2*pi)/pi, 'nearest');
+ridge_width_design_list = [ridge_width_design_list(end)  ridge_width_design_list];
+ridge_width_list_lens = interp1(phi_over_pi_design_list, ridge_width_design_list, mod(target_phase, 2*pi)/pi, 'nearest');
 
 % Construct permittivity profile for whole metalens.
 epsilon = zeros(ny_tot,nx);
