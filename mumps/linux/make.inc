@@ -12,11 +12,13 @@ MEX         = mex -g -largeArrayDims
 # MEX         = mkoctfile -g --mex
 
 # Main MUMPS_DIR
-MUMPS_DIR = /project/cwhsu_38/shared/software/mumps-5.4.1-seq
+MUMPS_DIR = /project/cwhsu_38/shared/software/mumps-5.4.1-seq_wo_metis
 
 # Orderings (see main Makefile.inc file from MUMPS)
-LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
-LMETIS     = -L$(LMETISDIR) -lmetis
+# If METIS has been installed, you can uncomment the following two lines to specify
+# the directory and library of METIS.
+#LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
+#LMETIS     = -L$(LMETISDIR) -lmetis
 LPORDDIR   = $(MUMPS_DIR)/PORD/lib
 LPORD      = -L$(LPORDDIR) -lpord
 LORDERINGS = $(LPORD) $(LMETIS)
@@ -52,4 +54,3 @@ LIBBLAS = /spack/apps/linux-centos7-x86_64/intel-19.0.4/intel-mkl-2019.5.281-fti
 # Add -DINTSIZE64 if MUMPS was compiled with 64-bit integers (BLAS
 # library should then have 64-bit integers as well)
 OPTC    = -g
-

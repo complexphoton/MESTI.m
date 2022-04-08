@@ -36,8 +36,11 @@ LPORDDIR = $(topdir)/PORD/lib/
 IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord
 
-LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
-IMETIS    = /project/cwhsu_38/shared/software/metis-5.1.0/include
+# If METIS has been installed, you can uncomment the following two lines to specify 
+# the directory of METIS.
+
+#LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
+#IMETIS    = /project/cwhsu_38/shared/software/metis-5.1.0/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -45,7 +48,10 @@ IMETIS    = /project/cwhsu_38/shared/software/metis-5.1.0/include
 # variable below); for both parallel and sequential analysis choose the second 
 # line (remember to add -Dparmetis in the ORDERINGSF variable below)
 
-LMETIS    = -L$(LMETISDIR) -lmetis
+# If METIS has been installed, you can uncomment the following one line to specify 
+# the library of METIS.
+
+#LMETIS    = -L$(LMETISDIR) -lmetis
 #LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
 
 # The following variables will be used in the compilation process.
@@ -53,7 +59,10 @@ LMETIS    = -L$(LMETISDIR) -lmetis
 # If you want to use Metis 4.X or an older version, you should use -Dmetis4 instead of -Dmetis
 # or in addition with -Dparmetis (if you are using parmetis 3.X or older).
 #ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
-ORDERINGSF  = -Dpord -Dmetis
+
+# If METIS has been installed, you can add -Dmetis in line ORDERINGSF.
+
+ORDERINGSF  = -Dpord 
 ORDERINGSC  = $(ORDERINGSF)
 
 LORDERINGS = $(LMETIS) $(LPORD) $(LSCOTCH)
@@ -99,4 +108,3 @@ OPTC    = -O -fPIC
 INCS = $(INCSEQ)
 LIBS = $(LIBSEQ)
 LIBSEQNEEDED = libseqneeded
-
