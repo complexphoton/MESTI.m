@@ -68,7 +68,7 @@ opts.nx_R = round(lambda_0/dx); % Pixels of homogeneous space on the right
 opts.verbal = false; % Suppress output information.
 
 % Call mesti2s() to calculate the spatial field profile.
-[Ez, stat] = mesti2s(syst, in, [], opts);
+Ez = mesti2s(syst, in, [], opts);
 
 % For plotting the space position
 x = ((1:(opts.nx_L+nx+opts.nx_R)))*dx - (opts.nx_L+1)*dx; %[nm]
@@ -113,7 +113,7 @@ for ii = 1:n_lambda
     syst.wavelength = lambda_list(ii); % Wavelength [nm]
        
     % Call mesti2s() to calculate the scattering matrix.
-    [smatrix, channels, stat] = mesti2s(syst, in, out, opts);
+    smatrix = mesti2s(syst, in, out, opts);
 
     % In 1D, in = {'left'} and out = {'left', 'right'},
     % the smatrix = [r, t], where r is reflection coefficient from left to
@@ -177,7 +177,7 @@ for ii = 1:n_resolution
         syst.wavelength = lambda_list(jj); % Wavelength [nm]
 
         % Call mesti2s() to calculate the scattering matrix.
-        [smatrix, channels, stat] = mesti2s(syst, in, out, opts);
+        smatrix = mesti2s(syst, in, out, opts);
 
         R_list(jj) = abs(smatrix(1,1)).^2; % Numerical reflectance
         T_list(jj) = abs(smatrix(2,1)).^2; % Numerical transmittance
