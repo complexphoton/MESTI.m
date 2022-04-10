@@ -4,7 +4,7 @@
 Example of Meta-atom design for metasurfaces using mesti2s()
 
 
-Use mesti2s()() to 
+Use mesti2s() to 
 
 
 1. Computing the transmission coefficient of meta-atom with different ridge widths and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi). 
