@@ -66,7 +66,7 @@ dy_f = syst.wavelength/(10*NA);  % spacing of focal spots in y
 n_source = nPML + 1; % index of the source plane
 x_source = x(n_source); % location of the source plane
 
-w_0 = syst.wavelength/(n_bg*pi*NA); % beam radius at x = x_f
+w_0 = syst.wavelength/(pi*NA); % beam radius at x = x_f
 y_f = y_f_start:dy_f:y_f_end; % list of focal positions in y
 M_in = length(y_f); % number of inputs
 
