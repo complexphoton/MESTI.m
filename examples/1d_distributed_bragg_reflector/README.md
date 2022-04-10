@@ -30,8 +30,8 @@ lambda_min = 300; % Minimum wavelength [nm]
 lambda_max = 800; % Maximum wavelength [nm]
 delta_lambda = 2; % Increment of wavelength [nm]
 lambda_list = lambda_min:delta_lambda:lambda_max; % Wavelength list to be used
-lambda_0 = lambda_list(round(size(lambda_list,2)/2)); % Central wavelength [nm]
-n_lambda= size(lambda_list,2); % Total number of wavelength
+lambda_0 = lambda_list(round(numel(lambda_list)/2)); % Central wavelength [nm]
+n_lambda= numel(lambda_list); % Total number of wavelength
 ```
 
 # Analytical result
@@ -157,7 +157,7 @@ Over different resolution, compute root-mean-square error (RMSE) of numerical re
 
 ```matlab
 resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
-n_resolution= size(resolution_list,2); % Total number of resolutions to be used
+n_resolution= numel(resolution_list); % Total number of resolutions to be used
 RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
 RMSE_T = zeros(1,n_resolution); % RMSE for T to be calculated
 
