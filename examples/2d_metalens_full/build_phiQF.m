@@ -1,6 +1,6 @@
 function [phiQF_L, phiQF_R] = build_phiQF(ny, N_L, N_R, w_t_over_dx_L, w_t_over_dx_R, use_Hann_Q)
 %BUILD_PHIQF build the matrix phi*Q*F which is pre-processing step for SCSA-c.
-%To learn more details, see Sec.5 in the supplementary of the SCSA paper paper.       
+%To learn more details, see Sec.5 in the supplementary of the SCSA paper.       
 %
 %   === Input Arguments ===
 %   ny (numeric scalar, integer):
