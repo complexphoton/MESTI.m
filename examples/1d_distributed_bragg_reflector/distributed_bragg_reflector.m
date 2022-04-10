@@ -26,7 +26,7 @@ lambda_max = 800; % Maximum wavelength [nm]
 delta_lambda = 2; % Increment of wavelength [nm]
 lambda_list = lambda_min:delta_lambda:lambda_max; % Wavelength list to be used
 lambda_0 = lambda_list(round(numel(lambda_list)/2)); % Central wavelength [nm]
-n_lambda= numel(lambda_list); % Total number of wavelength
+n_lambda = numel(lambda_list); % Total number of wavelength
 
 %% Analytical result
 % Calculate the analytical results for this system. 
