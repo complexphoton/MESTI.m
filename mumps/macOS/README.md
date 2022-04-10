@@ -4,7 +4,7 @@ You will need to install the following packages first for compiling MUMPS on mac
 
 ### Xcode command-line tools
 
-The command-line tools have several utilities for compilation, such as <code>make</code> and <code>clang</code>. To install command-line tools type
+The command-line tools have several utilities for compilation, such as <code>make</code> and <code>clang</code>, and Apple's implementation of BLAS and LAPACK. To install command-line tools type
 
 ```
 xcode-select --install
@@ -35,7 +35,7 @@ The following packages are not required if you use the <code>Makefile.inc</code>
 
 ### OpenBLAS
 
-We use the BLAS and LAPACK implementation from Apple's Accelerate framework by default, which does not require external installation. However, on an intel-based system it has been tested that OpenBLAS has better performance. Thus we also provide the option of linking with OpenBLAS in those make files. To install OpenBLAS, type
+We use the BLAS and LAPACK implementation from Apple's Accelerate framework by default. However, on an intel-based system it has been tested that OpenBLAS has better performance. Thus we also provide the option of linking with OpenBLAS in those make files. To install OpenBLAS, type
 
 ```
 brew install openblas
