@@ -66,12 +66,12 @@ IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord
 
 #LMETISDIR = /opt/metis-5.1.0/build/Linux-x86_64/libmetis
-LMETISDIR = /Users/chsu/install/compile/metis-5.1.0/build/Darwin-x86_64/libmetis
+#LMETISDIR = /Users/chsu/install/compile/metis-5.1.0/build/Darwin-x86_64/libmetis
 #IMETIS    = /opt/metis-5.1.0/include
 #LMETISDIR = /usr/local/lib/libmetis.a
 #LMETISDIR = /usr/local/lib
 #IMETIS    = -I/usr/local/include
-IMETIS    = -I/Users/chsu/install/compile/metis-5.1.0/include
+#IMETIS    = -I/Users/chsu/install/compile/metis-5.1.0/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -79,7 +79,7 @@ IMETIS    = -I/Users/chsu/install/compile/metis-5.1.0/include
 # variable below); for both parallel and sequential analysis choose the second 
 # line (remember to add -Dparmetis in the ORDERINGSF variable below)
 
-LMETIS    = -L$(LMETISDIR) -lmetis
+#LMETIS    = -L$(LMETISDIR) -lmetis
 #LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
 
 # The following variables will be used in the compilation process.
@@ -87,8 +87,8 @@ LMETIS    = -L$(LMETISDIR) -lmetis
 # If you want to use Metis 4.X or an older version, you should use -Dmetis4 instead of -Dmetis
 # or in addition with -Dparmetis (if you are using parmetis 3.X or older).
 #ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
-ORDERINGSF = -Dmetis -Dpord
-#ORDERINGSF  = -Dpord
+#ORDERINGSF = -Dmetis -Dpord # add -Dmetis if you have Metis installed.
+ORDERINGSF  = -Dpord 
 ORDERINGSC  = $(ORDERINGSF)
 
 LORDERINGS = $(LMETIS) $(LPORD)
@@ -116,7 +116,7 @@ RM      = /bin/rm -f
 # CC : C compiler
 CC      = cc -fPIC
 # FC : Fortran 90 compiler
-FC      = gfortran -fPIC
+FC      = gfortran -fallow-argument-mismatch -fPIC
 # FL : Fortran linker
 FL      = gfortran -fPIC
 # AR : Archive object in a library
@@ -129,7 +129,8 @@ RANLIB  = ranlib
 
 # DEFINE HERE YOUR LAPACK LIBRARY
 
-LAPACK = -llapack
+LAPACK = -lLAPACK
+#LAPACK = -llapack
 #LAPACK = -L/usr/local/opt/lapack/lib
 
 # The next two lines should not be modified. They concern
@@ -140,8 +141,8 @@ LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq
 
 # DEFINE HERE YOUR BLAS LIBRARY
 
-#LIBBLAS = -lblas
-LIBBLAS = -L/usr/local/opt/openblas/lib
+LIBBLAS = -lBLAS 
+#LIBBLAS = -L/usr/local/opt/openblas/lib # on intel-based systems, openblas is faster.
 
 # DEFINE HERE YOUR PTHREAD LIBRARY
 LIBOTHERS = -lpthread
@@ -160,11 +161,11 @@ LIBOTHERS = -lpthread
 CDEFS = -DAdd_
 
 #COMPILER OPTIONS
-OPTF    = -O -fopenmp
+OPTF    = -O
 # changed OPTS to below to disable pthread
 #OPTC    = -O -I. -DWITHOUT_PTHREAD
 OPTC    = -O -I.
-OPTL    = -O -fopenmp
+OPTL    = -O 
 
 #Sequential:
 
