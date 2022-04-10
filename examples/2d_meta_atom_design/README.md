@@ -28,7 +28,7 @@ lambda   = 532;  % Free-space wavelength [nm]
 dx = lambda/40;  % Discretization grid size [nm]
 w  = 18*dx;      % Width of meta-atom cell [nm]
 l  = 600;        % Thickness of meta-atom cell [nm]
-ridge_hight = l; % Ridge height is the thickness of meta-atom cell.
+ridge_height = l; % Ridge height is the thickness of meta-atom cell.
 ```
 
 # General setup for mesti2s()
@@ -57,7 +57,7 @@ ridge_width = 79.8; % Ridge width of meta-atom [nm]
 
 % Build permittivity for the meta-atom. 
 % Please refer to the function build_epsilon_meta_atom.    
-epsilon_meta_atom = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_hight, w);
+epsilon_meta_atom = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_height, w);
 [ny, nx]= size(epsilon_meta_atom);
 
 n_extra_for_plot = 10; % Extra pixels on side for plotting
@@ -100,7 +100,7 @@ t_list = zeros(1,size(ridge_width_list,2)); % Transmission coefficient list
 
 % Loop over different ridge widths
 for ii =1:length(ridge_width_list)
-    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_hight, w);
+    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_height, w);
     % Compute the transmission matrix, which only contains one coefficient (no diffraction) at normal incidence.
     t_list(1,ii) = mesti2s(syst, in, out, opts);
 end
@@ -172,7 +172,7 @@ t_list = zeros(n_angles, numel(ridge_width_list));  % Transmission coefficient l
 
 % Loop over different ridge widths
 for ii = 1:length(ridge_width_list)
-    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_hight, w);
+    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_height, w);
 
     % Loop over different incident angles
     for jj = 1:n_angles
