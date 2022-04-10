@@ -163,7 +163,7 @@ In addition to normal incidence, the response of oblique incidence is also impor
 syst.yBC = 'Bloch'; % Bloch periodic boundary along transverse direction
 
 ridge_width_list = 40:4:200; % List of ridge width: from 40 nm to 200 nm with 4 nm increment
-theta_in_list = -89:1:89;    % List of incident angle from air [degree]
+theta_in_list = -89:1:89;    % List of incident angle in air [degree]
 n_angles = numel(theta_in_list);
 
 ky_list = (2*pi/lambda)*sind(theta_in_list);  % wave number in y direction
