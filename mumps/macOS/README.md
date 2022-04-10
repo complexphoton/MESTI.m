@@ -21,7 +21,7 @@ Homebrew will be helpful for the installation of <code>gfortran</code> and <code
 
 ### GFortran
 
-The compilation of MUMPS requires both C and Fortran compilers. The C compiler has been installed by the command-line tools. The Fortran compiler can be install by <code>brew</code>. After installing Homebrew, simply type 
+The compilation of MUMPS requires both C and Fortran compilers. The C compiler has been installed by the command-line tools. The Fortran compiler can be installed by <code>brew</code>. After installing Homebrew, simply type 
 
 ```
 brew install gfortran
