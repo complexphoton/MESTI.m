@@ -1,13 +1,13 @@
-# Metalens: meta-atom
+# Meta-atom design for metasurfaces
 
 
-Example of TiO2 hyperbolic metalens using SCSA-c
+Example of Meta-atom design for metasurfaces using mesti2s()
 
 
-Use MESTI2S() to 
+Use mesti2s()() to 
 
 
-1. Computing the transmission coefficient of meta-atom with different ridge widths and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi).
+1. Computing the transmission coefficient of meta-atom with different ridge widths and find meta-atoms satisfying 8 discrete ideal relative phase over [0, 2pi). 
 
 
 2. Scanning over ridge width and incident angle to get phase and amplitude map of transmission coefficient.
@@ -20,8 +20,7 @@ Set up the parameters for the meta-atom system.
 
 ```matlab
 clear
-addpath C:\Users\hcusc\Documents\USC_meeting\20220407\20220404
-
+    
 n_air    = 1;    % Refractive index of air
 n_silica = 1.46; % Refractive index of silica
 n_TiO2   = 2.43; % Refractive index of TiO2
@@ -43,7 +42,6 @@ syst.epsilon_R = n_air^2;    % Relative permittivity on the right hand side
 syst.wavelength = lambda;    % Free-space wavelength [nm]
 syst.dx = dx;                % Grid size of system [nm]
 syst.length_unit = 'nm';     % Length unit
-syst.yBC = 'periodic';       % Periodic boundary in y direction
 in = {'left'};               % Specify input channel on the left.
 out = {'right'};             % Specify output channel on the right.
 opts.verbal = false;         % Suppress output information.
@@ -80,35 +78,34 @@ ylim([y(1), y(2)])
 text(670,130,'air','FontSize',20,'Rotation',90)
 text(240,120,'TiO_2','FontSize',20)
 text(-80,140,'silica','FontSize',20,'Rotation',90)
-title(['Meta-atom'],'FontSize',20)
+title('Meta-atom','FontSize',20)
 ```
 
 <img src="meta_atom_design_structure.png" width="672" height="504"> 
 
-# Transmission coefficient of meta-atom with different ridge widths
+# Transmission coefficient of meta-atom at normal incidence
 
 
 In standard procedure of designing metasurface, people calculate the phase of transmission coefficient of meta-atom with different parameters (for example, ridge width). Then, use this information to design metasurface. Here following the similar procedure, we calculate transmission coefficient of meta-atom looping over different ridge widths.
 
 ```matlab
+syst.yBC = 'periodic'; % Periodic boundary in y direction
+% In periodic boundary, since 2*w/(lambda/n_silica) ~ 1, only one
+% propagation channel is on the left. Our ky(a) = a*2*pi/W in periodic boundary 
+% and ky = 0 is the only propagation channel whose incident angle is normal. 
+
 ridge_width_list = 40:0.1:200; % List of ridge width: from 40 nm to 200 nm with 0.1 nm increment
 
 t_list = zeros(1,size(ridge_width_list,2)); % Transmission coefficient list
 
-% Looping over different ridge widths
+% Loop over different ridge widths
 for ii =1:length(ridge_width_list)
-    ridge_width = ridge_width_list(ii); % Ridge width of meta-atom [nm]
-    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_hight, w);
-    % Call mesti2s() to calculate the scattering matrix.
-    [smatrix, stat] = mesti2s(syst, in, out, opts);
-
-    % in = {'left'} and out = {'right'},
-    % the smatrix = [t], where t is transmission coefficient from left to right.    
-    t_list(1,ii) = smatrix(1,1);
+    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_hight, w);
+    % Compute the transmission matrix, which only contains one coefficient (no diffraction) at normal incidence.
+    t_list(1,ii) = mesti2s(syst, in, out, opts);
 end
 
-phi0 = angle(t_list(ridge_width_list==194)); % Use the ridge width = 194 nm meta-atom as a phase reference.
-rel_phi_over_pi_list = mod(angle(t_list)-phi0, 2*pi)/pi; % Relative phase over different ridge widths
+rel_phi_over_pi_list = mod(angle(t_list)-angle(t_list(1)), 2*pi)/pi; % Relative phase over different ridge widths
 
 % Plot the relative phase of meta-atom with different ridge widths
 clf
@@ -126,10 +123,13 @@ set(gca,'linewidth', 2)
 # Finding meta-atoms satisfying 8 discrete ideal relative phases over [0, 2pi)
 
 
-In the design point of view, practically people would only use meta-atom with discrete paratmeters to construct the metasurface. Typically, 8 different meta-atoms covering the relative phases equally spacing over [0, 2pi) are used.
+In the design point of view, practically people would only use meta-atom with discrete parameters to construct the metasurface. Typically, 8 different meta-atoms covering the relative phases equally spacing over [0, 2pi) are used.
+
+
 
 ```matlab
-ideal_rel_phase_over_pi_list = [linspace(0.25, 1.75, 7) 0]; % Have 8 discrete equally spacing ideal relative phases over [0, 2pi).
+n_phases = 8;
+ideal_rel_phase_over_pi_list = 2*linspace(0, 1-1/n_phases, n_phases); % Have 8 discrete equally spacing ideal relative phases over [0, 2pi).
 
 % Find meta-atoms which are closest to the ideal relative phase through nearest neighbor interpolation.
 ind = interp1(rel_phi_over_pi_list,1:length(rel_phi_over_pi_list),ideal_rel_phase_over_pi_list,'nearest');
@@ -144,8 +144,8 @@ fprintf(['Relative phase.(pi) %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f\n'
 
 
 ```text:Output
-Relative phase.(pi)  0.25  0.50  0.75  1.00  1.25  1.50  1.75  0.00
-Ridge width....(nm)  45.2  55.1  68.1  79.8  98.4 125.1 156.9 194.0
+Relative phase.(pi)  0.00  0.25  0.50  0.75  1.00  1.25  1.50  1.75
+Ridge width....(nm)  40.0  49.1  60.7  73.1  87.4 107.1 138.2 172.3
 ```
 
 
@@ -163,58 +163,32 @@ In addition to normal incidence, the response of oblique incidence is also impor
 syst.yBC = 'Bloch'; % Bloch periodic boundary along transverse direction
 
 ridge_width_list = 40:4:200; % List of ridge width: from 40 nm to 200 nm with 4 nm increment
-theta_in_list = -89:1:89; % List of incident angle [degree]
+theta_in_list = -89:1:89;    % List of incident angle from air [degree]
+n_angles = numel(theta_in_list);
 
-k0dx = 2*pi/lambda*dx; % Dimensionless frequency k0dx
+ky_list = (2*pi/lambda)*sind(theta_in_list);  % wave number in y direction
 
-% Given theta, solve the corresponding kydx by the finite-difference dispersion
-% Look at Eq. (S22) in the supplementary of the SCSA paper.
-syms x
-kydx_list = zeros(1,size(theta_in_list,2));
-for jj = 1:size(theta_in_list,2)
-    if theta_in_list(jj) == 0
-        kydx_list(jj) = 0;    
-    elseif theta_in_list(jj) > 0
-        eqn = (k0dx)^2*n_silica^2 == 4*(sin(x/2))^2 + 4*(sin(x/tan(asin(1/n_silica*sind(theta_in_list(jj))))/2))^2;
-        kydx_list(jj) = vpasolve(eqn,x,[0 2*pi]);
-    elseif theta_in_list(jj) < 0        
-        eqn = (k0dx)^2*n_silica^2 == 4*(sin(x/2))^2 + 4*(sin(x/tan(asin(1/n_silica*sind(theta_in_list(jj))))/2))^2;
-        kydx_list(jj) = vpasolve(eqn,x,[-2*pi 0]);
-    end
-end
+t_list = zeros(n_angles, numel(ridge_width_list));  % Transmission coefficient list 
 
-t_list = zeros(size(kydx_list,2), size(ridge_width_list,2));  % Transmission coefficient list 
-% Row index for different incident and column index for different ridge widths
-
-phi0_list = zeros(size(kydx_list,2), size(ridge_width_list,2)); % Reference phase list
-
-% Looping over different ridge widths
+% Loop over different ridge widths
 for ii = 1:length(ridge_width_list)
-    ridge_width = ridge_width_list(ii); % Ridge width of meta-atom [nm]
-    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_hight, w);
+    syst.epsilon = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width_list(ii), ridge_hight, w);
 
-    % Looping over different incident angles
-    for jj = 1:round(length(kydx_list))
-        syst.ky_B = kydx_list(jj)/dx; % Bloch wave number in y direction
-        % Call mesti2s() to calculate the scattering matrix.
-        [smatrix, channels] = mesti2s(syst, in, out, opts); 
+    % Loop over different incident angles
+    for jj = 1:n_angles
+        syst.ky_B = ky_list(jj); % Bloch wave number in y direction
+        [tmatrix, channels] = mesti2s(syst, in, out, opts); % compute the transmission matrix.
 
-        % In some incident angles, there are more than one channel on the left.
-        % Proper index should be chosen to extract the correct transmission coefficient for the phase/amplitude map.
-        theta_inc = asind(sind(atand(channels.L.kydx_prop./channels.L.kxdx_prop))*n_silica); % Incident angle w.r.t. air of channels on the left
-        ind = find(round(theta_inc)==theta_in_list(jj)); % Find the channel index whose incident angle users want.
-        t_list(jj,ii) = smatrix(1,ind);
-
-        % Choose the ridge width = 40 nm meta-atom as a phase reference.
-        if ridge_width == 40
-            phi0_list(jj,:) = angle(smatrix(1,ind)); 
-        end
+        % At large incident angles, there can be more than one channel on the left (i.e., diffraction).
+        % We want the incident channel whose ky equals the Bloch wave number we specify (i.e., zeroth-order).
+        [~, ind] = min(abs(channels.L.kydx_prop - syst.ky_B*dx));
+        t_list(jj,ii) = tmatrix(1, ind);
     end
 end
 
-% Plot the phase map of transmission coefficient over different ridge widths and incident angles.
+% Plot the phase of the transmission coefficient relative to the first width
 clf
-imagesc(ridge_width_list,theta_in_list, mod(angle(t_list)-phi0_list, 2*pi))
+imagesc(ridge_width_list,theta_in_list, mod(angle(t_list)-angle(t_list(:,1)), 2*pi))
 caxis([0, 2*pi]);
 xlabel('Pillar width (nm)')
 ylabel('\theta_{in} (degree)')
@@ -228,8 +202,8 @@ hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 
 
 ```matlab
-% Plot the amplitude map of transmission coefficient over different ridge widths and incident angles.
-clf
+% Plot the amplitude of transmission coefficient.
+figure
 imagesc(ridge_width_list,theta_in_list, abs(t_list))
 caxis([0, 1]);
 xlabel('Pillar width (nm)')
@@ -238,6 +212,7 @@ title('Amplitude')
 colormap('hot')
 colorbar
 ```
+
 
 <img src="meta_atom_design_amplitude_map.png" width="672" height="504">
 
