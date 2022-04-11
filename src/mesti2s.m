@@ -498,7 +498,7 @@ if ny==0; error('ny = size(syst.epsilon,1) cannot be zero.'); end
 if isfield(syst, 'ky_B') && ~isempty(syst.ky_B)
     if ~(isnumeric(syst.ky_B) && isscalar(syst.ky_B))
         error('syst.ky_B must be a numeric scalar, if given.');
-    elseif (isfield(syst, 'yBC') && ~isempty(syst.yBC)) && ~strcmpi(syst.yBC, 'Bloch')
+    elseif (isfield(syst, 'yBC') && ~isempty(syst.yBC)) && (iscell(syst.yBC) || ~strcmpi(syst.yBC, 'Bloch'))
         error('When syst.ky_B is given, syst.yBC must be ''Bloch'' if specified.');
     end
     syst.yBC = 'Bloch';
@@ -520,7 +520,7 @@ end
 % Defaults to using self-energy for outgoing boundary in x
 if ~isfield(syst, 'xBC') || isempty(syst.xBC)
     syst.xBC = 'self-energy';
-elseif ~(strcmpi(syst.xBC, 'self-energy') || (isstruct(syst.xBC) && isscalar(syst.xBC)) || (iscell(syst.xBC) && numel(syst.xBC)==2))
+elseif ~((~iscell(syst.xBC) && strcmpi(syst.xBC, 'self-energy')) || (isstruct(syst.xBC) && isscalar(syst.xBC)) || (iscell(syst.xBC) && numel(syst.xBC)==2))
     error('syst.xBC must be ''self-energy'' or a scalar structure or a two-element cell array, if given.');
 end
 
@@ -783,6 +783,10 @@ end
 
 % Set up the homogeneous-space channels on the two sides
 k0dx = (2*pi/syst.wavelength)*(syst.dx);
+if ~two_sided
+    % For convenience, we set syst.epsilon_R so it is not [], and so we can still use channels.L below
+    syst.epsilon_R = NaN;
+end
 % we can also use channels = mesti_build_channels(syst);
 channels = mesti_build_channels(ny, yBC, k0dx, syst.epsilon_L, syst.epsilon_R, syst.use_continuous_dispersion, syst.m0);
 N_prop_L = channels.L.N_prop;

@@ -446,7 +446,7 @@ nxy = nx*ny;
 if isfield(syst, 'kx_B') && ~isempty(syst.kx_B)
     if ~(isnumeric(syst.kx_B) && isscalar(syst.kx_B))
         error('syst.kx_B must be a numeric scalar, if given.');
-    elseif (isfield(syst, 'xBC') && ~isempty(syst.xBC)) && ~strcmpi(syst.xBC, 'Bloch')
+    elseif (isfield(syst, 'xBC') && ~isempty(syst.xBC)) && (iscell(syst.xBC) || ~strcmpi(syst.xBC, 'Bloch'))
         error('When syst.kx_B is given, syst.xBC must be ''Bloch'' if specified.');
     end
     syst.xBC = 'Bloch';
@@ -473,7 +473,7 @@ end
 if isfield(syst, 'ky_B') && ~isempty(syst.ky_B)
     if ~(isnumeric(syst.ky_B) && isscalar(syst.ky_B))
         error('syst.ky_B must be a numeric scalar, if given.');
-    elseif (isfield(syst, 'yBC') && ~isempty(syst.yBC)) && ~strcmpi(syst.yBC, 'Bloch')
+    elseif (isfield(syst, 'yBC') && ~isempty(syst.yBC)) && (iscell(syst.yBC) || ~strcmpi(syst.yBC, 'Bloch'))
         error('When syst.ky_B is given, syst.yBC must be ''Bloch'' if specified.');
     end
     syst.yBC = 'Bloch';

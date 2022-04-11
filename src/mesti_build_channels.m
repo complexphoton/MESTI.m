@@ -1,10 +1,10 @@
 function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, use_continuous_dispersion, m0)
 %MESTI_BUILD_CHANNELS Set up properties of channels in the homogeneous space.
-%   MESTI_BUILD_CHANNELS(ny, yBC, k0dx, epsilon_L) returns a structure
+%   MESTI_BUILD_CHANNELS(ny, yBC, k0dx, epsilon_bg) returns a structure
 %   containing properties of the propagating and evanescent channels in a
 %   homogeneous space with ny pixels in the transverse (y) direction, boundary
-%   condition yBC along y, relative permittivity epsilon_L, and dimensionless
-%   frequency k0dx = (2*pi/vacuum_wavelength)*dx.
+%   condition yBC along y, background relative permittivity epsilon_bg, and
+%   dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx.
 %
 %   MESTI_BUILD_CHANNELS(ny, yBC, k0dx, epsilon_L, epsilon_R) returns a
 %   structure containing the properties of homogeneous spaces with relative
@@ -64,8 +64,14 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %         complete and orthonormal set, so the ny-by-ny matrix
 %         channels.fun_phi(channels.kydx_all) is unitary.
 %      channels.L (scalar structue):
-%         Structure containing properties specific to the left (L) side; it
-%         contains the following fields:
+%         When epsilon_L and epsilon_R are both given (i.e., epsilon_R is given
+%         and is not []), the properties specific to the left and right sides
+%         are returned in channels.L and channels.R; channels.L and channels.R
+%         are both scalar structures, and their fields are described below.
+%            When only epsilon_L = epsilon_bg is given; there will be no
+%         channels.L and channels.R; instead, the fields that would have been
+%         asigned to channels.L will be asigned to channels directly. For
+%         example, channels.L.N_prop will be channels.N_prop instead.
 %      channels.L.N_prop (integer scalar):
 %         Number of propagating channels.
 %      channels.L.kxdx_all (1-by-ny complex row vector):
@@ -111,7 +117,7 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %         exist, and ind_prop_conj is not given.
 %      channels.R (scalar structue; optional):
 %         Structure containing properties specific to the right (R) side,
-%         similar to channels.R; only provided when epsilon_L is given.
+%         similar to channels.R; only provided when epsilon_R is given.
 %
 %   See also: mesti2s
 
@@ -274,14 +280,21 @@ else
 end
 
 % Properties for the homogeneous space on the left (kxdx, sqrt_mu, number of propagating channels, etc; depends on epsilon_L/R)
-channels.L = setup_longitudinal((k0dx^2)*epsilon_L, channels.kydx_all, ka, ind_zero_ky, use_continuous_dispersion);
+side = setup_longitudinal((k0dx^2)*epsilon_L, channels.kydx_all, ka, ind_zero_ky, use_continuous_dispersion);
 
-% Homogeneous space on the right
 if two_sided
+    channels.L = side;
+    % Homogeneous space on the right
     if epsilon_R == epsilon_L
-        channels.R = channels.L;
-    else
+        channels.R = side;
+    elseif ~isnan(epsilon_R)
         channels.R = setup_longitudinal((k0dx^2)*epsilon_R, channels.kydx_all, ka, ind_zero_ky, use_continuous_dispersion);
+    end
+else
+    % add the fields of 'side' to 'channels'
+    fnames = fieldnames(side);
+    for ii = 1:length(fnames)
+        channels.(fnames{ii}) = side.(fnames{ii});
     end
 end
 
