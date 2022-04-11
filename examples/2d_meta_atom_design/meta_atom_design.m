@@ -100,7 +100,6 @@ ylabel('Phase (\pi)')
 xlim([40 200])
 title('$\Phi - \Phi^0$', 'Interpreter','latex')
 set(gca, 'fontsize', 20, 'FontName','Arial')
-set(gca,'linewidth', 2)
 
 %% Finding meta-atoms satisfying 8 discrete ideal relative phases over [0, 2pi)
 % In the design point of view, practically people would only use meta-atom with 
