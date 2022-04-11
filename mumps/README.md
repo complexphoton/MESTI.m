@@ -8,10 +8,10 @@ Please go to the [MUMPS website](http://mumps.enseeiht.fr/index.php?page=dwnld) 
 ## Compile MUMPS
 After obtaining the MUMPS source code, read the <code>INSTALL</code> file to choose and modify the <code>Makefile.inc</code> to fit your environment and machine. You'll need to modify the environmental variables in <code>Makefile.inc</code> such as the paths of the BLAS library (required), LAPACK library (required), and METIS ordering library (optional): <code>LIBBLAS</code>, <code>LAPACK</code>, and <code>LMETIS</code>.
 
-Two examples of <code>Makefile.inc</code> we use ourselves are provided below, one for installation on a Linux cluster, one for installation on MacOS. Note you still need to modify the environmental variables based on your machine.
+Two examples of <code>Makefile.inc</code> we use ourselves are provided below, one for installation on a Linux cluster, one for installation on macOS. Note you still need to modify the environmental variables based on your machine.
 
 1. [Linux cluster](./linux/Makefile.inc)
-2. [MacOS](./macOS/Makefile.inc)
+2. [macOS](./macOS/Makefile.inc)
 
 In you are on a cluster, you may need to load the modules for the libraries used.
 
@@ -31,7 +31,7 @@ Go to the <code>MATLAB</code> folder inside the MUMPS folder and modify <code>ma
 
 Two examples of <code>make.inc</code> are provided below:
 1. [Linux cluster](./linux/make.inc)
-2. [MacOS](./macOS/make.inc)
+2. [macOS](./macOS/make.inc)
 
 When simulating large systems, there can be segmentation fault due to bugs in the MATLAB interface. We suggest replacing the original <code>mumpsmex.c</code> with this modified one, [mumpsmex.c](mumpsmex.c), which modifies four lines such that it disables reading the scaling array from MATLAB, and it no longer outputs the scaling array to MATLAB; these lines are where the segmentation fault happens. Since MESTI does not use user-specified scaling arrays, these modifications do not affect functionality.
 
