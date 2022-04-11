@@ -204,7 +204,7 @@ hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 
 ```matlab
 % Plot the amplitude of transmission coefficient.
-figure
+clf
 imagesc(ridge_width_list,theta_in_list, abs(t_list))
 caxis([0, 1]);
 xlabel('Pillar width (nm)')
