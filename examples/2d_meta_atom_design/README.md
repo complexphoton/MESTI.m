@@ -115,7 +115,6 @@ ylabel('Phase (\pi)')
 xlim([40 200])
 title('$\Phi - \Phi^0$', 'Interpreter','latex')
 set(gca, 'fontsize', 20, 'FontName','Arial')
-set(gca,'linewidth', 2)
 ```
 
 <img src="meta_atom_design_relative_phase.png" width="672" height="504"> 
