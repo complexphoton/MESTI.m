@@ -193,7 +193,8 @@ caxis([0, 2*pi]);
 xlabel('Pillar width (nm)')
 ylabel('\theta_{in} (degree)')
 title('Phase')
-colormap(twilight)
+cyclic_color =  [flipud(pink); bone]; 
+colormap(cyclic_color)
 colorbar
 hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 ```
