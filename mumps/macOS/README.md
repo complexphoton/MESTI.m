@@ -1,6 +1,6 @@
 ## Prerequisite 
 
-You will need to install the following packages first for compiling MUMPS on macOS.
+Users will need to install the following packages first for compiling MUMPS on macOS.
 
 ### Xcode command-line tools
 
