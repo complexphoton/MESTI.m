@@ -99,7 +99,7 @@ channels = mesti_build_channels(ny,'PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2);
 
 % Transverse profiles of the propagating channels. Each column of phi is
 % one transverse profile. Different columns are orthonormal.
-phi = channels.fun_phi(channels.L.kydx_prop); % size(phi) = [ny, N_prop]
+phi = channels.fun_phi(channels.kydx_prop); % size(phi) = [ny, N_prop]
 
 % Step 2: Project E^in(x_f, y) onto the propagating channels.
 E_f_prop = phi'*E_f; % size(E_f_prop) = [N_prop, M_in]
@@ -108,7 +108,7 @@ E_f_prop = phi'*E_f; % size(E_f_prop) = [N_prop, M_in]
 % This step assumes a PEC boundary in y, so it is not exact with PML in y,
 % but it is sufficiently accurate since E^in decays exponentially in y.
 % Note we use implicit expansion here.
-kx = reshape(channels.L.kxdx_prop/syst.dx, [], 1); % list of wave numbers
+kx = reshape(channels.kxdx_prop/syst.dx, [], 1); % list of wave numbers
 E_s_prop = exp(1i*kx*(x_source-x_f)).*E_f_prop; % size(E_s_prop) = [N_prop, M_in]
 
 % Step 4: Determine the line sources.
@@ -117,7 +117,7 @@ E_s_prop = exp(1i*kx*(x_source-x_f)).*E_f_prop; % size(E_s_prop) = [N_prop, M_in
 % phi(:,a). With PML in y, this is not strictly true but is sufficiently
 % accurate since E^in(x=x_source,y) decays exponentially in y.
 % Note we use implicit expansion here.
-mu = reshape(channels.L.sqrt_mu, [], 1).^2; % mu = sin(kx*dx)
+mu = reshape(channels.sqrt_mu, [], 1).^2; % mu = sin(kx*dx)
 B_L = phi*(mu.*E_s_prop); % size(B_L) = [ny, M_in]
 
 % We take the -2i prefactor out, to be multiplied at the end. The reason
