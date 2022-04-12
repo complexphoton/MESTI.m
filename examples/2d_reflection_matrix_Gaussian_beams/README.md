@@ -111,20 +111,20 @@ B_L = phi*(mu.*E_s_prop); % size(B_L) = [ny, M_in]
 % will be clear when we handle C below.
 opts.prefactor = -2i;
 
-% In mesti(), B.pos specifies the position of a block source: [m1, n1, h, w],
-% where (m1, n1) is the index of the smaller-(y,x) corner, and (h, w) is the 
-% height and width of the block. Here, we put line sources (w=1) at n1 =
-% n_source that spans the whole width of the simulation domain (m1=1, h=ny)
-B.pos = [1, n_source, ny, 1]; 
+% In mesti(), B_struct.pos = [m1, n1, h, w] specifies the position of a
+% block source, where (m1, n1) is the index of the smaller-(y,x) corner,
+% and (h, w) is the height and width of the block. Here, we put line
+% sources (w=1) at n1 = n_source that spans the whole width of the
+% simulation domain (m1=1, h=ny).
+B_struct.pos = [1, n_source, ny, 1]; 
 
-% B.data specifies the source profiles. It is a 2D array here where
-% B.data(:, a) stores the a-th input. We have M_in line sources with length ny 
-% so size(B.data) = [ny, M_in].
-B.data = B_L;
+% B_struct.data specifies the source profiles inside such block, with
+% B_struct.data(:, a) being the a-th source profile.
+B_struct.data = B_L;
 
 % We check that the input sources are sufficiently localized with little 
-% penetration into the PML; otherwise the Gaussian beams will not be accurately 
-% generated.
+% penetration into the PML; otherwise the Gaussian beams will not be
+% accurately generated.
 figure
 imagesc([1, M_in], y, abs(B_L))
 set(gca,'YDir','normal')
@@ -150,7 +150,7 @@ Above, the incident field *E*<sup>in</sup>(*x*, *y*) was not subtracted. Contrib
 
 ```matlab
 % We perform the output projection on the same plane as the line source
-C.pos = B.pos;
+C_struct.pos = B_struct.pos;
 
 % Step 1: Project E(x_source, y) onto the propagating channels.
 % The projection will be C_L*E(:,n_source)
@@ -170,7 +170,7 @@ C_L = exp(-1i*kx*(x_f-x_source)).*C_L; % size(C_L) = [N_prop, ny]
 C_L = (E_f_prop') * (mu.*C_L); % size(C_L) = [M_in, ny]
 
 % Normally, the next step would be
-% C.data = C_L.';
+% C_struct.data = C_L.';
 % However, we can see that C_L equals transpose(B_L)
 fprintf('max(|C_L-transpose(B_L)|) = %g\n', max(abs(C_L - B_L.'), [], 'all'));
 ```
@@ -184,6 +184,7 @@ max(|C_L-transpose(B_L)|) = 1.38778e-16
 % time and memory usage by specifying C = transpose(B).
 % This is expected by reciprocity -- when the set of inputs equals the set
 % of outputs, we typically have C = transpose(B) or its permutation.
+clear C_struct
 C = 'transpose_B';
 ```
 
@@ -197,7 +198,7 @@ syst.PML.npixels = nPML; % Put PML on all four sides
 % For a homogeneous space, the length of the simulation domain doesn't
 % matter, so we choose a minimal thickness of nx_temp = n_source + nPML
 syst.epsilon = n_bg^2*ones(ny, n_source + nPML);
-D = mesti(syst, B, C, [], opts);
+D = mesti(syst, B_struct, C, [], opts);
 ```
 
 ```text:Output
@@ -215,7 +216,7 @@ Factorizing ... elapsed time:   0.035 secs
 ```matlab
 % Compute the reflection matrix
 syst.epsilon = epsilon;
-r = mesti(syst, B, C, D, opts);
+r = mesti(syst, B_struct, C, D, opts);
 ```
 
 ```text:Output
@@ -235,7 +236,7 @@ Factorizing ... elapsed time:   0.242 secs
 For most applications, it is not necessary to compute the full field profile, since most experiments measure properties in the far field. Here, we compute the full field profile for the purpose of visualizing the system as the incident Gaussian beams are scanned across *y*.
 
 ```matlab
-field_profiles = mesti(syst, B, [], [], opts);
+field_profiles = mesti(syst, B_struct, [], [], opts);
 ```
 
 ```text:Output
