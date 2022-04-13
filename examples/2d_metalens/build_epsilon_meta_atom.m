@@ -19,7 +19,7 @@ function epsilon_meta_atom = build_epsilon_meta_atom(dx, n_bg, n_ridge, ridge_wi
 %   epsilon_meta_atom (numeric matrix, real or complex):
 %       Discretized relative permittivity profile of meta-atom
 
-% Number of pixel for the meta-atom 
+% Number of pixels for the meta-atom 
 nx = ceil(ridge_height/dx);    
 ny = ceil(w/dx);
 
