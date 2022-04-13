@@ -10,7 +10,7 @@ function [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(epsilon, k0dx
 %      Relative permittivity of the system.
 %   k0dx (numeric scalar, real or complex; required):
 %      Normalized frequency k0*dx = (2*pi/vacuum_wavelength)*dx.
-%   xBC (character vector or numcric scalar; required):
+%   xBC (character vector or numeric scalar; required):
 %      Boundary condition (BC) in x direction.
 %      For character inputs, the options are:
 %         'periodic'  - E_z(m,n+nx) = E_z(m,n)
@@ -24,7 +24,7 @@ function [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(epsilon, k0dx
 %      used with E_z(m,n+nx) = E_z(m,n)*exp(1i*xBC); in other words, xBC =
 %      kx_B*nx*dx = kx_B*p where kx_B is the Bloch wave number and p = nx*dx is
 %      the periodicity in x.
-%   yBC (character vector or numcric scalar; required):
+%   yBC (character vector or numeric scalar; required):
 %      Boundary condition in y direction, analogous to xBC.
 %   xPML (two-element cell array or scalar structure or []; optional):
 %      Parameters for perfectly matched layer (PML) in x direction.
@@ -221,7 +221,7 @@ s_d2f = ones(n,1); % s factor for d2f (on integer sites)
 
 % Below, u(x) is a function that goes linearly from u(x)=0 at one site before PML to u(x)=1 at the end of PML.
 % Let index i=0 be one site before PML, i=1 be first site of PML, so u(i=0)=0.
-% Note that even thouugh u(i=npixels) is the last site of PML on the lattice we explicitly simulate, we do not set u=1 there.
+% Note that even though u(i=npixels) is the last site of PML on the lattice we explicitly simulate, we do not set u=1 there.
 % For Dirichlet BC, the BC is such that f=0 at i=npixels+1, so we let u(i=npixels+1)=1, with an effective PML thickness of npixels+1 pixels.
 % For Neumann BC, the BC is such that df=0 at i=npixels+0.5, so we let u(i=npixels+0.5)=1, with an effective PML thickness of npixels+0.5 pixels.
 % For periodic BC, the BC is such that df(n+0.5)=df(0.5)*exp(1i*ka), so we also let u(i=npixels+0.5)=1 so that if PML is used on both sides, we will have u(0.5)=u(n+0.5)=1 so the conductivity profile is continuous across the edge if sigma_max is the same on both sides.
@@ -262,7 +262,7 @@ ind_d2f = {fliplr(1:npixels(1)), (n+1)-fliplr(1:npixels(2))};
 % Loop over PML on the two sides
 for ii = 1:2
     if npixels(ii) > 0
-        % s-factor s(u), ie coordinate transformation profile
+        % s-factor s(u), i.e. coordinate transformation profile
         % Eq 7.73 of Taflove & Hagness's 2005 FDTD book
         % kappa is real-coordinate stretching, used to accelerate attenuation of evanescent waves.
         % alpha is used for complex frequency shifting (CFS) to suppress reflection of low-frequency components for time-domain simulations.

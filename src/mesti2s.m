@@ -42,7 +42,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   This file builds the input and output channels using mesti_build_channels(),
 %   builds the matrices B and C, and then calls mesti() to solve the scattering
 %   problems. For scattering-matrix computations, mesti2s() can also use the
-%   recusrive Green's function method instead of calling mesti().
+%   recursive Green's function method instead of calling mesti().
 %
 %   === Input Arguments ===
 %   syst (scalar structure; required):
@@ -180,7 +180,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         PEC is used as the boundary condition behind the PML.
 %            Note that PML cannot be used when opts.method = 'RGF'.
 %      syst.use_continuous_dispersion (logical scalar; optional):
-%         Whether to use the dispersion equation of the continuous wave euqation
+%         Whether to use the dispersion equation of the continuous wave equation
 %         when building the input/output channels. Defaults to false, in which
 %         case the finite-difference dispersion is used.
 %      syst.m0 (real numeric scalar, optional, defaults to 0):
@@ -225,7 +225,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %               propagating channels of the form psi_a^L(m,n) above, with the
 %               superposition coefficients given by that column of in.v_L.
 %               size(in.v_L, 1) must equal N_prop_L, the total number of
-%               propagating channels on the left; size(in.v_L, 2) is the nummber
+%               propagating channels on the left; size(in.v_L, 2) is the number
 %               of input wavefronts.
 %            in.v_R (numeric matrix): Analogous to to in.v_L, but specifying
 %               input wavefronts from the right instead.
@@ -269,15 +269,15 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      conjugate transpose.
 %   opts (scalar structure; optional, defaults to an empty struct):
 %      A structure that specifies the options of computation; defaults to an
-%      empty strucgture. It can contain the following fields (all optional):
+%      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
 %         Whether to print info and timing to the standard output.
 %      opts.nx_L (non-negative integer scalar; optional, defaults to 0):
-%         Numer of pixels of homogeneous space on the left (syst.epsilon_L) to
+%         Number of pixels of homogeneous space on the left (syst.epsilon_L) to
 %         include when returning the spatial field profile; not used for
 %         scattering matrix computations.
 %      opts.nx_R (non-negative integer scalar; optional, defaults to 0):
-%         Numer of pixels of homogeneous space on the right (syst.epsilon_R) to
+%         Number of pixels of homogeneous space on the right (syst.epsilon_R) to
 %         include when returning the spatial field profile; not used for
 %         scattering matrix computations. Note that opts.nx_R can still be used
 %         in one-sided geometries where syst.epsilon_R is not given; the field
@@ -306,7 +306,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %                     iterative refinement.
 %            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
 %                     with forward and backward substitutions, and optionally
-%                     projec with C.
+%                     project with C.
 %            'RGF'  - Recursive Green's function method. Cannot be used for
 %                     computing the full field profile or with iterative
 %                     refinement, and cannot be used with PML.
@@ -1126,7 +1126,7 @@ else
 end
 
 % Here we build:
-% (1) the blocks of  input matrix B on the left and right surfaces: B_L (at n=0) and B_R (at n=nx+1)
+% (1) the blocks of input matrix B on the left and right surfaces: B_L (at n=0) and B_R (at n=nx+1)
 % (2) the blocks of output matrix C on the left and right surfaces: C_L (at n=0) and C_R (at n=nx+1)
 % B_L, C_L, B_R, C_R are at one pixel outside syst.epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx. All of them are dense matrices with size(..., 1) = ny.
 % A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx).
@@ -1331,10 +1331,10 @@ S = (-2i)*S;
 
 % Recover the original list of input and output channels if we symmetrized K = [A,B;C,0]
 if use_transpose_B % when opts.symmetrize_K = true
-    % Indicies for the original list of input channels on the left
+    % Indices for the original list of input channels on the left
     ind_in = ind_in_out_L(1:M_in_L);
 
-    % Indicies for the original list of output channels on the left
+    % Indices for the original list of output channels on the left
     % There is no need to use ind_prop_conj again since the use of C = transpose(B) already compensates the previous use of ind_prop_conj.
     ind_out = ind_in_out_L(M_in_L+(1:M_out_L));
 

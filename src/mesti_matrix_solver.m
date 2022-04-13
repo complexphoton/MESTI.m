@@ -30,7 +30,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      needed, the user can set C = [] here.
 %   opts (scalar structure; optional):
 %      A structure that specifies the options of computation; defaults to an
-%      empty strucgture. It can contain the following fields (all optional):
+%      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
 %         Whether to print info and timing to the standard output.
 %      opts.is_symmetric_A (logical scalar; optional):

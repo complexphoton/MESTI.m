@@ -41,7 +41,7 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %      Relative permittivity of the homogeneous space on the right. Only the
 %      left side will be considered if epsilon_R is not given or is [].
 %   use_continuous_dispersion (logical scalar; optional, defaults to false):
-%      Whether to use the dispersion equation of the continuous wave euqation
+%      Whether to use the dispersion equation of the continuous wave equation
 %      when building the input/output channels. Defaults to false, in which case
 %      the finite-difference dispersion is used.
 %   m0 (real numeric scalar, optional, defaults to 0):
@@ -63,14 +63,14 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %         is the respective transverse profile. The transverse modes form a
 %         complete and orthonormal set, so the ny-by-ny matrix
 %         channels.fun_phi(channels.kydx_all) is unitary.
-%      channels.L (scalar structue):
+%      channels.L (scalar structure):
 %         When epsilon_L and epsilon_R are both given (i.e., epsilon_R is given
 %         and is not []), the properties specific to the left and right sides
 %         are returned in channels.L and channels.R; channels.L and channels.R
 %         are both scalar structures, and their fields are described below.
 %            When only epsilon_L = epsilon_bg is given; there will be no
 %         channels.L and channels.R; instead, the fields that would have been
-%         asigned to channels.L will be asigned to channels directly. For
+%         assigned to channels.L will be assigned to channels directly. For
 %         example, channels.L.N_prop will be channels.N_prop instead.
 %      channels.L.N_prop (integer scalar):
 %         Number of propagating channels.
@@ -115,7 +115,7 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %            For Bloch periodic boundary with non-zero ky_B, complex conjugation
 %         maps ky to -ky where ky_B is flipped, so such permutation does not
 %         exist, and ind_prop_conj is not given.
-%      channels.R (scalar structue; optional):
+%      channels.R (scalar structure; optional):
 %         Structure containing properties specific to the right (R) side,
 %         similar to channels.R; only provided when epsilon_R is given.
 %
@@ -316,8 +316,8 @@ if ~use_continuous_dispersion
     side.kxdx_all = 2*asin(sqrt(sin_kxdx_over_two_sq));
 
     % Indices of the propagating channels
-    % When k0dx2_epsilon is real, these are indicies of the channels with real-valued kxdx
-    % When k0dx2_epsilon is complex, these are indicies of the channels we consider "propagating-like"; they have complex kxdx with 0 < real(kxdx) < pi. When k0dx2_epsilon is tuned to a real number continuously, this set continuously becomes that at real k0dx2_epsilon.
+    % When k0dx2_epsilon is real, these are indices of the channels with real-valued kxdx
+    % When k0dx2_epsilon is complex, these are indices of the channels we consider "propagating-like"; they have complex kxdx with 0 < real(kxdx) < pi. When k0dx2_epsilon is tuned to a real number continuously, this set continuously becomes that at real k0dx2_epsilon.
     side.ind_prop = find((real(sin_kxdx_over_two_sq) > 0) & (real(sin_kxdx_over_two_sq) < 1));
 
     % Here we address the sign choice of kxdx, namely its branch

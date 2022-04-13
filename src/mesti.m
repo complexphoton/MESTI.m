@@ -220,10 +220,10 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         If the non-zero elements of matrix B do not have rectangular shapes in
 %      space [e.g., for total-field/scattered-field (TF/SF) simulations], one
 %      can use a structure array with the following fields:
-%         B_struct.ind (integer vector): linear indicies of the spatial
+%         B_struct.ind (integer vector): linear indices of the spatial
 %            locations of the non-zero elements of matrix B, such that
 %            syst.epsilon(B_struct.ind) are the points where the source is
-%            placed. Such linear indicies can be constructed from sub2ind().
+%            placed. Such linear indices can be constructed from sub2ind().
 %         B_struct.data (2D numeric matrix): non-zero elements of matrix B at
 %            the locations specified by B_struct.ind. Specifically,
 %            B_struct.data(i,a) is the a-th input source at the location of
@@ -284,10 +284,10 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         If the non-zero elements of matrix C do not have rectangular shapes in
 %      space [e.g., for near-field-to-far-field transformations], one can set C
 %      to a structure array with the following fields:
-%         C_struct.ind (integer vector): linear indicies of the spatial
+%         C_struct.ind (integer vector): linear indices of the spatial
 %            locations of the non-zero elements of matrix C, such that
 %            syst.epsilon(C_struct.ind) are the points where the projection is
-%            placed. Such linear indicies can be constructed from sub2ind().
+%            placed. Such linear indices can be constructed from sub2ind().
 %         C_struct.data (2D numeric matrix): non-zero elements of matrix C at
 %            the locations specified by C_struct.ind. Specifically,
 %            C_struct.data(i,b) is the b-th projection at the location of
@@ -304,7 +304,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      profile computations where C = [], the user must also set D = [].
 %   opts (scalar structure; optional, defaults to an empty struct):
 %      A structure that specifies the options of computation; defaults to an
-%      empty strucgture. It can contain the following fields (all optional):
+%      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
 %         Whether to print info and timing to the standard output.
 %      opts.prefactor (numeric scalar, real or complex; optional):
@@ -335,7 +335,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %                     iterative refinement.
 %            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
 %                     with forward and backward substitutions, and optionally
-%                     projec with C.
+%                     project with C.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if C is given and opts.iterative_refinement = false, then
 %         'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
@@ -823,7 +823,7 @@ if isstruct(B)
             elseif ~iscolumn(ind)
                 ind = ind(:);
             end
-            nxy_data = numel(ind); % number of linear indicies
+            nxy_data = numel(ind); % number of linear indices
             M_ii = size(data, 2); % number of inputs
         end
 
@@ -955,7 +955,7 @@ if isstruct(C)
             elseif ~iscolumn(ind)
                 ind = ind(:);
             end
-            nxy_data = numel(ind); % number of linear indicies
+            nxy_data = numel(ind); % number of linear indices
             M_ii = size(data, 2); % number of outputs
         end
 
