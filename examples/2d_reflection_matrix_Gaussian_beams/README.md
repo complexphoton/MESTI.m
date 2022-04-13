@@ -52,7 +52,7 @@ We consider inputs being Gaussian beams focused at (*x*<sub>f</sub>, *y*<sub>f</
 
 Perfect Gaussian beams can be generated with the total-field/scattered-field (TF/SF) method. But since the cross section of the beam decays exponentially in *y*, we can generate Gaussian beams to a high accuracy simply by placing line sources at a cross section on the left, which is what we do here. We place the line sources at *x* = *x*<sub>source</sub>, just in front of the PML.
 
-To determine the required line sources, we (1) take the the field profile of the desired incident Gaussian beam at the focal plane, *E*<sup>in</sup>(*x*<sub>f</sub>, *y*) = *E*<sub>0</sub>exp(-(*y* - *y*<sub>f</sub>)<sup>2</sup>/*w*<sup>2</sup>), (2) project it onto the propagating channels (i.e., ignoring evanescent contributions) of free space, (3) back propagate it to the source plane to determine *E*<sup>in</sup>(*x*<sub>source</sub>, *y*) in the propagating-channel basis, and (4) determine the line source necessary to generate such *E*<sup>in</sup>(*x*<sub>source</sub>, *y*).
+To determine the required line sources, we (1) take the field profile of the desired incident Gaussian beam at the focal plane, *E*<sup>in</sup>(*x*<sub>f</sub>, *y*) = *E*<sub>0</sub>exp(-(*y* - *y*<sub>f</sub>)<sup>2</sup>/*w*<sup>2</sup>), (2) project it onto the propagating channels (i.e., ignoring evanescent contributions) of free space, (3) back propagate it to the source plane to determine *E*<sup>in</sup>(*x*<sub>source</sub>, *y*) in the propagating-channel basis, and (4) determine the line source necessary to generate such *E*<sup>in</sup>(*x*<sub>source</sub>, *y*).
 
 ```matlab
 % Parameters of the input Gaussian beams
@@ -73,7 +73,7 @@ M_in = length(y_f); % number of inputs
 % Step 1: Generate the list of E^in(x=x_f, y).
 % Here, y.' is an ny-by-1 column vector, and y_f is a 1-by-M_in row vector.
 % So, y.' - y_f is an ny-by-M_in matrix by implicit expansion.
-% Then, E_f is an ny-by-M_in matrix whos m-th column is the cross section
+% Then, E_f is an ny-by-M_in matrix whose m-th column is the cross section
 % of the m-th Gaussian beam at x = x_f.
 E_f = exp(-(y.' - y_f).^2/(w_0^2)); % size(E_f) = [ny, M_in]
 
