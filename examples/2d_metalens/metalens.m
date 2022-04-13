@@ -153,8 +153,8 @@ B_struct = struct('pos', {[],[]}, 'data', {[],[]});
 % and (h, w) is the height and width of the block. Here, we put line
 % sources (w=1) on the left surface (n1=n_L) and the right surface
 % (n1=n_R) with height ny_L and ny_R centered around the metalens.
-n_L = nx_extra_left;         % x pixel immmediately before the metalens
-n_R = n_L + nx_metalens + 1; % x pixel immmediately after the metalens
+n_L = nx_extra_left;         % x pixel immediately before the metalens
+n_R = n_L + nx_metalens + 1; % x pixel immediately after the metalens
 m1_L = ny_extra_low + 1;     % first y pixel of the metalens
 m1_R = nPML + 1;             % first y pixel of the output projection window
 B_struct(1).pos = [m1_L, n_L, ny_L, 1];
