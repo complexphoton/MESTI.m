@@ -1,5 +1,5 @@
 %% Distributed Bragg reflector
-% Example of a alternating sequence of layers of two dielectric material (also 
+% Example of an alternating sequence of layers of two dielectric material (also 
 % called a distributed Bragg reflector (DBR)) using SCSA 
 % 
 % Use MESTI2S() to compute 
