@@ -303,6 +303,7 @@ kx_ASP = sqrt((n_air*2*pi/wavelength)^2 - ky_ASP.^2);
 
 % We only keep the propagating components in ASP
 ind_prop_ASP = find(abs(ky_ASP) < (n_air*2*pi/wavelength));
+kx_ASP_prop = kx_ASP(ind_prop_ASP); % must be a column vector per asp() syntax
 
 % List of incident angles in air [degree]
 theta_in_list = asind(sin(atan(channels_L.kydx_prop(ind_in_L)./channels_L.kxdx_prop(ind_in_L)))*n_silica/n_air); 
@@ -355,7 +356,7 @@ for ii = 1:n_angles_profiles
     Ez0_ASP = Ez0(ind_ASP,:); 
 
     % Obtain Ez(x,y) using ASP.
-    Ez_ASP = asp(Ez0_ASP, x_plot, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
+    Ez_ASP = asp(Ez0_ASP, x_plot, kx_ASP_prop, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
 
     % Only keep the part within the plotting range
     intensity_profiles(:,:,ii) = abs(Ez_ASP(ind_plot, :)).^2;
@@ -395,7 +396,7 @@ Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t_ideal,ny_R), -1);
 % Sampling fields from high resolution to coarse resolution 
 Ez0_ASP = Ez0(ind_ASP,:); 
 % Use angular spectrum propagation to let the field propagate to the focal plane
-Ez_focal_ideal = asp(Ez0_ASP, x_focal_plane, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
+Ez_focal_ideal = asp(Ez0_ASP, x_focal_plane, kx_ASP_prop, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
 
 % Calculate the transmission efficiency and field profile in the focal passing through hyperbolic metalens
 
@@ -440,7 +441,7 @@ for ii = 1:(size(batch,2)-1)
     % Sampling fields from high resolution to coarse resolution
     Ez0_ASP = Ez0(ind_ASP,:); 
     % Use angular spectrum propagation to let the field propagate to the focal plane
-    Ez_focal = asp(Ez0_ASP, x_focal_plane, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
+    Ez_focal = asp(Ez0_ASP, x_focal_plane, kx_ASP_prop, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
     
     % In some large angles, there some artifact peaks on different sides 
     % of the lens, so we take the value of Strehl ratio from right side of 
@@ -463,6 +464,7 @@ norm_factor = 100/max(intensity_profiles, [], 'all');
 
 % Loop through Gaussian beams focused at different locations.
 colormap('hot');
+deg = char(176);
 for ii = 1:n_angles_profiles
     a_ii = a_list(ii);
     theta_in = theta_in_list(a_ii);
@@ -483,7 +485,7 @@ for ii = 1:n_angles_profiles
     xticks([0 300 600])
     yticks([-500 0 500])
     set(gca,'fontsize',16);
-    %title(['\theta_{\rm{in}} = ',sprintf('%4.1f', theta_in), char(176)]);
+    %title(['\theta_{in} = ', sprintf('%4.1f', theta_in),  deg]);
 
     % Plot transmission efficiency and Strehl ratio
     subplot(1,2,2);
@@ -495,8 +497,8 @@ for ii = 1:n_angles_profiles
     ylabel('Strehl ratio')
     xlim([-90 90])
     ylim([5e-3 1])
-    xticks([-90 -45 0 45 90]);
-    xticklabels({['90', char(176)], ['-45', char(176)], ['0', char(176)], ['45', char(176)], ['90', char(176)],})
+    xticks(-90:45:90)
+    xticklabels({['-90' deg], ['-45' deg], ['0' deg], ['45' deg], ['90' deg]})
     yyaxis right
     plot(theta_in_list(1:M_L), transmission_efficiency, 'linewidth', 1.5)
     hold on
