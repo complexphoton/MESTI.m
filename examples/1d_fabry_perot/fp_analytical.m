@@ -27,9 +27,9 @@ for ii = 1:n_lambda
     k0 = 2*pi/wavelength; % wavevector
 
     % According to the formula 7.1-63 in Fundamental of photonics by Saleh and Teich, for TM polarized wave
-    Mi =  (1/(2*n_slab))*[n_bg+n_slab, n_slab-n_bg; n_slab-n_bg, n_bg+n_slab]; % Transfer matrix of the entrance boundary
-    Mo =  [exp(1i*n_slab*k0*thickness), 0; 0, exp(-1i*n_slab*k0*thickness)];  % Transfer matrix inside the slab
-    Me =  (1/(2*n_bg))*[n_slab+n_bg, n_bg-n_slab; n_bg-n_slab, n_slab+n_bg]; % Transfer matrix of the exit boundary
+    Mi = (1/(2*n_slab))*[n_bg+n_slab, n_slab-n_bg; n_slab-n_bg, n_bg+n_slab]; % Transfer matrix of the entrance boundary
+    Mo = [exp(1i*n_slab*k0*thickness), 0; 0, exp(-1i*n_slab*k0*thickness)];  % Transfer matrix inside the slab
+    Me = (1/(2*n_bg))*[n_slab+n_bg, n_bg-n_slab; n_bg-n_slab, n_slab+n_bg]; % Transfer matrix of the exit boundary
     M = Me*Mo*Mi; % Total transfer matrix
     % According to the formula 7.1-6 in Fundamental of photonics by Saleh and Teich, the relation between scattering matrix and transfer matrix 
     S = 1/M(2,2)*[M(1,1)*M(2,2)-M(1,2)*M(2,1), M(1,2) ; -M(2,1), 1];
