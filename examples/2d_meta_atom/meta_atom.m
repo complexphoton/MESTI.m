@@ -4,7 +4,7 @@
 % Use mesti2s() to 
 % 
 % 1. Computing the transmission coefficient of meta-atom with different ridge 
-% widths and find meta-atoms satisfying 8 discrete ideal relative phase over 
+% widths and find meta-atoms satisfying 8 discrete ideal relative phases over 
 % [0, 2pi).
 % 2. Scanning over ridge width and incident angle to get phase and amplitude 
 % map of transmission coefficient.
@@ -75,8 +75,8 @@ title('Meta-atom','FontSize',20)
 
 syst.yBC = 'periodic'; % Periodic boundary in y direction
 % In periodic boundary, since 2*w/(lambda/n_silica) ~ 1, only one
-% propagation channel is on the left. Our ky(a) = a*2*pi/W in periodic boundary 
-% and ky = 0 is the only propagation channel whose incident angle is normal. 
+% propagating channel is on the left. Our ky(a) = a*2*pi/W in periodic boundary 
+% and ky = 0 is the only propagating channel whose incident angle is normal. 
 
 
 ridge_width_list = 40:0.1:200; % List of ridge width: from 40 nm to 200 nm with 0.1 nm increment
@@ -159,7 +159,7 @@ caxis([0, 2*pi]);
 xlabel('Pillar width (nm)')
 ylabel('\theta_{in} (degree)')
 title('Phase')
-cyclic_color =  [flipud(pink); bone]; 
+cyclic_color = [flipud(pink); bone]; 
 colormap(cyclic_color)
 colorbar
 hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
