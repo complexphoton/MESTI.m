@@ -20,7 +20,7 @@ module load intel
 
 ### Running MATLAB interface for MUMPS
 
-In some cases, system cannot find the BLAS and LAPACK libraries by itself when users run MATLAB interface for MUMPS. To solve this issue, users can `export LD_PRELOAD` before running MATLAB. For example, if BLAS and LAPACK libraries are used through Intel MKL, users can typing,
+In some cases, system cannot find the BLAS and LAPACK libraries by itself when users run MATLAB interface for MUMPS. To solve this issue, users can `export LD_PRELOAD` before running MATLAB. For example, if BLAS and LAPACK libraries are used through Intel MKL, users can type,
 
 ```shell
 export LD_PRELOAD=$MKLROOT/libmkl_intel_lp64.so:$MKLROOT/libmkl_sequential.so:$MKLROOT/libmkl_intel_thread.so:$MKLROOT/libmkl_core.so
