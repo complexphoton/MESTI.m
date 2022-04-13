@@ -19,7 +19,7 @@ function f = asp(f0, x, kx, ind_prop, ny_tot, ny_pad_low)
 %   ny_tot (numeric scalar, real):
 %       Number of grid points in the transverse (y) direction for the ASP
 %   ny_pad_low (numeric scalar, real):
-%       Number of zeros to padon one low side.
+%       Number of zeros to pad on one low side.
 %   === Output Arguments ===
 %   f (numeric column vector or matrix):
 %       Field profile at x0+x plane 
@@ -32,9 +32,9 @@ if ~isequal(size(kx), [ny_tot,1])
 end
 
 if size(x,2) ~= 1 && size(f0,2) ~= 1
-    error(['Either mutliple propation distances or mutliple intial fields ' ...
-        'can be supported, but cannot input mutliple propation distances ' ...
-        'and mutliple intial fields']);    
+    error(['Either multiple propagation distances or multiple initial fields ' ...
+        'can be supported, but cannot input multiple propagation distances ' ...
+        'and multiple initial fields']);    
 end
 
 % Fourier transform f(x=0,y) to f(x=0,ky), as in Eq. (S43) of the SCSA paper.
