@@ -30,7 +30,7 @@ function f = asp(f0, x, kx_prop, ny_tot, ny_pad_low)
 %
 %   === Output Arguments ===
 %   f (numeric column vector or matrix):
-%       Field profile(s) f(x,y). Different columns corresponds to
+%       Field profile(s) f(x,y). Different columns correspond to
 %       different initial profiles (if f0 has more than one column) or
 %       different distance x (if x is a row vector).
 
