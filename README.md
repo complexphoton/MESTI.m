@@ -35,7 +35,7 @@ Several examples are given in the [examples](./examples) folder, which illustrat
 3. [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
 4.  [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
 5. [Meta-atom design for metasurfaces](./examples/2d_meta_atom): 2D, using <code>mesti2s()</code> with Bloch periodic boundary.
-6. [Angle dependence of a mm-wide metalens](./examples/2d_metalens_full): 2D, using <code>mesti()</code> with compressed input/output matrices (SCSA-c).
+6. [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (SCSA-c).
 
 More examples will be added in the future.
 
