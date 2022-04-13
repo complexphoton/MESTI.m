@@ -85,10 +85,10 @@ nframes_per_period = 20; % Number of frames per period
 x = (-(opts.nx_L-0.5):(nx+opts.nx_R))*dx;
 y = (0.5:ny)*dx;
 
-% Aanimate the field profile with plane-wave input
+% Animate the field profile with plane-wave input
 animate_field_profile(field_profiles(:,:,1), x0_list, y0_list, r0_list, x, y, ...
     nperiod, nframes_per_period);
 
-% Aanimate the field profile of the open channel
+% Animate the field profile of the open channel
 animate_field_profile(field_profiles(:,:,2), x0_list, y0_list, r0_list, x, y, ...
     nperiod, nframes_per_period);
