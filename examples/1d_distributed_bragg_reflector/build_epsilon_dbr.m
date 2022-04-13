@@ -4,7 +4,7 @@ function epsilon_dbr = build_epsilon_dbr(dx, n_bg, n1, n2, d1, d2, n_pair)
 %
 %   === Input Arguments ===
 %   dx (numeric scalar, real):
-%       Grid size               
+%       Grid size
 %   n_bg (numeric scalar, real or complex):
 %       Refractive index of background material
 %   n1 (numeric scalar, real or complex):
@@ -34,7 +34,7 @@ for ii = 1:nx
             order_of_pair = floor(ii*dx/a)+1; 
             pixel_n2_ratio = (ii*dx - ((order_of_pair-1)*a+d1))/dx;
             pixel_n1_ratio = (1 - pixel_n2_ratio);
-            epsilon_dbr(ii) = (n2^2*pixel_n2_ratio + n1^2*pixel_n1_ratio); % Average permittivity           
+            epsilon_dbr(ii) = (n2^2*pixel_n2_ratio + n1^2*pixel_n1_ratio); % Average permittivity
         else
             epsilon_dbr(ii) = n2^2; % Whole pixel in material 2
         end
@@ -42,7 +42,7 @@ for ii = 1:nx
             order_of_pair = floor(ii*dx/a)+1; 
             pixel_n1_ratio = (ii*dx - ((order_of_pair-1)*a))/dx;
             pixel_n2_ratio = (1 - pixel_n1_ratio);
-            epsilon_dbr(ii) = (n2^2*pixel_n2_ratio + n1^2*pixel_n1_ratio); % Average permittivity       
+            epsilon_dbr(ii) = (n2^2*pixel_n2_ratio + n1^2*pixel_n1_ratio); % Average permittivity
     end
 end
 
