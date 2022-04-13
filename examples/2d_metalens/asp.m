@@ -1,4 +1,4 @@
-function f = asp(f0, x, kx_prop, ind_prop, ny_tot, ny_pad_low)
+function f = asp(f0, x, kx_prop, ny_tot, ny_pad_low)
 %ASP Use angular spectrum propagation (ASP) to propagate a scalar field
 %   from f0 = f(x=0,y) to f(x,y).
 %   === Input Arguments ===
@@ -14,13 +14,13 @@ function f = asp(f0, x, kx_prop, ind_prop, ny_tot, ny_pad_low)
 %       propagate to multiple distances when multiple initial fields are
 %       given).
 %   kx_prop (N_prop-by-1 column vector):
-%       Longitudinal wave number kx. It can include both propagating and
-%       evanescent ones (in which also all of them will be propagated), or
-%       only propagating ones (in which case evanescent ones will be
-%       ignored). length(kx_prop) must be an odd number or ny_tot.
-%   ind_prop (integer vector with length N_prop; optional):
-%       Indices of the N_prop propagating channels among all ny_tot
-%       channels. When N_prop == ny, it doesn't need to be given.
+%       Longitudinal wave number kx. It can either (1) include all of the
+%       ny_tot wave numbers (both propagating and evanescent ones) in which
+%       case N_prop = length(kx_prop) must equal ny_tot and all of them
+%       will be propagated, or (2) include a subset of the wave numbers up
+%       to some cutoff in ky (e.g., the propagating ones) in which case
+%       N_prop = length(kx_prop) must be an odd number and only these
+%       components will be propagated.
 %   ny_tot (integer scalar; optional):
 %       Total number of grid points in y direction, including padded
 %       zeros. Must be no smaller than ny and N_prop. Defaults to ny.
@@ -50,15 +50,8 @@ end
 if ~iscolumn(kx_prop); error('kx_prop must be a column vector.'); end
 N_prop = numel(kx_prop);
 
-% ind_prop is optional when N_prop == ny
-if nargin < 4 && N_prop ~= ny
-    error('When length(kx_prop) ~= size(f0,1), ind_prop must be given.');
-elseif ~(isvector(ind_prop) && numel(ind_prop) == N_prop)
-    error('ind_prop, when given, must be an integer vector with length equal length(kx_prop) = %d.', N_prop);
-end
-
 % no zero-padding unless ny_tot is given
-if nargin < 5
+if nargin < 4
     ny_tot = ny;
 elseif ny_tot < ny
     error('ny_tot, when given, must be no smaller than size(f0,1) = %d.', ny);
@@ -67,7 +60,7 @@ elseif ny_tot < N_prop
 else
 
 % pad zeros symmetrically by default
-if nargin < 6
+if nargin < 5
     ny_pad_low = round((ny_tot-ny)/2);
 elseif ny_pad_low + ny > ny_tot
     error('ny_pad_low + ny must be no greater than size(f0,1) = %d.', ny);
@@ -96,6 +89,7 @@ else
         error('length(kx_prop) = %d must be an odd number when it is not ny_tot.', N_prop);
     end
     a_max = round((N_prop-1)/2);
+    ind_prop = [1:(a_max+1), (ny_tot-a_max+1):ny_tot];
     f_fft_prop = exp(1i*kx_prop.*x).*f0_fft(ind_prop,:);
     f = exp((-2i*pi*a_max/ny_tot)*(0:(ny_tot-1)).').* ...
             ifft(circshift(f_fft_prop, a_max), ny_tot, 1);
