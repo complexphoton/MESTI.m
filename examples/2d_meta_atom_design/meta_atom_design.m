@@ -107,7 +107,7 @@ set(gca, 'fontsize', 20, 'FontName','Arial')
 % covering the relative phases equally spacing over [0, 2pi) are used.
 
 n_phases = 8;
-ideal_rel_phase_over_pi_list = 2*linspace(0, 1-1/n_phases, n_phases); % Have 8 discrete equally spacing ideal relative phases over [0, 2pi).
+ideal_rel_phase_over_pi_list = (2/n_phases)*(0:(n_phases-1)); % 8 equally spaced relative phases from 0 to 2pi.
 
 % Find meta-atoms which are closest to the ideal relative phase through nearest neighbor interpolation.
 ind = interp1(rel_phi_over_pi_list,1:length(rel_phi_over_pi_list),ideal_rel_phase_over_pi_list,'nearest');
