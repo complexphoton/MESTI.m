@@ -1,462 +1,515 @@
-# Full-wave Transmission-Matrix Computation on a mm-wide Metalens
-
+# Angle dependence of a mm-wide metalens
 
 In this example, we:
 
-   -  Build a mm-diameter high-NA hyperbolic metalens based on the [meta-atom design example](../2d_meta_atom_design).
-   -  Use mesti() to compute the transmission matrix of that mm-diameter metalens, using compressed input/output matrices (SCSA-c).
-   -  Use angular spectrum propagation to obtain field profiles away from the metalens. 
-   -  Map out the transmission efficiency and Strehl ratio for all incident angles. 
+  - Build a mm-diameter hyperbolic metalens based on the [meta-atom design example](../2d_meta_atom).
+  - Use mesti() to compute its transmission matrix, using compressed input/output matrices (SCSA-c).
+  - Use angular spectrum propagation to obtain field profile away from the metalens. 
+  - Map out the transmission efficiency and Strehl ratio for all incident angles.
 
-# System parameters
+# System parameters and general setup
 
 ```matlab
 clear 
 
-% System parameters
-n_air    = 1;    % Refractive index of air
-n_silica = 1.46; % Refractive index of silica
-n_TiO2   = 2.43; % Refractive index of TiO2
-lambda   = 532;  % Free-space wavelength [nm]
-dx = lambda/40;  % Discretization grid size [nm]
-w  = 18*dx;      % Width of meta-atom cell [nm]
-l  = 600;        % Thickness of meta-atom cell [nm]
-```
-
-# Construct the mm-wide hyperbolic metalens
-
-```matlab
-D_target = 1000; % Target diameter for the metalens [micron]
-n_meta_atom = ceil(D_target*1e3/w); % Number of meta-atom to construct 1-mm metalens
-ny_tot = ceil(w/dx)*n_meta_atom; % Total number of pixel for the 1-mm metalens in y direction
-
-% Metalens parameters
-D = n_meta_atom*w/1000; % Actual diameter of the metalens [micron]
+n_air    = 1.0;     % Refractive index of air on the right
+n_silica = 1.46;    % Refractive index of silica substrate on the left
+n_TiO2   = 2.43;    % Refractive index of TiO2 ridges
+wavelength = 0.532; % Vacuum wavelength [micron]
+W  = 1000;          % Approximate width of the metalens [micron]
 focal_length = 300; % Focal length of the metalens [micron]
-NA = sin(atan(D/(2*focal_length))); % Numerical aperture of the metalens
+dx = wavelength/40; % Discretization grid size [micron]
+Lambda = 18*dx;     % Width (i.e., periodicity) of each unit cell [micron]
+L  = 0.6;           % Thickness of the metalens [micron]
 
-y_mid_cell = ((0.5:n_meta_atom) - (n_meta_atom/2))*w/1000; % Middle position of each meta-atom inside metalens [micron] 
-target_phase = (2*pi/(lambda/1000))*(focal_length - sqrt(focal_length^2 + y_mid_cell.^2)); % Target phase of the hyperbolic metalens over each meta-atom 
+n_meta_atom = ceil(W/Lambda); % Number of meta-atoms
+W = n_meta_atom*Lambda;       % Actual width of the metalens [micron]
 
-% Load the 8 discrete ridge width list and its phase from meta_atom_design.mlx.
-load('meta_atom.mat', 'ridge_width_design_list', 'phi_over_pi_design_list');
+% Parameters for the input and output
+W_in  = W;                 % Width of the incident wave [micron] 
+W_out = W + 40*wavelength; % Width where we sample the transmitted field [micron]
+                           % (a larger W_out ensures all transmitted light is captured)
 
-% Number of pixels for the meta-atom 
-nx = ceil(l/dx);    
-ny = ceil(w/dx);
-ridge_hight = l; % Ridge height is the thickness of meta-atom cell.
+% Parameters for the compressed input matrices
+M_L_pad_half = 1000; % Half the number of extra channels padded on the left
+M_R_pad_half = 1000; % Half the number of extra channels padded on the right
+ny_window_L = 1 + round(10*wavelength/dx); % Truncation window size
+ny_window_R = ny_window_L;
+use_Hann_window = true; % Use the Hann window function.
 
-% Construct epsilon library for 8 different meta-atom.
-ridge_width_libaray = ridge_width_design_list;
-epsilon_libaray = zeros(ny,nx,size(ridge_width_design_list,2)); % Storing the permittivity profile for 8 different meta-atoms.
-for jj =1:length(ridge_width_design_list)
-    ridge_width = ridge_width_design_list(jj); % Ridge width [nm]
-    epsilon_libaray(:,:,jj)= build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridge_hight, w);
-end
-
-% Find the ridge width of each meta-atom in the metalens closest to the target phase. 
-phi_over_pi_design_list(end) = 2; 
-phi_over_pi_design_list = [0 phi_over_pi_design_list]; % Wrap up the phase.
-ridge_width_design_list = [ridge_width_design_list(end)  ridge_width_design_list];
-ridge_width_list_lens = interp1(phi_over_pi_design_list, ridge_width_design_list, mod(target_phase, 2*pi)/pi, 'nearest');
-
-% Construct permittivity profile for whole metalens.
-epsilon = zeros(ny_tot,nx);
-% Looping over each meta-atom to construct the permittivity profile
-for jj =1:length(ridge_width_list_lens)
-    ridge_width = ridge_width_list_lens(jj);
-    ind = find(ridge_width_libaray==ridge_width);
-    epsilon((jj-1)*ny+(1:ny),:) = epsilon_libaray(:,:,ind);
-end
+syst.length_unit = 'µm';
+syst.wavelength = wavelength;
+syst.dx = dx;
+syst.PML.npixels = 20;  % Number of PML pixels (on all four sides)
 ```
 
-# General setup for mesti()
-
-
-Set up general input argument for the mesti() for this system.
+# Build the relative permittivity profile of the system
 
 ```matlab
-syst.length_unit = 'nm'; % Length unit
-syst.wavelength = lambda; % Free-space wavelength [nm]
-syst.dx = dx; % Grid size of system [nm]
-% PML setup
-PML.npixels = 10; % Number of pixels of PM
-% Note that to compare the performance of common packages which set kappa_max = 1, here kappa_max is also to be 1. 
-PML.kappa_max = 1; % Kappa_max 
-nspacer = round(lambda/dx); % Number of pixels homogeneous space in front of PML
-npml = PML.npixels;
-syst.PML = PML; % Put PML on all four sides.
+% Number of pixels
+nx_unitcell = ceil(L/dx);
+ny_unitcell = Lambda/dx;
+nx_metalens = nx_unitcell;
+ny_metalens = n_meta_atom*ny_unitcell;
+                       
+% Mid-cell position of the meta-atoms [micron] 
+y_mid_cell = ((0.5:n_meta_atom) - (n_meta_atom/2))*Lambda;
 
-epsilon_L = n_silica^2; % Relative permittivity on the left hand side
-epsilon_R = n_air^2; % Relative permittivity on the right hand side
-[ny, nx] = size(epsilon); % Number of pixels in the hyperbolic metalens region along y and x direction
+% Target transmission phase shift of each meta-atom, meant to focus normal-incident light
+target_phase = (2*pi/wavelength)*(focal_length - sqrt(focal_length^2 + y_mid_cell.^2));
 
-% Include PML, homogeneous space, and source/detection region in permittivity profile.
-syst.epsilon = [epsilon_L*ones(ny+2*nspacer+2*npml,nspacer+npml+1),[epsilon_R*ones(nspacer+npml,nx); epsilon; epsilon_R*ones(nspacer+npml,nx)], epsilon_R*ones(ny+2*nspacer+2*npml,nspacer+npml+1)];
+% Load the ridge widths and associated phase shifts from the meta-atom example.
+% ridge_width_design_list is a row vector storing the ridge widths of 8 meta-atoms, in nm.
+% phi_over_pi_design_list = ((pi/4)*(0:7))/pi are their relative phase shifts.
+load('../2d_meta_atom/meta_atom.mat', 'ridge_width_design_list', 'phi_over_pi_design_list');
+ridge_width_design_list = ridge_width_design_list/1e3; % convert from nm to micron
+ridge_height = L; % Ridge height is the thickness of the metalens
+n_phases = numel(ridge_width_design_list);
 
-clear epsilon; % epsilon is no longer needed and is cleared.
+% epsilon_libaray(:,:,ii) stores the permittivity profile of the ii-th meta-atom in that list
+epsilon_libaray = zeros(ny_unitcell, nx_unitcell, n_phases);
+for ii = 1:n_phases
+    epsilon_libaray(:,:,ii)= build_epsilon_meta_atom(dx, n_air, n_TiO2, ...
+        ridge_width_design_list(ii), ridge_height, Lambda);
+end
 
-opts.use_continuous_dispersion = true; % Use continuous dispersion relation.
-opts.use_transpose_B = true; % Transpose(B) will be used as C.
-opts.prefactor = -2i;   % Prefactor for the source B
-opts.clear_syst = true; % syst is not needed afterwards and can be cleared
-opts.clear_BC = true;   % B is not needed afterwards and can be cleared
+% For each meta-atom in the metalens, assign it to be one of those 8 based on its target phase shift
+% The 2*pi phase (same as 0 phase) is added for the interpolation
+ind_meta_atom = interp1( ...
+    [phi_over_pi_design_list, 2], ...
+    [1:n_phases, 1], ...
+    mod(target_phase, 2*pi)/pi, 'nearest');
+
+% Construct the permittivity profile of the whole metalens.
+epsilon = zeros(ny_metalens, nx_metalens);
+for ii = 1:n_meta_atom
+    ind_y = (ii-1)*ny_unitcell+(1:ny_unitcell);
+    epsilon(ind_y,:) = epsilon_libaray(:,:,ind_meta_atom(ii));
+end
+
+% W_out > W, so we will pad extra pixels
+ny_R_extra_half = round((W_out-W)/dx/2);
+
+% Number of pixels along y for the source (on the left) and the projection (on the right)
+ny_L = ny_metalens;
+ny_R = ny_metalens + 2*ny_R_extra_half;
+W_in  = ny_L*dx;
+W_out = ny_R*dx;
+
+% Include homogeneous space and PML to the permittivity profile.
+epsilon_L = n_silica^2; % Relative permittivity on the left
+epsilon_R = n_air^2;    % Relative permittivity on the right and on the top & bottom
+nPML = syst.PML.npixels;
+nx_extra_left = 1 + nPML; % Add one pixel of free space for source and projection
+nx_extra_right = nx_extra_left;
+ny_extra_low = ny_R_extra_half + nPML;
+ny_extra_high = ny_extra_low;
+ny_tot = ny_metalens + ny_extra_low + ny_extra_high;
+syst.epsilon = [epsilon_L*ones(ny_tot, nx_extra_left), ...
+    [epsilon_R*ones(ny_extra_low,nx_metalens); epsilon; epsilon_R*ones(ny_extra_high,nx_metalens)], ...
+    epsilon_R*ones(ny_tot, nx_extra_right)];
 ```
 
-# Pre-processing for SCSA-c
+# Build compressed input-source matrix B
 
+Given the very large aspect ratio of the system, the input and output matrices B and C would have more nonzero elements than the Maxwell-operator matrix A. So, we compress matrices B and C, as described in supplementary section 5 of the SCSA paper. Here we build the compressed input matrix B.
 
-Here we build the transformed input matrix phi*Q*F in Eq. (S38) and \tilde{B}.
 
 ```matlab
 time1 = clock;
 
-lambda_over_dx = syst.wavelength/syst.dx; % Ratio between free-space wavelength and dx
-BC = 'periodic'; % Boundary condition for the channel
-k0dx = 2*pi/lambda_over_dx;  % Dimensionless frequency k0dx
-channels = mesti_build_channels(ny, BC, k0dx, epsilon_L, epsilon_R, opts.use_continuous_dispersion); % Set up the channels
-% Number of channels considering in the scattering matrix
-N_channel = channels.R.N_prop;
+% Obtain properties of propagating channels on the two sides.
+BC = 'periodic'; % Periodic boundary condition means the propagating channels are plane waves
+k0dx = 2*pi/wavelength*dx; % Dimensionless frequency k0*dx
+use_continuous_dispersion = true; % Use continuous dispersion relation for (kx,ky)
+channels_L = mesti_build_channels(ny_L, BC, k0dx, epsilon_L, [], use_continuous_dispersion);
+channels_R = mesti_build_channels(ny_R, BC, k0dx, epsilon_R, [], use_continuous_dispersion);
 
-% In this example, M_L and M_R are set to equal.
-% In general, users can set M_L and M_R to be different number.
-M_L = N_channel; % Number of channels considered on the left; note we only consider channels that can propagate in air
-M_R = N_channel; % Number of channels considered on the right
+% We use all propagating plane-wave channels on the right, over width W_out.
+M_R = channels_R.N_prop; % Number of channels on the right
 
-M_L_pad_half = 1000; % Number of half extra padded channels on the left
-M_R_pad_half = 1000; % Number of half extra padded channels on the right
-w_t_over_lambda_L = 10; % Truncation window over free-space wavelength on the left
-w_t_over_lambda_R = 10; % Truncation window over free-space wavelength on the right
-use_Hann_Q = true; % Use the weight matrix Q whose elements are Hann function.
+% For the incident plane waves (over width W_in), we only take the ones
+% that can propagate in air.
+% Indices of those channels (among the total channels_L.N_prop channels)
+ind_in_L = find(abs(channels_L.kydx_prop/dx) < (n_air*2*pi/wavelength));
+M_L = numel(ind_in_L); % Number of channels we use on the left
 
-w_t_over_dx_L = w_t_over_lambda_L*lambda_over_dx; % Truncation window over grid size on the left
-w_t_over_dx_R = w_t_over_lambda_R*lambda_over_dx; % Truncation window over grid size on the right
+% Total number of channels, including padding
+N_L = M_L + 2*M_L_pad_half;
+N_R = M_R + 2*M_R_pad_half;
 
-% Total number of channels considering (origin channels and extra padded channels)
-N_L = min([ny, M_L + 2*M_L_pad_half]);
-N_R = min([ny, M_R + 2*M_R_pad_half]);
+% Build the compressed input matrix on the left and right surfaces.
+% Note that even though we only need the transmission matrix with input
+% from the left, here we also include input channels from the right (same
+% as the output channels of interest). This allows us to make matrix K =
+% [A,B;C,0] symmetric.
+B_L = build_compressed_B(ny_L, N_L, ny_window_L, use_Hann_window);
+B_R = build_compressed_B(ny_R, N_R, ny_window_R, use_Hann_window);
 
-% Build matrix phiQF. 
-% Please refer to the function build_phiQF.
-[phiQF_L ,phiQF_R] = build_phiQF(ny, N_L, N_R, w_t_over_dx_L, w_t_over_dx_R, use_Hann_Q);
+% We take out the -2i prefactor of B so C will equal transpose(B).
+% The sqrt(mu) prefactor will be added later.
+opts.prefactor = -2i;
 
-% Specify inputs from left and from right
-B = struct('pos', {[],[]}, 'data', {[],[]});
+% Preallocate the 2-element structure array B_struct
+B_struct = struct('pos', {[],[]}, 'data', {[],[]});
 
-% In mesti(), B.pos specifies the position of a block source: [m1, n1, h, w],
-% where (m1, n1) is the index of the smaller-(y,x) corner, and (h, w) is the 
-% height and width of the block. Here, we put line sources (w=1) with
-% height h = ny on the left surface and right surface.
-m1_source  = nspacer+npml+1; % y index for the beginning of the sources
-n_source_L = nspacer+npml+1; % x index for the sources on the left
-n_source_R = n_source_L + nx + 1; % x index for the sources on the right
-B(1).pos = [m1_source, n_source_L, ny, 1]; 
-B(2).pos = [m1_source, n_source_R, ny, 1]; 
+% In mesti(), B_struct.pos = [m1, n1, h, w] specifies the position of a
+% block source, where (m1, n1) is the index of the smaller-(y,x) corner,
+% and (h, w) is the height and width of the block. Here, we put line
+% sources (w=1) on the left surface (n1=n_L) and the right surface
+% (n1=n_R) with height ny_L and ny_R centered around the metalens.
+n_L = nx_extra_left;         % x pixel immmediately before the metalens
+n_R = n_L + nx_metalens + 1; % x pixel immmediately after the metalens
+m1_L = ny_extra_low + 1;     % first y pixel of the metalens
+m1_R = nPML + 1;             % first y pixel of the output projection window
+B_struct(1).pos = [m1_L, n_L, ny_L, 1];
+B_struct(2).pos = [m1_R, n_R, ny_R, 1];
 
-% B.data specifies the source profiles. It is a 3D array where B.data(:, :, a)
-% stores the a-th input, or its equivalence reshaped into a 2D matrix; the
-% latter is what we use here.
-B(1).data = phiQF_L;
-B(2).data = phiQF_R;
+% B_struct.data specifies the source profiles inside such block, with
+% B_struct.data(:, a) being the a-th source profile.
+B_struct(1).data = B_L;
+B_struct(2).data = B_R;
 
-clear phiQF_L phiQF_R; % These are no longer needed, and B will also be cleared when calling mesti().
+clear epsilon B_L B_R; % These are no longer needed
 
-time2 = clock; timing_build_pre = etime(time2,time1); % Calculate the timing for the pre-processing
+% Time spent to build the compressed B
+time2 = clock; timing_compress = etime(time2,time1);
 ```
 
-# Call mesti()
+# Compute the scattering matrix
 
 ```matlab
-[S, stat] = mesti(syst, B, [], [], opts);
-```
+C = 'transpose_B'; % Specify C = transpose(B)
+D = []; % We only need the transmission matrix, for which D=0
+opts.clear_syst = true; % syst can be cleared in mesti()
+opts.clear_BC = true;   % B can be cleared in mesti()
 
+[S, stat] = mesti(syst, B_struct, C, D, opts);
+```
 
 ```text:Output
-System size: ny = 75304, nx = 148
+System size: ny = 76844, nx = 88
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
-Building B,C... elapsed time:   0.124 secs
-Building A...   elapsed time:   5.047 secs
+Building B,C... elapsed time:   0.123 secs
+Building A  ... elapsed time:   2.831 secs
 < Method: SCSA using MUMPS with AMD ordering (symmetric K) >
-Building K...   elapsed time:   2.306 secs
-Analyzing...    elapsed time:  11.413 secs
-Factorizing...  elapsed time:  67.505 secs
-          Total elapsed time:  87.527 secs
+Building K  ... elapsed time:   1.503 secs
+Analyzing   ... elapsed time:   6.979 secs
+Factorizing ... elapsed time:  43.675 secs
+          Total elapsed time:  56.054 secs
 ```
 
-# Post-processing for SCSA-c
+# Decompression step for SCSA-c
 
-
-Perform decompression to obtain the scattering matrix. 
+Here we undo the compression, as described in supplementary section 5 of the SCSA paper.
 
 ```matlab
 time1 = clock;
 
+% Extract the transmission matrix from left to right.
 ind_L = 1:N_L;
 ind_R = (N_L+1):(N_L+N_R);
+t = S(ind_R,ind_L); 
+clear S; % no longer needed
 
-% Only take the transmission from left to right part.
-t_L = S(ind_R,ind_L); 
+% Here we do:
+% (1) centered  fft along dimension 1, equivalent to multiplying F_R on the left, and
+% (2) centered ifft along dimension 2, equivalent to multiplying inv(F_L) on the right.
+t = fftshift((ifft(ifftshift(fftshift((fft(ifftshift(t,1),[],1)),1),2),[],2)),2)/sqrt(N_R/N_L);
 
-% Do centered fft/ifft.
-t_L = fftshift((ifft(ifftshift(fftshift((fft(ifftshift(t_L,1),[],1)),1),2),[],2)),2)/sqrt(N_R/N_L);
-
-% Remove the extra padded channels.
+% Remove the extra channels we padded earlier.
 ind_L = M_L_pad_half + (1:M_L);
 ind_R = M_R_pad_half + (1:M_R);
-t_L = t_L(ind_R,ind_L);
+t = t(ind_R,ind_L);
 
-% If weight matrix Q (Hann function) is used, undo the weight.
-if use_Hann_Q
-    a_L = (-round((M_L-1)/2):round((M_L-1)/2)).';
-    a_R = (-round((M_R-1)/2):round((M_R-1)/2)).';
-    q_inv_L = spdiags(2./(1+cos((2*pi/N_L)*a_L)),0,M_L,M_L);
-    q_inv_R = spdiags(2./(1+cos((2*pi/N_R)*a_R)),0,M_R,M_R);
-    t_L = q_inv_R*t_L*q_inv_L;
+% Undo the diagonal scaling, per Eq (S37) of the SCSA paper
+if use_Hann_window
+    a_L = (-round((M_L-1)/2):round((M_L-1)/2));   % row vector
+    a_R = (-round((M_R-1)/2):round((M_R-1)/2)).'; % column vector
+    q_inv_L = 2./(1+cos((2*pi/N_L)*a_L)); % row vector
+    q_inv_R = 2./(1+cos((2*pi/N_R)*a_R)); % column vector
+    t = q_inv_R.*t.*q_inv_L; % use implicit expansion
 end
 
-% Multiply the sqrt(mu) prefactor
-sqrt_mu_L = spdiags(channels.L.sqrt_mu(1,round(size(channels.L.sqrt_mu,2)/2)-round(M_L-1)/2: round(size(channels.L.sqrt_mu,2)/2)+round(M_L-1)/2).',0,M_L,M_L);
-sqrt_mu_R = spdiags(channels.R.sqrt_mu.',0,M_R,M_R);
-t_L = sqrt_mu_R*t_L*sqrt_mu_L; % The wanted transmission matrix 
+% Multiply the sqrt(mu) prefactor.
+% Note that M_R includes all propagating channels on the right, but M_L
+% only includes propagating channels on the left that can propagate in air.
+sqrt_mu_L = channels_L.sqrt_mu(ind_in_L); % row vector
+sqrt_mu_R = channels_R.sqrt_mu.';         % column vector
+t = sqrt_mu_R.*t.*sqrt_mu_L; % use implicit expansion
 
-time2 = clock; timing_build_aft = etime(time2,time1); % Calculate the timing for the post-processing.
+% Time spent to decompress
+time2 = clock; timing_decompress = etime(time2,time1);
 
-fprintf('Total building and processing time: %7.3f secs\n', stat.timing.build+timing_build_pre+timing_build_aft);
+timing_total = stat.timing.total + timing_compress + timing_decompress;
+fprintf('Total elapsed time including compression and decompression: %.3f secs\n', timing_total);
 ```
-
 
 ```text:Output
-Total building and processing time:  11.177 secs
-```
-
-
-```matlab
-fprintf('Total elapsed time: %7.3f secs\n', stat.timing.total+timing_build_pre+timing_build_aft);
-```
-
-
-```text:Output
-Total elapsed time:  91.228 secs
+Total elapsed time including compression and decompression: 58.803 secs
 ```
 
 # Angular spectrum propagation parameters
 
+Below, we use angular spectrum propagation (ASP) to obtain field profile in the free space after the metalens, as described in supplementary section 11 of the SCSA paper.
+
 ```matlab
-% System width used in the angular spectrum propagation.
-% Here a very wide width is used to reduce artifacts from period wrapping (aliasing)
-% This width can be greatly reduced using a window function or a PML.
-W_FT = 20; % Fourier window [mm]
+% System width used for ASP to remove periodic wrapping artifact.
+W_ASP_min = 2*W; % Minimal ASP window [micron]
 
-ny_source = ny; % Number of pixels for the source
-ny_Ft = floor(W_FT*1e6/dx); % Number of pixels for the Fourier window
-ny_pad = round((ny_Ft-ny_source)/2); % Extra pixels need to be padding on one side
-y_FT = ((0.5:ny_Ft) - (ny_Ft/2)).'*dx; % Transform pixel to y coordinate.
+% dx = wavelength/40 is not necessary. Down-sample to a coarser resolution for ASP.
+dy_ASP = 5*dx; % ASP grid size [micron]
 
-% kydx list for the angular spectrum propagation
-if mod(ny_Ft,2) == 1
-    ny_half = round((ny_Ft-1)/2);
-    kydx = (2*pi/(ny_Ft))*[0:ny_half, -ny_half:-1].';
-else
-    ny_half = round(ny_Ft/2);
-    kydx = (2*pi/(ny_Ft))*[0:ny_half, -(ny_half-1):-1].';
+if round(dy_ASP/dx) ~= dy_ASP/dx
+    warning(['dy_ASP/dx = %f should be a positive integer to ensure ' ...
+        'down-sampling is possible; rounding it to %d.'], ...
+        dy_ASP/dx, max([1, round(dy_ASP/dx)]));
+    dy_ASP = max([1, round(dy_ASP/dx)])*dx;
+end
+if mod(ny_R, 2) == 0 && mod(dy_ASP/dx, 2) == 0
+    warning(['When ny_R is an even number, dy_ASP/dx should be an odd ' ...
+        'number so down-sampling can be symmetric; reducing it to %d.'], ...
+        (dy_ASP/dx)-1);
+    dy_ASP = ((dy_ASP/dx)-1)*dx;
 end
 
-% Use continuous dispersion relation to have kxdx list for the angular spectrum propagation.
-kxdx = sqrt(epsilon_R*k0dx^2 - kydx.^2);
+% fft is more efficient when the length is a power of 2.
+ny_ASP = 2^nextpow2(round(W_ASP_min/dy_ASP)); % Number of pixels for ASP
+W_ASP = ny_ASP*dy_ASP; % Actual ASP window [micron]
 
-% Build up phi_R_over_sqrt_mu_R and C_R; see Eqs. (S21) and (S29) in the supplementary of the SCSA paper.
-N_out_R = channels.R.N_prop;
-phi_R = channels.fun_phi(channels.R.kydx_prop);
-phi_R_over_sqrt_mu_R = phi_R*spdiags(reshape(1./channels.R.sqrt_mu,[],1), 0, N_out_R, N_out_R);
-C_R = spdiags(reshape(channels.R.sqrt_mu,[],1), 0, N_out_R, N_out_R)*(phi_R');
-clear phi_R
+% y index of the points we down-sample for ASP.
+ind_ASP = 1:(dy_ASP/dx):ny_R;
 
-% Obtain list of incident angles with respect to background (air) [degree]
-ind = ((channels.L.N_prop-channels.R.N_prop)/2+1):(channels.L.N_prop+channels.R.N_prop)/2;
-inc_angle_list = asind(sind(atand(channels.L.kydx_prop(ind)./channels.L.kxdx_prop(ind)))*n_silica); 
-n_inc_angle = size(inc_angle_list,2); % Number of incident angles
+% Make the sampling points symmetric around the middle.
+if ind_ASP(end) ~= ny_R
+    % Make sure that ny_R - ind_ASP(end) is an even number.
+    if mod(ny_R - ind_ASP(end), 2) ~= 0
+        ind_ASP = ind_ASP(1:(end-1));
+    end
+    ind_ASP = ind_ASP + (ny_R - ind_ASP(end))/2;
+end
+
+ny_ASP_pad = ny_ASP - numel(ind_ASP); % Total number of zeros to pad
+ny_ASP_pad_low = round(ny_ASP_pad/2); % Number of zeros to pad on the low side
+ny_ASP_pad_high = ny_ASP_pad - ny_ASP_pad_low; % on the high side
+
+% y position of the ASP points, including the padded zeros [micron] 
+y_ASP = ((0.5:ny_ASP) - 0.5*(ny_ASP + ny_ASP_pad_low - ny_ASP_pad_high))*dy_ASP;
+
+% List of (kx,ky) in ASP
+ny_ASP_half = round(ny_ASP/2); % recall that ny_ASP is an even number
+ky_ASP = (2*pi/W_ASP)*[0:ny_ASP_half, -(ny_ASP_half-1):-1].'; % [1/micron]
+kx_ASP = sqrt((n_air*2*pi/wavelength)^2 - ky_ASP.^2);
+
+% We only keep the propagating components in ASP
+ind_prop_ASP = find(abs(ky_ASP) < (n_air*2*pi/wavelength));
+
+% List of incident angles in air [degree]
+theta_in_list = asind(sin(atan(channels_L.kydx_prop(ind_in_L)./channels_L.kxdx_prop(ind_in_L)))*n_silica/n_air); 
+
+% Later we will use ifft to reconstruct field profile immediately after the
+% metalens from the transmission matrix, and this is the prefactor we need.
+prefactor_ifft = sqrt(ny_R)*exp((-2i*pi/ny_R*(M_R-1)/2)*(0:(ny_R-1)).');
 ```
 
 # Intensity profiles of the transmitted light
 
-
-Use angular spectrum propagation (ASP) to compute intensity profile away from the metalens, for incident angles of 0  degree and 30 degrees. 
-
-```matlab
-n_ASP = 101; % Number of ASP steps 
-x_propagation_over_dx = 2*focal_length*1000/dx; % Propagation distance over dx along x direction (to 2*focal plane)
-x_plot_over_dx_list = linspace(0, x_propagation_over_dx,n_ASP); % List ofposition to plot for the ASP
-
-% \theta_in = 0 [degree]
-Ez_SCSA_c = zeros(ny_Ft, size(x_plot_over_dx_list,2)); % Ez profile over space
-theta_in = 0; % Desired incident angle
-a_R = interp1(inc_angle_list,1:length(inc_angle_list),theta_in,'nearest'); % Find the closest angle that satisfy the desired one.
-a_L = (round(channels.L.N_prop)-round(channels.R.N_prop))/2+a_R;
-theta_in_real = asind(sind(atand(channels.L.kydx_prop(a_L)/channels.L.kxdx_prop(a_L)))*n_silica); % Real incident angle [degree]
-
-% Angular spectrum propagation looping over space
-for ii = 1: size(x_plot_over_dx_list,2)
-    x_plot_over_dx = x_plot_over_dx_list(1,ii);
-    Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
-    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_plot_over_dx).*Ez_0_FT);
-end
-
-% Plot result of the intensity profile at 0 degree incidence.
-clf
-imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
-set(gca,'YDir','normal')
-hold on
-axis image
-xlim([0 600])
-ylim([-500 500])
-c = colorbar;
-c.Ticks = 0;
-colormap(flipud(pink))
-caxis([0 1])
-set(gca,'linewidth',1)
-xlabel('x (\mum)')
-ylabel('y (\mum)')
-yticks([-500 0 500])
-xticks([0 300 600])
-%title(['\theta_{\rm{in}} = ',sprintf('%4.1f', theta_in_real),char(176)]);
-set(gca,'TickLength',[0.03 0.03])
-set(gca,'fontsize',20);
-```
-
-
-<img src="metalens_intensity_profile_0_degree.png" width="604.8" height="453.6"> 
-
+Here, we use the transmission matrix and ASP to generate the transmitted intensity profile for different incident angles.
 
 ```matlab
-% \theta_in = 30 [degree]
-Ez_SCSA_c = zeros(ny_Ft, size(x_plot_over_dx_list,2)); % Ez profile over space
-% Find the closest angle that satisfy the desired one.
-theta_in = 30; % Desired incident angle
-a_R = interp1(inc_angle_list,1:length(inc_angle_list),theta_in,'nearest'); % Find the closest angle that satisfy the desired one.
-a_L = (round(channels.L.N_prop)-round(channels.R.N_prop))/2+a_R;
-theta_in_real = asind(sind(atand(channels.L.kydx_prop(a_L)/channels.L.kxdx_prop(a_L)))*n_silica); % Real incident angle [degree]
+% List of incident angles in air at which to compute the profiles [degree]
+%theta_in_list_profiles = -90:5:90;
+% We sample angles near normal incidence with a finer spacing, since most
+% features are near normal incidence.
+theta_in_list_half = 90*linspace(0, 1, 40).^2;
+theta_in_list_profiles = [-fliplr(theta_in_list_half(2:end)), theta_in_list_half];
 
-% Angular spectrum propagation looping over space
-for ii = 1: size(x_plot_over_dx_list,2)
-    x_propagation_over_dx = x_plot_over_dx_list(1,ii);
-    Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
-    Ez_SCSA_c(:,ii) = ifft(exp(1i*kxdx*x_propagation_over_dx).*Ez_0_FT);
+W_plot = W;       % Plotting range in y [micron]
+x_plot_max = 600; % Plotting range in x [micron]
+dx_plot = 2.0;    % Resolution in x for plotting [micron]
+
+% (x,y) coordinates used for plotting
+ind_plot = find(abs(y_ASP) < W_plot/2);
+ind_plot = [ind_plot(1)-1, ind_plot, ind_plot(end)+1]; % add one pixel on each side to ensure we fully cover W_plot
+y_plot = y_ASP(ind_plot);
+x_plot = 0:dx_plot:x_plot_max; % must be a row vector per asp() syntax
+
+% Indices of the incident angles at which to compute the profiles.
+% Pad large angles on two sides for interp1.
+a_list = interp1([-200, theta_in_list, 200], [0, 1:M_L, inf], ...
+    theta_in_list_profiles, 'nearest'); 
+
+% Loop over the incident angles
+n_angles_profiles = numel(theta_in_list_profiles);
+intensity_profiles = zeros(numel(y_plot), numel(x_plot), n_angles_profiles);
+for ii = 1:n_angles_profiles
+    % Reconstruct field profile immediately after the metalens, restricted
+    % to the propagating components, per Eq. (S7) of the SCSA paper:
+    %    Ez^(a)(x=L,y) = sum_b t_ba*phi_b(y)/sqrt(kx_b)
+    % The summation over plane waves b can be evaluated with ifft as follows:
+    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a_list(ii)), ny_R), -1);
+
+    % Down-sample the field profile prior to ASP.
+    % We could have done so directly inside the ifft above to save time,
+    % but it's more straightforward this way.
+    Ez0_ASP = Ez0(ind_ASP,:); 
+
+    % Obtain Ez(x,y) using ASP.
+    Ez_ASP = asp(Ez0_ASP, x_plot, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
+
+    % Only keep the part within the plotting range
+    intensity_profiles(:,:,ii) = abs(Ez_ASP(ind_plot, :)).^2;
 end
-
-% Plot result of the intensity profile in 30 degrees.
-clf
-imagesc(x_plot_over_dx_list*dx/1000, y_FT/1000, 1e3*abs(Ez_SCSA_c).^2)
-set(gca,'YDir','normal')
-hold on
-axis image
-xlim([0 600])
-ylim([-500 500])
-c = colorbar;
-c.Ticks = 0;
-colormap(flipud(bone))
-caxis([0 1])
-set(gca,'linewidth',1)
-xlabel('x (\mum)')
-ylabel('y (\mum)')
-yticks([-500 0 500])
-xticks([0 300 600])
-%title(['\theta_{\rm{in}} = ',sprintf('%4.1f', theta_in_real),char(176)]);
-set(gca,'TickLength',[0.03 0.03])
-set(gca,'fontsize',20);
 ```
-
-
-<img src="metalens_intensity_profile_30_degrees.png" width="604.8" height="453.6"> 
 
 # Angle dependence of the transmission efficiency and Strehl ratio
 
-
-Here we
-
-
-1. Calculate the transmission efficiency and field in the focal plane for an ideal lens.
-
-
-2. Loop over different incident angles to calculate the transmission efficiency and Strehl ratio of the hyperbolic metalens.
+Here, we map out the transmission efficiency and Strehl ratio for all incident angles.
 
 ```matlab
-x_propagation_over_dx = focal_length*1000/dx; % Propagation distance over dx along x direction (to focal plane)
+x_focal_plane = focal_length;
 
-%% Calculate the transmission efficiency and Ez field in the focal passing through ideal lens
+% Calculate the transmission efficiency and Ez field in the focal passing through ideal lens
 % Ideal phase profile in normal incidence angle
-index_normal_L = round((channels.L.N_prop+1)/2); % Channel index for normal on the left
-index_normal_R = round((channels.R.N_prop+1)/2); % Channel index for normal on the right
 
-% Focal point position in y direction
-y_focal_normal=focal_length*1000*sind(atand(channels.L.kydx_prop(index_normal_L)/channels.L.kxdx_prop(index_normal_L)))*n_silica;
-% Position index for focal point along y direction
-y_source = ((0.5:ny_source) - (ny_source/2))*dx;
+y_L = ((0.5:ny_L) - (ny_L/2))*dx; % Position index for focal point along y direction
+y_focal_normal = 0; % Focal point position in y direction in ideal phase profile in normal incidence angle 
 
-% Discrete Fresnel equation for t coefficient at normal incidence (flux normalized)
-kxdx_L = channels.L.kxdx_prop(index_normal_L);
-kxdx_R = channels.R.kxdx_prop(index_normal_R);
-t_normal = sqrt(sin(kxdx_R)/sin(kxdx_L))*(exp(1i*kxdx_L)-exp(-1i*kxdx_L))/(exp(1i*kxdx_R)-exp(-1i*kxdx_L));
+ideal_phase_list = -(2*pi/wavelength)*(sqrt((focal_length)^2 + (y_L - 0).^2)).'; % The transmitted phase for ideal lens at normal incidence
 
-ideal_phase_list = -(2*pi/(lambda))*(sqrt((focal_length*1000)^2 + (y_source - y_focal_normal).^2)).'; % The transmitted phase for ideal lens
-ideal_field = t_normal*phi_R_over_sqrt_mu_R(:,index_normal_R).*exp(1i*ideal_phase_list); % The transmitted field for ideal lens
+% Note that here we just want to use the ideal phase profile to normalize 
+% our Strehl ratio. We do not normalize the field and transmission
+% efficiency, but the normalization prefactor would be cancel out when we calculate the 
+% Strehl ratio.
 
-t_ideal = C_R*ideal_field; % Transmission matrix of ideal lens in normal incidence
-Teff_ideal = sum(abs(t_ideal).^2); % Transmission efficiency for ideal lens in normal incidence
+% Construct Ez(x=L,y) for normal incidence wave passing the ideal lens.
+ideal_field = [zeros(ny_R_extra_half,1); exp(1i*ideal_phase_list); zeros(ny_R_extra_half,1)];% The transmitted field for ideal lens
 
-% Reconstruct Ez field from transmission matrix.
-Ez_0 = phi_R_over_sqrt_mu_R*t_ideal;
+% Project the ideal field to propagation channel basis on the right.
+temp  = circshift(exp(-1i*2*pi/ny_R*(0:ny_R-1).').*fft(ideal_field,ny_R), floor(channels_R.N_prop/2))/sqrt(ny_R);
+t_ideal = (channels_R.sqrt_mu).'.*temp(1:channels_R.N_prop); % Transmission matrix (without normalization) of ideal lens in normal incidence
+T_ideal = sum(abs(t_ideal).^2); % Transmission efficiency (without normalization) for ideal lens in normal incidence
 
+% Reconstruct Ez(x=L,y) from transmission matrix.
+Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t_ideal,ny_R), -1);
+% Sampling fields from high resolution to coarse resolution 
+Ez0_ASP = Ez0(ind_ASP,:); 
 % Use angular spectrum propagation to let the field propagate to the focal plane
-Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
-Ez_focal_ideal = ifft(exp(1i*kxdx*x_propagation_over_dx).*Ez_0_FT);
+Ez_focal_ideal = asp(Ez0_ASP, x_focal_plane, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
 
-%% Calculate the transmission efficiency and Ez field in the focal passing through hyperbolic metalens
+% Calculate the transmission efficiency and field profile in the focal passing through hyperbolic metalens
+
 % Strehl ratio list for the hyperbolic lens to be calculated 
-strehl_ratio_hyperbolic_SCSA_c = zeros(1, n_inc_angle); 
-% transmission efficiency list for the hyperbolic lens to be calculated
-transmission_efficiency_hyperbolic_SCSA_c = zeros(1, n_inc_angle); 
+strehl_ratio = zeros(1, M_L); 
+% Transmission efficiency list for the hyperbolic lens to be calculated
+transmission_efficiency = zeros(1, M_L); 
 
-% Looping over different incident angles for the hyperbolic lens
-for a_R= 1:n_inc_angle
-    % Corresponding channel index on the left hand side
-    a_L = (channels.L.N_prop-n_inc_angle)/2+a_R;
-      
-    Teff_hyperbolic = sum(abs(t_L(:,a_R)).^2); % Transmission efficiency for hyperbolic metalens
-    transmission_efficiency_hyperbolic_SCSA_c(1,a_R) = Teff_hyperbolic;
+% Index used to find physical focus positions within [-W/2 W/2]
+ind_y_minus_D = interp1(y_ASP,1:length(y_ASP),-W/2,'nearest');
+ind_y_plus_D = interp1(y_ASP,1:length(y_ASP),W/2,'nearest');  
+ind_y_center = interp1(y_ASP,1:length(y_ASP),0,'nearest');
 
-    % Use angular spectrum propagation to let the field propagate to the focal plane.
-    Ez_0 = phi_R_over_sqrt_mu_R*t_L(:,a_R);
-    Ez_0_FT = exp(-2*pi*1i/ny_Ft*([0:ny_Ft-1])*ny_pad).'.*fft(Ez_0,ny_Ft);
-    Ez_focal_hyperbolic_SCSA_c(:,1) = ifft(exp(1i*kxdx*x_propagation_over_dx).*Ez_0_FT); % Ez profile in the focal plane after passing the hyperbolic lens
+% Index in transmission matrix where is normal incidence
+ind_normal = find(theta_in_list == 0); 
 
-    % Strehl ratio
-    strehl_ratio_hyperbolic_SCSA_c(a_R) = max(abs(Ez_focal_hyperbolic_SCSA_c(:,1)))^2/max(abs(Ez_focal_ideal(:,1)))^2 * (Teff_ideal/Teff_hyperbolic); 
+if numel(find(theta_in_list == 0)) == 0 
+    error(['This transmission matrix does not include normal incidence,' ...
+        'and the Strehl ratio calculation should be considered carefully.']);
+end 
+
+% Divide total number of angles into batch to calculate.
+batch_size = 100;
+batch = 1:batch_size:M_L;
+if batch(end) ~= M_L
+    batch(end+1) = M_L;
 end
 
-% Plot results for Strehl ratio and transmission efficiency.
-clf
-yyaxis left
-semilogy(inc_angle_list, strehl_ratio_hyperbolic_SCSA_c, 'linewidth', 1.5)
-xlabel('\theta_{in}')
-ylabel('Strehl ratio')
-xlim([-90 90])
-ylim([5e-3 1])
-set(gca, 'fontsize', 15, 'FontName','Arial')
-set(gca,'TickLength',[0.02 0.035])
-set(gca,'linewidth',1.5)
-yyaxis right
-plot(inc_angle_list, transmission_efficiency_hyperbolic_SCSA_c, 'linewidth', 1.5)
-ylabel('Transmission efficiency')
-xlim([-90 90])
-ylim([0 1])
-xticks([-90 -45 0 45 90]);
-xticklabels({['90', char(176)], ['-45', char(176)], ['0', char(176)], ['45', char(176)], ['90', char(176)],})
-yticks([0 0.2 0.4 0.6 0.8 1]);
-set(gca, 'fontsize', 15, 'FontName','Arial')
+for ii = 1:(size(batch,2)-1)
+    % Row indices a in transmission matrix to be calculated in this batch. 
+    if ii == 1
+        a = batch(ii):(batch(ii+1));
+    else
+        a = batch(ii)+1:(batch(ii+1));
+    end
+
+    % Get the transmission efficiency for hyperbolic metalens    
+    transmission_efficiency(a) = sum(abs(t(:,a)).^2); 
+ 
+    % Construct Ez(x=L,y) from transmission matrix.
+    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a), ny_R), -1);
+    % Sampling fields from high resolution to coarse resolution
+    Ez0_ASP = Ez0(ind_ASP,:); 
+    % Use angular spectrum propagation to let the field propagate to the focal plane
+    Ez_focal = asp(Ez0_ASP, x_focal_plane, kx_ASP, ind_prop_ASP, ny_ASP, ny_ASP_pad_low);
+    
+    % In some large angles, there some artifact peaks on different sides 
+    % of the lens, so we take the value of Strehl ratio from right side of 
+    % the lens.
+    strehl_ratio(a) = ...
+    (a>round(M_L/2)).*max(abs(Ez_focal(ind_y_center:ind_y_plus_D,:))).^2/max(abs(Ez_focal_ideal(:,1)))^2 .* (T_ideal./transmission_efficiency(a)) ... 
+    + (a<=round(M_L/2)).*max(abs(Ez_focal(ind_y_minus_D:ind_y_center,:))).^2/max(abs(Ez_focal_ideal(:,1)))^2 .* (T_ideal./transmission_efficiency(a)); 
+end
 ```
 
+# Animate the results
 
-<img src="metalens_Strehl_ratio_and_transmission_eff.png" width="604.8" height="453.6"> 
+```matlab
 
+% We apply the same normalization to all incident angles. Note that all of
+% them already have the same incident flux. We significantly saturate the
+% plot near normal incidence, so the intensity at oblique incidence can be
+% seen.
+norm_factor = 100/max(intensity_profiles, [], 'all');
+
+% Loop through Gaussian beams focused at different locations.
+colormap('hot');
+for ii = 1:n_angles_profiles
+    a_ii = a_list(ii);
+    theta_in = theta_in_list(a_ii);
+
+    % Plot the intensity profile
+    clf
+    subplot(1,2,1);
+    imagesc(x_plot, y_plot, norm_factor*intensity_profiles(:,:,ii));
+    set(gca,'YDir','normal')
+    axis image
+    xlim([0 x_plot_max])
+    ylim(W_plot*[-0.5, 0.5]);
+    c = colorbar;
+    c.Ticks = 0;
+    caxis([0 1])
+    xlabel('x (\mum)')
+    ylabel('y (\mum)')
+    xticks([0 300 600])
+    yticks([-500 0 500])
+    set(gca,'fontsize',16);
+    %title(['\theta_{\rm{in}} = ',sprintf('%4.1f', theta_in), char(176)]);
+
+    % Plot transmission efficiency and Strehl ratio
+    subplot(1,2,2);
+    yyaxis left
+    semilogy(theta_in_list(1:M_L), strehl_ratio, 'linewidth', 1.5)
+    hold on
+    plot(theta_in, strehl_ratio(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
+    xlabel('Incident angle');
+    ylabel('Strehl ratio')
+    xlim([-90 90])
+    ylim([5e-3 1])
+    xticks([-90 -45 0 45 90]);
+    xticklabels({['90', char(176)], ['-45', char(176)], ['0', char(176)], ['45', char(176)], ['90', char(176)],})
+    yyaxis right
+    plot(theta_in_list(1:M_L), transmission_efficiency, 'linewidth', 1.5)
+    hold on
+    plot(theta_in, transmission_efficiency(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
+    ylabel('Transmission efficiency')
+    ylim([0 1])
+    yticks(0:0.2:1)
+    set(gca,'fontsize',16);
+    set(gca,'TickLength',[0.02 0.035])
+    set(gca,'linewidth', 1)
+
+    drawnow
+end
+```
+
+<img src="metalens_animation.gif" width="681" height="349">
