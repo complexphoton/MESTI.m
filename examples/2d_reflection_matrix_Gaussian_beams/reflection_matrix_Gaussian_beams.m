@@ -60,7 +60,7 @@ input('continue?')
 % left, which is what we do here. We place the line sources at x =
 % x_source, just in front of the PML.
 %
-% To determine the required line sources, we (1) take the the field profile
+% To determine the required line sources, we (1) take the field profile
 % of the desired incident Gaussian beam at the focal plane, E_z^in(x_f,y) =
 % exp[-(y-y_f)^2/w_0^2], (2) project it onto the propagating channels
 % (i.e., ignoring evanescent contributions) of free space, (3) back
