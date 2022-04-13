@@ -81,7 +81,7 @@ text(-80,140,'silica','FontSize',20,'Rotation',90)
 title('Meta-atom','FontSize',20)
 ```
 
-<img src="meta_atom_design_structure.png" width="672" height="504"> 
+<img src="meta_atom_structure.png" width="672" height="504"> 
 
 # Transmission coefficient of meta-atom at normal incidence
 
@@ -117,7 +117,7 @@ title('$\Phi - \Phi^0$', 'Interpreter','latex')
 set(gca, 'fontsize', 20, 'FontName','Arial')
 ```
 
-<img src="meta_atom_design_relative_phase.png" width="672" height="504"> 
+<img src="meta_atom_relative_phase.png" width="672" height="504"> 
 
 # Finding meta-atoms satisfying 8 discrete ideal relative phases over [0, 2pi)
 
@@ -198,7 +198,7 @@ colorbar
 hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 ```
 
-<img src="meta_atom_design_phase_map.png" width="672" height="504"> 
+<img src="meta_atom_phase_map.png" width="672" height="504"> 
 
 
 ```matlab
@@ -214,5 +214,5 @@ colorbar
 ```
 
 
-<img src="meta_atom_design_amplitude_map.png" width="672" height="504">
+<img src="meta_atom_amplitude_map.png" width="672" height="504">
 
