@@ -3,7 +3,7 @@
 In this example, we:
 
   - Build a mm-diameter hyperbolic metalens based on the [meta-atom design example](../2d_meta_atom).
-  - Use mesti() to compute its transmission matrix, using compressed input/output matrices (SCSA-c).
+  - Use mesti() to compute its transmission matrix, using compressed input/output matrices (APF-c).
   - Use angular spectrum propagation to obtain field profile away from the metalens. 
   - Map out the transmission efficiency and Strehl ratio for all incident angles.
 
@@ -112,7 +112,7 @@ syst.epsilon = [epsilon_L*ones(ny_tot, nx_extra_left), ...
 
 # Build compressed input-source matrix B
 
-Given the very large aspect ratio of the system, the input and output matrices B and C would have more nonzero elements than the Maxwell-operator matrix A. So, we compress matrices B and C, as described in supplementary section 5 of the SCSA paper. Here we build the compressed input matrix B.
+Given the very large aspect ratio of the system, the input and output matrices B and C would have more nonzero elements than the Maxwell-operator matrix A. So, we compress matrices B and C, as described in supplementary section 5 of the APF paper. Here we build the compressed input matrix B.
 
 
 ```matlab
@@ -192,16 +192,16 @@ System size: ny = 76844, nx = 88
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.123 secs
 Building A  ... elapsed time:   2.831 secs
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+< Method: APF using MUMPS with AMD ordering (symmetric K) >
 Building K  ... elapsed time:   1.503 secs
 Analyzing   ... elapsed time:   6.979 secs
 Factorizing ... elapsed time:  43.675 secs
           Total elapsed time:  56.054 secs
 ```
 
-# Decompression step for SCSA-c
+# Decompression step for APF-c
 
-Here we undo the compression, as described in supplementary section 5 of the SCSA paper.
+Here we undo the compression, as described in supplementary section 5 of the APF paper.
 
 ```matlab
 time1 = clock;
@@ -222,7 +222,7 @@ ind_L = M_L_pad_half + (1:M_L);
 ind_R = M_R_pad_half + (1:M_R);
 t = t(ind_R,ind_L);
 
-% Undo the diagonal scaling, per Eq (S37) of the SCSA paper
+% Undo the diagonal scaling, per Eq (S37) of the APF paper
 if use_Hann_window
     a_L = (-round((M_L-1)/2):round((M_L-1)/2));   % row vector
     a_R = (-round((M_R-1)/2):round((M_R-1)/2)).'; % column vector
@@ -251,7 +251,7 @@ Total elapsed time including compression and decompression: 58.803 secs
 
 # Angular spectrum propagation parameters
 
-Below, we use angular spectrum propagation (ASP) to obtain field profile in the free space after the metalens, as described in supplementary section 11 of the SCSA paper.
+Below, we use angular spectrum propagation (ASP) to obtain field profile in the free space after the metalens, as described in supplementary section 11 of the APF paper.
 
 ```matlab
 % System width used for ASP to remove periodic wrapping artifact.
@@ -344,7 +344,7 @@ n_angles_profiles = numel(theta_in_list_profiles);
 intensity_profiles = zeros(numel(y_plot), numel(x_plot), n_angles_profiles);
 for ii = 1:n_angles_profiles
     % Reconstruct field profile immediately after the metalens, restricted
-    % to the propagating components, per Eq. (S7) of the SCSA paper:
+    % to the propagating components, per Eq. (S7) of the APF paper:
     %    Ez^(a)(x=L,y) = sum_b t_ba*phi_b(y)/sqrt(kx_b)
     % The summation over plane waves b can be evaluated with ifft as follows:
     Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a_list(ii)), ny_R), -1);

@@ -206,7 +206,7 @@ System size: ny = 400, nx = 41
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.001 secs
 Building A  ... elapsed time:   0.016 secs
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+< Method: APF using MUMPS with AMD ordering (symmetric K) >
 Building K  ... elapsed time:   0.005 secs
 Analyzing   ... elapsed time:   0.012 secs
 Factorizing ... elapsed time:   0.035 secs
@@ -224,7 +224,7 @@ System size: ny = 400, nx = 200
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.000 secs
 Building A  ... elapsed time:   0.040 secs
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+< Method: APF using MUMPS with AMD ordering (symmetric K) >
 Building K  ... elapsed time:   0.017 secs
 Analyzing   ... elapsed time:   0.048 secs
 Factorizing ... elapsed time:   0.242 secs

@@ -51,7 +51,7 @@ Building G0 ... elapsed time:   0.050 secs
 Building B,C... elapsed time:   0.001 secs
             ... elapsed time:   0.008 secs
 Building A  ... elapsed time:   0.069 secs
-< Method: SCSA using MUMPS with AMD ordering (symmetric K) >
+< Method: APF using MUMPS with AMD ordering (symmetric K) >
 Building K  ... elapsed time:   0.058 secs
 Analyzing   ... elapsed time:   0.107 secs
 Factorizing ... elapsed time:   0.740 secs

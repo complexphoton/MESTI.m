@@ -1,5 +1,5 @@
 %% Fabry-Pérot etalon
-% Example of a dielectric slab (also called a Fabry-Pérot etalon) using SCSA 
+% Example of a dielectric slab (also called a Fabry-Pérot etalon) 
 % 
 % Use MESTI2S() to compute 
 % 1.The field profile of the system and showing the field propagation 

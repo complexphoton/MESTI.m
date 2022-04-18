@@ -1,6 +1,6 @@
 function phiQF = build_compressed_B(ny, M, ny_window, use_Hann_window)
-%BUILD_PHIQF build the compressed matrix phi*Q*F for SCSA-c.
-%   See supplementary section 5 of the SCSA paper.
+%BUILD_PHIQF build the compressed matrix phi*Q*F for APF-c.
+%   See supplementary section 5 of the APF paper.
 %
 %   === Input Arguments ===
 %   ny (positive integer scalar):
@@ -39,7 +39,7 @@ for a = -a_min:1:a_min % Loop over input channels on the left.
 
     % Build phi*Q*F within this window
     if use_Hann_window
-        % See Eq. (S36) and Eq. (S38) in the supplementary of the SCSA paper.
+        % See Eq. (S36) and Eq. (S38) in the supplementary of the APF paper.
         sin_m = sin((pi/ny*M)*m);
         term1 = (0.5*((-1)^a)/sqrt(ny*M))*sin_m./sin(pi*((m/ny)-(a/M)));
         term2 = (0.25*((-1)^(a-1))/sqrt(ny*M))*sin_m./sin(pi*((m/ny)-((a-1)/M)));
@@ -50,7 +50,7 @@ for a = -a_min:1:a_min % Loop over input channels on the left.
         if int32(ny*(a+1)/M)*M == int32(ny*(a+1)); term3(m == (round(ny*(a+1)/M)+ny*((a+1)<=0))) = 0.25*sqrt(M/ny); end
         phiQF(m, a+a_min+1) = term1 + term2 + term3;
     else
-        % See Eq. (S36) in the supplementary of the SCSA paper.
+        % See Eq. (S36) in the supplementary of the APF paper.
         phiQF(m, a+a_min+1) = (((-1)^a)/sqrt(ny*M))*sin((pi/ny*M)*m)./sin(pi*((m/ny)-(a/M)));
         % Handle situations where the denominator is zero.
         if int32(m_center)*M == int32(ny*(M+a))

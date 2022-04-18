@@ -1,6 +1,6 @@
 # MUMPS Installation
 
-The SCSA method in MESTI requires the MUMPS package. Here are steps to install it.
+The APF method in MESTI requires the MUMPS package. Here are steps to install it.
 
 ## Download MUMPS
 Please go to the [MUMPS website](http://mumps.enseeiht.fr/index.php?page=dwnld) and fill out the form to request the MUMPS source code.

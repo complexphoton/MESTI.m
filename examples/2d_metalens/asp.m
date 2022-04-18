@@ -66,7 +66,7 @@ elseif ny_pad_low + ny > ny_tot
     error('ny_pad_low + ny must be no greater than size(f0,1) = %d.', ny);
 end
 
-% Fourier transform f(x=0,y) to f(x=0,ky), as in Eq. (S43) of the SCSA paper.
+% Fourier transform f(x=0,y) to f(x=0,ky), as in Eq. (S43) of the APF paper.
 % To get a finer spacing in ky, zeros are padded below and above f0.
 % The most straightforward implementation is:
 %   f0_fft = fft([zeros(ny_pad_low,size(f0,2)); f0; zeros(ny_tot-ny-ny_pad_low,size(f0,2))]);
@@ -75,7 +75,7 @@ end
 f0_fft = exp((-2i*pi*ny_pad_low/ny_tot)*(0:(ny_tot-1)).').*fft(f0,ny_tot,1);
 
 % Remove the evanescent components of f(x=0,ky), propagate it to f(x,ky),
-% and ifft back to f(x,y), as in Eqs. (S41-S42) of the SCSA paper.
+% and ifft back to f(x,y), as in Eqs. (S41-S42) of the APF paper.
 % The most straightforward implementation is:
 %   f_fft_prop = zeros(size(f0_fft));
 %   f_fft_prop(ind_prop,:) = exp(1i*kx_prop.*x).*f0_fft(ind_prop,:);
