@@ -20,8 +20,8 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   throught matrix C; each row of matrix 'C' is a distinct output profile,
 %   discretized into a 1-by-(nx*ny) vector in the same oreder as matrix A and
 %   reshape(syst.epsilon, 1, []). When the MUMPS function zmumps() is
-%   available, this is done by computing the Schur complement of matrix K =
-%   [A,B;C,0].
+%   available, this is done by computing the Schur complement of an augmented
+%   matrix K = [A,B;C,0] through a partial factorization.
 %
 %   [S, stat] = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
 %   used for the computation of scattering matrices, where S is the scattering
@@ -246,7 +246,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      and it will be replaced by transpose(B) in the code. Doing so has an
 %      advantage: if matrix A is symmetric (which is the case with UPML without
 %      Bloch periodic boundary), C = 'transpose_B', opts.solver = 'MUMPS', and
-%      opts.method = 'SCSA', the matrix K = [A,B;C,0] will be treated as
+%      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
 %      symmetric when computing its Schur complement to lower computing time and
 %      memory usage.
 %         For field profile computations, the user can simply omit C from the
@@ -324,21 +324,21 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %                       zmumps.m is not found in the search path.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'SCSA' - Schur complement scattering analysis. When opts.solver =
-%                     'MUMPS', C*inv(A)*B is obtained through the Schur
-%                     complement of matrix K = [A,B;C,0]; this is the true SCSA
-%                     but requires MUMPS to be installed. When opts.solver =
-%                     'MATLAB', C*inv(A)*B is obtained as C*inv(U)*inv(L)*B with
-%                     optimized grouping, which is not the true SCSA but is
-%                     slightly better than 'factorize_and_solve'. SCSA is not
-%                     used for computing the full field profile inv(A)*B or with
-%                     iterative refinement.
-%            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
-%                     with forward and backward substitutions, and optionally
-%                     project with C.
+%            'APF' - Augmented partial factorization. When opts.solver =
+%                    'MUMPS', C*inv(A)*B is obtained through the Schur
+%                    complement of an augmented matrix K = [A,B;C,0] using a
+%                    partial factorization; this is the true APF. When
+%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
+%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
+%                    true APF but is slightly better than factorize_and_solve.
+%                    Cannot be used for computing the full field profile
+%                    inv(A)*B or with iterative refinement.
+%            'FS'  - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
+%                    with forward and backward substitutions, and optionally
+%                    project with C.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if C is given and opts.iterative_refinement = false, then
-%         'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
+%         'APF' is used. Otherwise, 'factorize_and_solve' is used.
 %      opts.clear_BC (logical scalar; optional, defaults to false):
 %         When opts.clear_BC = true, variables 'B' and 'C' will be cleared in
 %         the caller's workspace to reduce peak memory usage. Can be used when B
@@ -642,7 +642,7 @@ end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
+    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
 end
 
 % Turn on verbal output by default

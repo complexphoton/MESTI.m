@@ -6,7 +6,8 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %
 %   [S, stat] = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
 %   C is either sparse or dense. When the MUMPS function zmumps() is available,
-%   this is done by computing the Schur complement of matrix K = [A,B;C,0].
+%   this is done by computing the Schur complement of an augmented matrix K =
+%   [A,B;C,0] through a partial factorization.
 %
 %   [X, stat] = MESTI_MATRIX_SOLVER(A, B, [], opts) and
 %   [S, stat] = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
@@ -22,7 +23,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %         If C = transpose(B), the user can set C = 'transpose_B' as a character
 %      vector, and it will be replaced by transpose(B) in the code. Doing so has
 %      an advantage: if matrix A is symmetric, C = 'transpose_B', opts.solver =
-%      'MUMPS', and opts.method = 'SCSA', the matrix K = [A,B;C,0] will be
+%      'MUMPS', and opts.method = 'APF', the matrix K = [A,B;C,0] will be
 %      treated as symmetric when computing its Schur complement to lower
 %      computing time and memory usage.
 %         To compute X = inv(A)*B, the user can simply omit C from the input
@@ -49,20 +50,21 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %                       zmumps.m is not found in the search path.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'SCSA' - Schur complement scattering analysis. When opts.solver =
-%                     'MUMPS', C*inv(A)*B is obtained through the Schur
-%                     complement of matrix K = [A,B;C,0]; this is the true SCSA
-%                     but requires MUMPS to be installed. When opts.solver =
-%                     'MATLAB', C*inv(A)*B is obtained as C*inv(U)*inv(L)*B with
-%                     optimized grouping, which is not the true SCSA but is
-%                     slightly better than factorize_and_solve. Cannot be used
-%                     for computing X=inv(A)*B or with iterative refinement.
-%            'FS'   - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
-%                     with forward and backward substitutions, and project with
-%                     C as C*inv(A)*B = C*X.
+%            'APF' - Augmented partial factorization. When opts.solver =
+%                    'MUMPS', C*inv(A)*B is obtained through the Schur
+%                    complement of an augmented matrix K = [A,B;C,0] using a
+%                    partial factorization; this is the true APF. When
+%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
+%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
+%                    true APF but is slightly better than factorize_and_solve.
+%                    Cannot be used for computing X=inv(A)*B or with iterative
+%                    refinement.
+%            'FS'  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+%                    with forward and backward substitutions, and project with
+%                    C as C*inv(A)*B = C*X.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if C is given and opts.iterative_refinement = false, then
-%         'SCSA' is used. Otherwise, 'factorize_and_solve' is used.
+%         'APF' is used. Otherwise, 'factorize_and_solve' is used.
 %      opts.verbal_solver (logical scalar; optional, defaults to false):
 %         Whether to have the solver print detailed information to the standard
 %         output. Note the behavior of output from MUMPS depends on compiler.
@@ -173,7 +175,7 @@ end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''SCSA''.');
+    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
 end
 
 % Turn on verbal output by default
@@ -193,18 +195,18 @@ elseif opts.iterative_refinement
     str_itr_ref = ' with iterative refinement';
 end
 
-% Use SCSA for opts.method unless return_X = true or opts.iterative_refinement = true
+% Use APF for opts.method unless return_X = true or opts.iterative_refinement = true
 if ~isfield(opts, 'method') || isempty(opts.method)
     if return_X || opts.iterative_refinement
         opts.method = 'factorize_and_solve';
     else
-        opts.method = 'SCSA';
+        opts.method = 'APF';
     end
 elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
     error('opts.method must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.method), {'scsa', 'factorize_and_solve', 'fs'})
-    error('opts.method = ''%s'' is not a supported option; use ''SCSA'' or ''factorize_and_solve''.', opts.method);
-elseif return_X && strcmpi(opts.method, 'SCSA')
+elseif ~ismember(lower(opts.method), lower({'APF', 'factorize_and_solve', 'FS'}))
+    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''factorize_and_solve''.', opts.method);
+elseif return_X && strcmpi(opts.method, 'APF')
     error('opts.method = ''%s'' cannot be used when C = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif strcmpi(opts.method, 'FS')
     opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
@@ -220,15 +222,15 @@ if ~isfield(opts, 'solver') || isempty(opts.solver)
     end
 elseif ~((ischar(opts.solver) && isrow(opts.solver)) || (isstring(opts.solver) && isscalar(opts.solver)))
     error('opts.solver must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.solver), {'mumps', 'matlab'})
+elseif ~ismember(lower(opts.solver), lower({'MUMPS', 'MATLAB'}))
     error('opts.solver = ''%s'' is not a supported option; use ''MUMPS'' or ''MATLAB''.', opts.solver);
 elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
     error('opts.solver = ''%s'' but function zmumps() is not found.', opts.solver)
 end
 
-% When opts.method = 'SCSA' and opts.solver = 'MATLAB', the solution method is not actually SCSA, so we give it a more descriptive name
+% When opts.method = 'APF' and opts.solver = 'MATLAB', the solution method is not actually APF, so we give it a more descriptive name
 str_method = opts.method;
-if strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MATLAB')
+if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MATLAB')
     str_method = 'C*inv(U)*inv(L)*B';
 end
 
@@ -247,7 +249,7 @@ end
 if return_X
     use_C = false;
 elseif use_transpose_B
-    if strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MUMPS')
+    if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MUMPS')
         % In this case, we keep C = 'transpose_B' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
         use_C = false;
     else
@@ -258,7 +260,7 @@ elseif use_transpose_B
 end
 % At this point, there are two possibilites for which use_C=false:
 % (1) C = [], return_X = true, opts.method = 'factorize_and_solve'
-% (2) C = 'transpose_B', return_X = false, use_transpose_B = true, opts.method = 'SCSA', opts.solver = 'MUMPS'
+% (2) C = 'transpose_B', return_X = false, use_transpose_B = true, opts.method = 'APF', opts.solver = 'MUMPS'
 
 % Check matrix sizes
 [sz_A_1, sz_A_2] = size(A);
@@ -289,7 +291,7 @@ if strcmpi(opts.solver, 'MUMPS')
     end
 
     % Whether matrix K = [A,B;C,0] will be treated as symmetric
-    if strcmpi(opts.method, 'SCSA') && use_transpose_B && opts.is_symmetric_A
+    if strcmpi(opts.method, 'APF') && use_transpose_B && opts.is_symmetric_A
         str_sym_K = ' (symmetric K)';
     end
 
@@ -392,8 +394,8 @@ if strcmpi(opts.method, 'None')
     stat.timing.analyze = 0;
     stat.timing.factorize = 0;
     stat.timing.solve = 0;
-elseif strcmpi(opts.method, 'SCSA')
-%% Compute S=C*inv(A)*B with SCSA (Schur complement scattering analysis)
+elseif strcmpi(opts.method, 'APF')
+%% Compute S=C*inv(A)*B with APF (augmented partial factorization)
     if strcmpi(opts.solver, 'MUMPS') % Build matrix K=[A,B;C,0] and use MUMPS to compute its Schur complement -C*inv(A)*B with the LU factors discarded.
         t1 = clock;
         if opts.verbal; fprintf('Building K  ... '); end

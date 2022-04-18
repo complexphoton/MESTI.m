@@ -19,7 +19,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   S, where 'in' and 'out' specify either the list of input/output channels or
 %   the input/output wavefronts. When the MUMPS function zmumps() is available,
 %   this is typically done by computing the Schur complement of an augmented
-%   matrix.
+%   matrix K through a partial factorization.
 %
 %   [field_profiles, channels, stat] = MESTI2S(syst, in, [], opts) and
 %   [S, channels, stat] = MESTI2S(syst, in, out, opts) allow detailed options to
@@ -295,25 +295,25 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         opts.solver is not used when opts.method = 'RGF'.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'SCSA' - Schur complement scattering analysis. When opts.solver =
-%                     'MUMPS', C*inv(A)*B is obtained through the Schur
-%                     complement of matrix K = [A,B;C,0]; this is the true SCSA
-%                     but requires MUMPS to be installed. When opts.solver =
-%                     'MATLAB', C*inv(A)*B is obtained as C*inv(U)*inv(L)*B with
-%                     optimized grouping, which is not the true SCSA but is
-%                     slightly better than 'factorize_and_solve'. SCSA is not
-%                     used for computing the full field profile inv(A)*B or with
-%                     iterative refinement.
-%            'FS'   - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
-%                     with forward and backward substitutions, and optionally
-%                     project with C.
-%            'RGF'  - Recursive Green's function method. Cannot be used for
-%                     computing the full field profile or with iterative
-%                     refinement, and cannot be used with PML.
+%            'APF' - Augmented partial factorization. When opts.solver =
+%                    'MUMPS', C*inv(A)*B is obtained through the Schur
+%                    complement of an augmented matrix K = [A,B;C,0] using a
+%                    partial factorization; this is the true APF. When
+%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
+%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
+%                    true APF but is slightly better than factorize_and_solve.
+%                    Cannot be used for computing the full field profile
+%                    inv(A)*B or with iterative refinement.
+%            'FS'  - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
+%                    with forward and backward substitutions, and optionally
+%                    project with C.
+%            'RGF' - Recursive Green's function method. Cannot be used for
+%                    computing the full field profile or with iterative
+%                    refinement, and cannot be used with PML.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if the input argument 'out' is not given or if
 %         opts.iterative_refinement = true, then 'factorize_and_solve' is used.
-%         Otherwise, 'SCSA' is used if ny is large or if PML has been specified;
+%         Otherwise, 'APF' is used if ny is large or if PML has been specified;
 %         'RGF' is used otherwise.
 %      opts.symmetrize_K (logical scalar; optional):
 %         Whether or not to pad input and/or output channels and perform
@@ -324,7 +324,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %            opts.symmetrize_K can only be used when all of the following are
 %         met: (1) input argument 'out' is given, (2) 'in' and 'out' are not
 %         specified as wavefronts, (3) opts.solver = 'MUMPS', (4) opts.method =
-%         'SCSA', and (5) the boundary condition in y is not Bloch periodic.
+%         'APF', and (5) the boundary condition in y is not Bloch periodic.
 %         When all of these conditions are met, opts.symmetrize_K defaults to
 %         true; otherwise it is not used.
 %      opts.clear_syst (logical scalar; optional, defaults to false):
@@ -695,7 +695,7 @@ if ~isfield(opts, 'solver') || isempty(opts.solver)
     end
 elseif ~((ischar(opts.solver) && isrow(opts.solver)) || (isstring(opts.solver) && isscalar(opts.solver)))
     error('opts.solver must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.solver), {'mumps', 'matlab'})
+elseif ~ismember(lower(opts.solver), lower({'MUMPS', 'MATLAB'}))
     error('opts.solver = ''%s'' is not a supported option; use ''MUMPS'' or ''MATLAB''.', opts.solver);
 elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
     error('opts.solver = ''%s'' but function zmumps() is not found.', opts.solver)
@@ -703,25 +703,25 @@ end
 
 if ~isfield(opts, 'method') || isempty(opts.method)
     % By default, if opts.return_field_profile = true or opts.iterative_refinement = true,
-    % then 'factorize_and_solve' is used. Otherwise, 'SCSA' is used if
+    % then 'factorize_and_solve' is used. Otherwise, 'APF' is used if
     % ny is large or if PML has been specified; 'RGF' is used otherwise.
     if opts.return_field_profile || (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true))
         opts.method = 'factorize_and_solve';
     elseif n_PML > 0
-        opts.method = 'SCSA';
+        opts.method = 'APF';
     elseif strcmpi(opts.solver, 'MUMPS') && isfield(opts, 'store_ordering') && isequal(opts.store_ordering, true)
-        opts.method = 'SCSA';
+        opts.method = 'APF';
     else
-        % SCSA is more efficient when ny is large. RGF is more efficient when ny is small.
+        % APF is more efficient when ny is large. RGF is more efficient when ny is small.
         if strcmpi(opts.solver, 'MUMPS')
             if ny > 80
-                opts.method = 'SCSA';
+                opts.method = 'APF';
             else
                 opts.method = 'RGF';
             end
         else
             if ny > 200
-                opts.method = 'SCSA';
+                opts.method = 'APF';
             else
                 opts.method = 'RGF';
             end
@@ -729,11 +729,11 @@ if ~isfield(opts, 'method') || isempty(opts.method)
     end
 elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
     error('opts.method must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.method), {'scsa', 'factorize_and_solve', 'fs', 'rgf'})
-    error('opts.method = ''%s'' is not a supported option; use ''SCSA'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
-elseif opts.return_field_profile && (strcmpi(opts.method, 'SCSA') || strcmpi(opts.method, 'RGF'))
+elseif ~ismember(lower(opts.method), lower({'APF', 'factorize_and_solve', 'FS', 'RGF'}))
+    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
+elseif opts.return_field_profile && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
     error('opts.method = ''%s'' cannot be used for field profile computations where out = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
-elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && (strcmpi(opts.method, 'SCSA') || strcmpi(opts.method, 'RGF'))
+elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
     error('opts.method = ''%s'' cannot be used when opts.iterative_refinement = true; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif strcmpi(opts.method, 'FS')
     opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
@@ -1097,8 +1097,8 @@ else
     is_symmetric_A = true;
 end
 
-% opts.symmetrize_K can only be used when all of the following are met: (1) input argument 'out' is given, (2) 'in' and 'out' are not specified as wavefronts, (3) opts.solver = 'MUMPS', (4) opts.method = 'SCSA', and (5) the boundary condition in y is not Bloch periodic.
-if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'SCSA') && strcmpi(opts.solver, 'MUMPS') && is_symmetric_A
+% opts.symmetrize_K can only be used when all of the following are met: (1) input argument 'out' is given, (2) 'in' and 'out' are not specified as wavefronts, (3) opts.solver = 'MUMPS', (4) opts.method = 'APF', and (5) the boundary condition in y is not Bloch periodic.
+if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MUMPS') && is_symmetric_A
     % By default, opts.symmetrize_K = true if it's possible
     if ~isfield(opts, 'symmetrize_K') || isempty(opts.symmetrize_K)
         opts.symmetrize_K = true;
@@ -1111,7 +1111,7 @@ else
     % symmetrize K is not possible
     if isfield(opts, 'symmetrize_K')
         if isequal(opts.symmetrize_K, true)
-            warning('opts.symmetrize_K = true is only available when isempty(out) = false, use_ind_in = true, use_ind_out = true, opts.solver = ''MUMPS'', opts.method = ''SCSA'', and syst.yBC is not ''Bloch''. Here isempty(out) = %d, use_ind_in = %d, use_ind_out = %d, opts.solver = ''%s'', opts.method = ''%s'', syst.yBC = ''%s''; opts.symmetrize_K will be ignored', isempty(out), use_ind_in, use_ind_out, opts.solver, opts.method, syst.yBC);
+            warning('opts.symmetrize_K = true is only available when isempty(out) = false, use_ind_in = true, use_ind_out = true, opts.solver = ''MUMPS'', opts.method = ''APF'', and syst.yBC is not ''Bloch''. Here isempty(out) = %d, use_ind_in = %d, use_ind_out = %d, opts.solver = ''%s'', opts.method = ''%s'', syst.yBC = ''%s''; opts.symmetrize_K will be ignored', isempty(out), use_ind_in, use_ind_out, opts.solver, opts.method, syst.yBC);
         end
         opts = rmfield(opts, 'symmetrize_K');
     end

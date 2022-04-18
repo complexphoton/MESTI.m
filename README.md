@@ -1,16 +1,16 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetics simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **Schur complement scattering analysis (SCSA)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to solve for a single input.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetics simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **augmented partial factorization (APF)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to perform a single simulation.
 
 MESTI.m uses MATLAB and considers transverse-magnetic (TM) waves in 2D. A 3D vectorial version of MESTI written in Julia is under development and will be released in the future.
 
-MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all of the common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to SCSA, MESTI also implements conventional direct methods.
+MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all of the common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to APF, MESTI also implements conventional direct methods.
 
 ## Installation
 
 No installation is required for MESTI itself; just download it and add the <code>MESTI.m/src</code> folder to the search path using the <code>addpath</code> command in MATLAB. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the SCSA method (which is a key feature that distinguishes MESTI from other FDFD software), the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use slower conventional methods that are not based on the Schur complement. So, MUMPS installation is strongly recommended.  See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Functions 
 
@@ -35,7 +35,7 @@ Several examples are given in the [examples](./examples) folder, which illustrat
 3. [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
 4.  [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
 5. [Meta-atom design for metasurfaces](./examples/2d_meta_atom): 2D, using <code>mesti2s()</code> with Bloch periodic boundary.
-6. [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (SCSA-c).
+6. [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (APF-c).
 
 More examples will be added in the future.
 
@@ -58,6 +58,7 @@ Here are some images from the examples above:
 
 For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
 
-- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively-multi-channel optics using Schur complement,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively-multi-channel optics using augmented partial factorization,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
 
 Please cite this paper when you use MESTI.
+
