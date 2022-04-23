@@ -46,7 +46,7 @@ syst.yBC = 'periodic';
 ```
 ```
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
-xBC = {self-energy, self-energy}; yBC = periodic
+xBC = {outgoing, outgoing}; yBC = periodic
 Building G0 ... elapsed time:   0.050 secs
 Building B,C... elapsed time:   0.001 secs
             ... elapsed time:   0.008 secs
@@ -98,7 +98,7 @@ field_profiles = mesti2s(syst, in, [], opts);
 ```
 ```
 System size: ny = 600, nx = 240 => 242; N_prop= {61, 61}
-xBC = {self-energy, self-energy}; yBC = periodic
+xBC = {outgoing, outgoing}; yBC = periodic
 Building G0 ... elapsed time:   0.054 secs
 Building B,C... elapsed time:   0.001 secs
             ... elapsed time:   0.000 secs

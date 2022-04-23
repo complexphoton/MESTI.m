@@ -171,11 +171,10 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         Bloch wave number in y direction, analogous to syst.kx_B.
 %      syst.self_energy (sparse matrix; optional):
 %         Self-energy matrix, used as A = A - syst.self_energy to achieve exact
-%         radiation boundary condition. Typically, self-energy can only be
-%         computed in two-sided geometries with radiation boundary in one
-%         direction, closed (non-open) boundary condition in the other
-%         direction, as in mesti2s(). On the sides where self-energy is used,
-%         PEC boundary condition should be use with no PML.
+%         radiation boundary condition. In mesti2s() when syst.xBC = 'outgoing',
+%         the self-energy matrix will be built and passed to mesti(). On the
+%         sides where self-energy is used, Dirichlet boundary condition should
+%         be use with no PML.
 %   B (numeric matrix or structure array; required):
 %      Matrix specifying the input in the C*inv(A)*B - D or C*inv(A)*B or
 %      inv(A)*B returned. When the input argument B is a matrix, it is directly
@@ -1014,8 +1013,9 @@ else
     [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(syst.epsilon, k0dx, xBC, yBC, xPML, yPML, use_UPML);
 
     % Use self-energy (instead of PML) to implement exact outgoing boundary condition.
-    % self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, and V_FS denotes the coupling between the two as given by the differential operator (which is nonzero only along the interface between F and S).
-    % On the sides where self-energy is used, we must have PEC boundary condition with no PML. But it's tricky to check which side(s) self-energy is used, so we don't check it.
+    % self-energy is the retarded Green's function of the surrounding space (with a Dirichlet boundary surrounding the scattering region) evaluated on the surface.
+    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
+    % On the sides where self-energy is used, we must have Dirichlet boundary condition with no PML. But it's tricky to check which side(s) self-energy is used, so we don't check it.
     % self_energy should have the same symmetry as A; we don't check it.
     if isfield(syst, 'self_energy') && ~isempty(syst.self_energy)
         if ~issparse(syst.self_energy); error('syst.self_energy must be a sparse matrix, if given.'); end

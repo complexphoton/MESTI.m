@@ -104,14 +104,14 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      syst.xBC (character vector or scalar structure or cell array; optional):
 %         In mesti(), outgoing boundary condition is always used in x direction.
 %         But there are different options for implementing such outgoing
-%         boundary.
-%            By default, syst.xBC = 'self-energy', in which case self-energy
-%         based on the retarded Green's function of a semi-infinite discrete
-%         homogeneous space is used to enforce an exact outgoing boundary for
-%         all propagating and evanescent waves on both sides. Self-energy
-%         doesn't increase the simulation domain; only a single-pixel slice of
-%         syst.epsilon_L and syst.epsilon_R is added on the left and on the
-%         right to place the input and output.
+%         boundary. By default, 
+%            syst.xBC = 'outgoing'
+%         in which case self-energy based on the retarded Green's function of a
+%         semi-infinite discrete homogeneous space is used to enforce an exact
+%         outgoing boundary for all propagating and evanescent waves on both
+%         sides. Doing so doesn't increase the simulation domain; only a single-
+%         pixel slice of syst.epsilon_L and syst.epsilon_R is added on the left
+%         and on the right to place the input and output.
 %            A drawback of self-energy is that it introduces coupling between
 %         every pair of pixels in y direction on that slice, making matrix A
 %         less sparse. When the system is wide (roughly when ny > 800), it is
@@ -161,15 +161,16 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %            alpha(u)/omega = alpha_max_over_omega*((1-u).^power_alpha),
 %         where omega is frequency, and u goes linearly from 0 at the beginning
 %         of the PML to 1 at the end of the PML. 
-%            The syntax above (setting syst.xBC to 'self-energy' or a scalar
+%            The syntax above (setting syst.xBC to 'outgoing' or a scalar
 %         structure) uses the same parameters on the two sides. For a two-sided
 %         geometry (i.e., when syst.epsilon_L and syst.epsilon_R are both
 %         provided), one can also use different parameters on the two sides. To
 %         do so, set syst.xBC to a two-element cell array, with the first
 %         element specifying parameters on the left, the second element
 %         specifying parameters on the right. For example,
-%            syst.xBC = {'self-energy', struct('npixels_PML', 40)}
-%         specifies self-energy on the left, 40 pixels of PML on the right.
+%            syst.xBC = {'outgoing', struct('npixels_PML', 40)}
+%         specifies exact outgoing boundary on the left, 40 pixels of PML on the
+%         right.
 %            With real-coordinate stretching, PML can attenuate evanescent waves
 %         more efficiently than free space, so npixels_spacer defaults to 0.
 %            The PML thickness should be chosen based on the acceptable level of
@@ -482,7 +483,7 @@ end
 if isfield(syst, 'PML') && ~isempty(syst.PML)
     error('syst.PML is not used in mesti2s(); use syst.xBC instead.');
 elseif isfield(syst, 'self_energy') && ~isempty(syst.self_energy)
-    error('syst.self_energy is not used in mesti2s(); use syst.xBC instead.');
+    error('syst.self_energy is not used in mesti2s(); use syst.xBC = ''outgoing'' instead.');
 elseif isfield(syst, 'kx_B') && ~isempty(syst.kx_B)
     error('syst.kx_B is not supported in mesti2s(); use mesti() if Bloch periodic BC in x is needed.');
 elseif isfield(syst, 'PML_type') && ~isempty(syst.PML_type)
@@ -517,21 +518,21 @@ else
     yBC = syst.yBC;
 end
 
-% Defaults to using self-energy for outgoing boundary in x
+% Defaults to using an exact outgoing boundary in x
 if ~isfield(syst, 'xBC') || isempty(syst.xBC)
-    syst.xBC = 'self-energy';
-elseif ~((~iscell(syst.xBC) && strcmpi(syst.xBC, 'self-energy')) || (isstruct(syst.xBC) && isscalar(syst.xBC)) || (iscell(syst.xBC) && numel(syst.xBC)==2))
-    error('syst.xBC must be ''self-energy'' or a scalar structure or a two-element cell array, if given.');
+    syst.xBC = 'outgoing';
+elseif ~((~iscell(syst.xBC) && strcmpi(syst.xBC, 'outgoing')) || (isstruct(syst.xBC) && isscalar(syst.xBC)) || (iscell(syst.xBC) && numel(syst.xBC)==2))
+    error('syst.xBC must be ''outgoing'' or a scalar structure or a two-element cell array, if given.');
 end
 
 % Apply the same xBC on all sides; the second element will be ignored if two_sided = false
 if ~(iscell(syst.xBC) && numel(syst.xBC)==2)
     syst.xBC = {syst.xBC, syst.xBC};
 elseif ~two_sided
-    error('For a one-sided geometry, BC on the right will be PEC; syst.xBC must be ''self-energy'' or a scalar structure, if given, to specify only BC on the left.');
+    error('For a one-sided geometry, BC on the right will be PEC; syst.xBC must be ''outgoing'' or a scalar structure, if given, to specify only BC on the left.');
 end
 
-% Start with default: self-energy, no PML, no spacer on all sides
+% Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on all sides
 % nx_extra is the number of homogeneous-space pixels to be added in x direction; at least one pixel is needed to put source and detection
 % The two elements of nx_extra and use_self_energy corresponds to the left and right sides
 if two_sided
@@ -545,18 +546,18 @@ else
 end
 syst.PML = {}; % to be used in mesti()
 n_PML = 0; % number of PML layers
-str_xBS = {'self-energy', 'self-energy'}; % to be used for printing later
+str_xBS = {'outgoing', 'outgoing'}; % to be used for printing later
 
 % Loop over syst.xBC and handle PML parameters, if specified
 str_sides = {'low', 'high'};
 for ii = 1:n_sides
-    if ~strcmpi(syst.xBC{ii}, 'self-energy')
+    if ~strcmpi(syst.xBC{ii}, 'outgoing')
         use_self_energy(ii) = false;
         n_PML = n_PML + 1;
         str_xBS{ii} = 'PML';
         PML_ii = syst.xBC{ii};
         if ~(isstruct(PML_ii) && isscalar(PML_ii))
-            error('syst.xBC{%d} must be ''self-energy'' or a scalar structure.', ii)
+            error('syst.xBC{%d} must be ''outgoing'' or a scalar structure.', ii)
         end
 
         % Check that the user did not accidentally use options only in mesti()
@@ -744,7 +745,7 @@ if strcmpi(opts.method, 'RGF')
     opts = rmfield(opts, 'solver'); % not used in RGF
     opts = rmfield(opts, 'clear_syst'); % not used in RGF
     if n_PML > 0
-        error('PML cannot be used when opts.method = ''RGF''; use self-energy or change opts.method.');
+        error('PML cannot be used when opts.method = ''RGF''; use syst.xBC = ''outgoing'' or change opts.method.');
     end
     if isfield(opts, 'nrhs') && ~isempty(opts.nrhs)
         warning('opts.nrhs is not used when opts.method = ''RGF''; will be ignored.');
@@ -809,11 +810,11 @@ end
 
 t1 = clock; timing_init = etime(t1,t0); % Initialization time
 
-%% Part 2.1: Build the self-energy, if needed
+%% Part 2.1: Build the self-energy matrix, if needed
 
 if use_self_energy(1) || use_self_energy(2)
     if syst.use_continuous_dispersion
-        warning('Self-energy is not exact when syst.use_continuous_dispersion = true; consider using PML or setting syst.use_continuous_dispersion = false.');
+        warning('The outgoing boundary condition based on self-energy is not exact when syst.use_continuous_dispersion = true; consider using PML or setting syst.use_continuous_dispersion = false.');
     end
     if opts.verbal; fprintf('Building G0 ... '); end
 
@@ -846,8 +847,9 @@ if use_self_energy(1) || use_self_energy(2)
     if opts.clear_memory; clear phi; end
 
     % self-energy can be used instead of PML to implement exact outgoing boundary condition.
-    % self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, and V_FS denotes the coupling between the two as given by the differential operator (which is nonzero only along the interface between F and S).
-    % In this way, the self-energy equally the retarded Green's function of a semi-infinite homogeneous space.
+    % self-energy is the retarded Green's function of the surrounding space (with a Dirichlet boundary surrounding the scattering region) evaluated on the surface.
+    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
+    % For the geometry here, self-energy equals the retarded Green's function of a semi-infinite homogeneous space.
     if ~use_RGF
         % syst.self_energy will be used in mesti()
         if all(use_self_energy)
