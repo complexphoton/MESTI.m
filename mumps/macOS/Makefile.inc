@@ -1,6 +1,6 @@
 #
-#  This file is part of MUMPS 5.2.1, released
-#  on Fri Jun 14 14:46:05 UTC 2019
+#  This file is part of MUMPS 5.5.0, released
+#  on Thu Apr 14 11:45:33 UTC 2022
 #
 ################################################################################
 #
@@ -44,10 +44,8 @@
 #
 
 #SCOTCHDIR  = ${HOME}/scotch_6.0
-#SCOTCHDIR  = /Users/chsu/install/compile/scotch_6.0.6
 #ISCOTCH    = -I$(SCOTCHDIR)/include
-#ISCOTCH    = -I/usr/local/include
-
+#
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
 # sequential analysis choose the first (remember to add -Dscotch in the ORDERINGSF
@@ -56,22 +54,15 @@
 
 #LSCOTCH    = -L$(SCOTCHDIR)/lib -lesmumps -lscotch -lscotcherr
 #LSCOTCH    = -L$(SCOTCHDIR)/lib -lptesmumps -lptscotch -lptscotcherr
-#LSCOTCH    = -L/usr/local/lib/libscotch.a -lesmumps -lscotch -lscotcherr
-#LSCOTCH    = -L/usr/local/lib -lesmumps -lscotch -lscotcherr
-#LSCOTCH    = -L/Users/chsu/install/compile/scotch_6.0.6/lib -lesmumps -lscotch -lscotcherr
 
 
 LPORDDIR = $(topdir)/PORD/lib/
 IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord
 
-#LMETISDIR = /opt/metis-5.1.0/build/Linux-x86_64/libmetis
-#LMETISDIR = /Users/chsu/install/compile/metis-5.1.0/build/Darwin-x86_64/libmetis
-#IMETIS    = /opt/metis-5.1.0/include
-#LMETISDIR = /usr/local/lib/libmetis.a
+# Uncomment the two lines below if you installed METIS to the default /usr/local folder
 #LMETISDIR = /usr/local/lib
-#IMETIS    = -I/usr/local/include
-#IMETIS    = -I/Users/chsu/install/compile/metis-5.1.0/include
+#IMETIS    = /usr/local/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -79,24 +70,22 @@ LPORD    = -L$(LPORDDIR) -lpord
 # variable below); for both parallel and sequential analysis choose the second 
 # line (remember to add -Dparmetis in the ORDERINGSF variable below)
 
+# Uncomment the following line if you installed METIS
 #LMETIS    = -L$(LMETISDIR) -lmetis
-#LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
 
 # The following variables will be used in the compilation process.
 # Please note that -Dptscotch and -Dparmetis imply -Dscotch and -Dmetis respectively.
 # If you want to use Metis 4.X or an older version, you should use -Dmetis4 instead of -Dmetis
 # or in addition with -Dparmetis (if you are using parmetis 3.X or older).
 #ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
-#ORDERINGSF = -Dmetis -Dpord # add -Dmetis if you have Metis installed.
-ORDERINGSF  = -Dpord 
+
+# Add -Dmetis to the following line if you installed METIS
+ORDERINGSF = -Dpord
 ORDERINGSC  = $(ORDERINGSF)
 
-LORDERINGS = $(LMETIS) $(LPORD)
-
-#IORDERINGSF = $(ISCOTCH)
-IORDERINGSF = $(IMETIS) $(IPORD)
-
-IORDERINGSC = $(IMETIS) $(IPORD)
+LORDERINGS = $(LMETIS) $(LPORD) $(LSCOTCH)
+IORDERINGSF = $(ISCOTCH)
+IORDERINGSC = $(IMETIS) $(IPORD) $(ISCOTCH)
 
 #End orderings
 ########################################################################
@@ -114,11 +103,11 @@ OUTF    = -o
 # RM : remove files
 RM      = /bin/rm -f
 # CC : C compiler
-CC      = cc -fPIC
+CC      = clang
 # FC : Fortran 90 compiler
-FC      = gfortran -fallow-argument-mismatch -fPIC
+FC      = gfortran
 # FL : Fortran linker
-FL      = gfortran -fPIC
+FL      = gfortran
 # AR : Archive object in a library
 #      keep a space at the end if options have to be separated from lib name
 AR      = ar vr 
@@ -129,9 +118,8 @@ RANLIB  = ranlib
 
 # DEFINE HERE YOUR LAPACK LIBRARY
 
-LAPACK = -lLAPACK
-#LAPACK = -llapack
-#LAPACK = -L/usr/local/opt/lapack/lib
+# Use LAPACK in Apple's Accelerate framework; alternately we can set "LAPACK = -lLAPACK".
+LAPACK = -framework Accelerate
 
 # The next two lines should not be modified. They concern
 # the sequential library provided by MUMPS, to use instead
@@ -141,8 +129,14 @@ LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq
 
 # DEFINE HERE YOUR BLAS LIBRARY
 
-LIBBLAS = -lBLAS 
-#LIBBLAS = -L/usr/local/opt/openblas/lib # on intel-based systems, openblas is faster.
+# Use the following to use BLAS in Apple's Accelerate framework; alternately we can set "LIBBLAS = -lBLAS".
+LIBBLAS = -framework Accelerate
+
+# Use the following if you have an Apple silicon Mac, have openblas installed through "brew install openblas", and want to use that.
+#LIBBLAS = -L/opt/homebrew/opt/openblas/lib
+
+# Use the following if you have an Intel Mac, have openblas installed through "brew install openblas", and want to use that.
+#LIBBLAS = -L/usr/local/opt/openblas/lib
 
 # DEFINE HERE YOUR PTHREAD LIBRARY
 LIBOTHERS = -lpthread
@@ -161,11 +155,10 @@ LIBOTHERS = -lpthread
 CDEFS = -DAdd_
 
 #COMPILER OPTIONS
-OPTF    = -O
-# changed OPTS to below to disable pthread
-#OPTC    = -O -I. -DWITHOUT_PTHREAD
-OPTC    = -O -I.
-OPTL    = -O 
+# The -fallow-argument-mismatch is needed for gfortran 10.0 and later; remove that if you use an earlier version of gfortran
+OPTF    = -O -fPIC -fallow-argument-mismatch
+OPTC    = -O -I. -fPIC
+OPTL    = -O -fPIC
 
 #Sequential:
 

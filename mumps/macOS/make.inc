@@ -3,25 +3,22 @@
 # depending on whether you want to generate the MATLAB or the Octave
 # interface
 
-# To generate the MATLAB interface uncomment the following line
+# Location of the MATLAB mex compiler; change it based on the MATLAB version on your machine.
+# For Apple silicon Macs, currently R2022a_Beta is the only compatible version.
 # ( the use of -largeArrayDims is necessary to work with sparse
 # matrices since R2006b)
-#MEX         = /opt/matlab/matlab/bin/mex -g -largeArrayDims
-MEX         = /Applications/MATLAB_R2021a.app/bin/mex -g -largeArrayDims
+MEX = /Applications/MATLAB_R2022a_Beta.app/bin/mex -g -largeArrayDims
 
 # To generate the Octave interface uncomment the following line
 # MEX         = mkoctfile -g --mex
 
-# Main MUMPS_DIR
-#MUMPS_DIR = $(HOME)/MUMPS_5.1.2
-MUMPS_DIR = /Users/chsu/install/compile/MUMPS_5.1.2
-
+# Change to the directory where you compiled MUMPS
+MUMPS_DIR = /Users/chsu/install/compile/MUMPS_5.5.0
 
 # Orderings (see main Makefile.inc file from MUMPS)
-#LMETISDIR = ${HOME}/parmetis-4.0.3/build/Linux-x86_64/libmetis
-#LMETISDIR = /Users/chsu/install/compile/metis-5.1.0/build/Darwin-x86_64/libmetis
+# Uncomment the two lines below if you installed METIS to the default /usr/local folder
+#LMETISDIR = /usr/local/lib
 #LMETIS     = -L$(LMETISDIR) -lmetis
-
 LPORDDIR   = $(MUMPS_DIR)/PORD/lib
 LPORD      = -L$(LPORDDIR) -lpord
 LORDERINGS = $(LPORD) $(LMETIS)
@@ -41,12 +38,22 @@ LORDERINGS = $(LPORD) $(LMETIS)
 # LIBFORT = -L/opt2/SUNWspro7/lib -lsunperf -lfminvai -lfai2 -lfsu -lfmaxvai -lfmaxlai -lfai -lfsumai -lLIBFORT = /usr/local/lib/libgfortran.a
 
 # gfortran
-#LIBFORT = /usr/local/Cellar/gcc/8.2.0/lib/gcc/8/libgfortran.dylib
-LIBFORT = -L/usr/local/opt/gcc/lib/gcc/11 -lgfortran
+# Use the following if you have an Apple silicon Mac and have gfortran installed through "brew install gcc"; change to your gcc version.
+LIBFORT = -L/opt/homebrew/lib/gcc/11 -lgfortran
+
+# Use the following if you have an Intel Mac and have gfortran installed through "brew install gcc"; change to your gcc version.
+#LIBFORT = -L/usr/local/opt/gcc/lib/gcc/11 -lgfortran
 
 # BLAS library:
-#LIBBLAS = -L/usr/local/opt/openblas/lib -llapack
+# Use the following to link to BLAS and LAPACK in Apple's Accelerate framework.
+# Note that mex does not support "-framework", so instead of "-framework Accelerate", here we use "-lBLAS -lLAPACK", which will search for BLAS and LAPACK (and the one in in Apple's Accelerate framework will be found).
 LIBBLAS = -lBLAS -lLAPACK
+
+# Use the following if you have an Apple silicon Mac, have openblas installed through "brew install openblas", and want to use that.
+#LIBBLAS = -L/opt/homebrew/opt/openblas/lib -lLAPACK
+
+# Use the following if you have an Intel Mac, have openblas installed through "brew install openblas", and want to use that.
+#LIBBLAS = -L/usr/local/opt/openblas/lib -lLAPACK
 
 # extra options passed via mex command
 # Add -DINTSIZE64 if MUMPS was compiled with 64-bit integers (BLAS
