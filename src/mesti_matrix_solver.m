@@ -115,7 +115,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      stat.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
-%      stat.ordering_method (integer scalar; optional):
+%      stat.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
 %      stat.ordering (positive integer vector; optional):
 %         Ordering sequence returned by MUMPS when opts.store_ordering = true.
@@ -318,6 +318,9 @@ if strcmpi(opts.solver, 'MUMPS')
     if isfield(opts, 'ordering') && ~isempty(opts.ordering)
         opts.use_given_ordering = true;
         str_ordering = ' with user-specified ordering';
+        if opts.use_METIS
+            error('opts.use_METIS cannote be true when opts.ordering is given.');
+        end
     end
 
     % Number of openMP threads in MUMPS; leave empty if not specified
@@ -603,6 +606,33 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
     if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.solve); end
 else
     error('opts.method = ''%s'' is not a supported option.', opts.method);
+end
+
+% Convert stat.ordering_method from integer to character array, per MUMPS definition of ICNTL(7)
+if strcmpi(opts.solver, 'MUMPS')
+    switch stat.ordering_method
+        case 0
+            str_ordering = 'AMD';
+        case 1
+            str_ordering = 'user specified';
+        case 2
+            str_ordering = 'AMF';
+        case 3
+            str_ordering = 'SCOTCH';
+        case 4
+            str_ordering = 'PORD';
+        case 5
+            str_ordering = 'METIS';
+        case 6
+            str_ordering = 'QAMD';
+        otherwise
+            str_ordering = 'N/A';
+    end
+    % Check if METIS ordering was actually used in MUMPS
+    if opts.use_METIS && stat.ordering_method ~= 5
+        warning('opts.use_METIS = true, but %s ordering was used in MUMPS.', str_ordering);
+    end
+    stat.ordering_method = str_ordering;
 end
 
 if opts.use_given_ordering; opts = rmfield(opts, 'ordering'); end % We don't return the user-specified ordering again since it can be large

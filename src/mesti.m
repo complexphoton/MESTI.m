@@ -400,7 +400,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         PML parameters on the low and high sides of x direction, if used.
 %      stat.yPML (two-element cell array; optional);
 %         PML parameters on the low and high sides of y direction, if used.
-%      stat.ordering_method (integer scalar; optional):
+%      stat.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
 %      stat.ordering (positive integer vector; optional):
 %         Ordering sequence returned by MUMPS when opts.store_ordering = true.
