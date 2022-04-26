@@ -71,8 +71,13 @@ echo $MKLROOT
 
 
 
-If Lmod module system is not used in your cluster, then you can also try to find the path like `.../mkl`, where `...` is the Intel directory path. Then you can assign the `MKLROOT` by `source .../mkl/bin/mklvars.sh intel64` and type
+If Lmod module system is not used in your cluster, then you can also try to find the path like `.../mkl`, where `...` is the Intel directory path. Then you can assign the `MKLROOT` by 
 
+```shell
+source .../mkl/bin/mklvars.sh intel64
+```
+
+and
 ```shell
 echo $MKLROOT
 ```
