@@ -9,7 +9,17 @@ To compile the sequential version of MUMPS and its MATLAB interface, you need co
 1. [Linux cluster](./linux)
 2. [macOS](./macOS)
 
-If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). Compile it with <code>make config; make</code>, and install it to the default <code>/usr/local</code> folder with <code>sudo make install</code>. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
+If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). 
+
+
+
+In personal laptop, compile it with <code>make config; make</code>, and install it to the default <code>/usr/local</code> folder with <code>sudo make install</code>.  
+
+In cluster, compile it with <code>make config; make</code>, and move the directory where you wanted. Then, you should type <code>export PATH="\$LMETISDIR:$PATH"</code> and <code>export PATH="\$IMETIS:$PATH"</code> where <code>LMETISDIR</code> is the path to the folder where the METIS library (<code>libmetis.a</code> or <code>libmetis.so</code>) is and <code>IMETIS</code> is the path to the folder where the METIS headers (<code>metis.h</code>) are.
+
+
+
+Then, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>. MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
 
 ## Compile MUMPS
 Suppose you downloaded the 5.5.0 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter

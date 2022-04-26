@@ -123,21 +123,27 @@ RANLIB  = ranlib
 
 # DEFINE HERE YOUR LAPACK LIBRARY
 
-# Make this variable point to the path where the Intel MKL library is
+# Make MKLROOT variable point to the path where the Intel MKL is
 # installed. Default install directory for Intel MKL is following:
-# MKLROOT=/opt/intel/mkl/lib/intel64
-# However, in different Linux clusters, the Intel MKL library may be put in different
-# path. If you are using in Lmod module system and Intel libraries are installed, 
-# you can use "module load intel" and "printenv PATH". One of the PATH should be the
-# path of Intel directory, then typically the MKLROOT is under the path
-# ".../mkl/lib/intel64", where "..." is the Intel directory.
-# If Lmod module system is not used in your cluster, then you can also try to find the
-# path like ".../mkl/lib/intel64", where "..." is the Intel directory.
-# If you still cannot figure out the path of the libraries, you may need to contact 
-# the maintenance team of your cluster.
-# The following is the path of the Intel MKL libraries in USC Discovery cluster:
-MKLROOT=/spack/apps/linux-centos7-x86_64/intel-19.0.4/intel-mkl-2019.5.281-ftihihwas7hnpmex6tt3luvqzuy6fgb7/compilers_and_libraries_2019.5.281/linux/mkl/lib/intel64
-LAPACK = -L$(MKLROOT) -lmkl_sequential -lmkl_intel_lp64 -lmkl_core
+# MKLROOT=/opt/intel/mkl
+# However, in different Linux clusters, the Intel MKL may be put in different
+# path. If you are using in Lmod module system and Intel MKL are installed,
+# you can use "module load intel", "module load intel-mkl", and "echo $MKLROOT".
+# MKLROOT path should be printed out, if Intel MKL is available.
+# The MKLROOT should be under the path ".../mkl", where "..." is the Intel path.
+#
+# If Lmod module system is not used in your cluster, then you can also try to
+# find the path like ".../mkl", where "..." is the Intel directory path.
+# You can specify the MKLROOT by "source .../mkl/bin/mklvars.sh intel64"
+# and type "echo $MKLROOT". MKLROOT path should be printed out.
+#
+# If you still cannot figure out the path of the libraries, you may need to
+# contact the maintenance team of your cluster.
+#
+# The following is the path of the Intel MKL path in USC Discovery cluster:
+MKLROOT=/spack/apps/linux-centos7-x86_64/intel-19.0.4/intel-mkl-2019.5.281-ftihihwas7hnpmex6tt3luvqzuy6fgb7/compilers_and_libraries_2019.5.281/linux/mkl
+# LAPACK library is under the folder of $(MKLROOT)/lib/intel64
+LAPACK = -L$(MKLROOT)/lib/intel64 -lmkl_sequential -lmkl_intel_lp64 -lmkl_core
 
 # The next two lines should not be modified. They concern
 # the sequential library provided by MUMPS, to use instead
@@ -146,7 +152,8 @@ INCSEQ = -I$(topdir)/libseq
 LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq
 
 # DEFINE HERE YOUR BLAS LIBRARY
-LIBBLAS = -L$(MKLROOT) -lmkl_intel_lp64
+# BLAS library is under the folder of $(MKLROOT)/lib/intel64
+LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64
 
 # DEFINE HERE YOUR PTHREAD LIBRARY
 LIBOTHERS = -lpthread
