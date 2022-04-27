@@ -67,11 +67,7 @@ If Lmod module system is not used in your cluster, then you can also try to find
 
 ```shell
 source .../mkl/bin/mklvars.sh intel64
-```
-
-and
-```shell
-echo $MKLROOT
+echo $MKLROO
 ```
 
 `MKLROOT`  is assigned and should be printed out.
@@ -84,17 +80,6 @@ In some cases, your cluster cannot find the BLAS and LAPACK libraries by itself 
 export LD_PRELOAD=$MKLROOT/lib/intel64/libmkl_intel_lp64.so:$MKLROOT/lib/intel64/libmkl_sequential.so:$MKLROOT/lib/intel64/libmkl_intel_thread.so:$MKLROOT/lib/intel64/libmkl_core.so
 export LD_LIBRARY_PATH=$MKLROOT/lib/intel64
 ```
-
-If you would like to METIS, but your cluster cannot find METIS libraries by itself when you run MATLAB interface for MUMPS. You can type 
-```shell
-export  LD_PRELOAD=$LMETISDIR/libmetis.a
-```
-or
-```shell
-export  LD_PRELOAD=$LMETISDIR/libmetis.so
-```
-
-where `LMETISDIR` is the path to the folder where the METIS library is.
 
 
 

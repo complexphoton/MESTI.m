@@ -9,7 +9,11 @@ To compile the sequential version of MUMPS and its MATLAB interface, you need co
 1. [Linux cluster](./linux)
 2. [macOS](./macOS)
 
-If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). You can compile it with <code>make config; make</code>. If you have root access to the default <code>/usr/local</code> folder, you can install it to the folder with <code>sudo make install</code>.  In case you do not have access to the folder, you can move the METIS directory to wherever you wanted, and specify its path when compiling MUMPS. Then, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>. MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
+If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). 
+
+
+
+Compile it with <code>make config; make</code>. If you have write access to <code>/usr/local</code>, you can install METIS to there with <code>sudo make install</code>; otherwise you can move the METIS folder to where you want and specify its path when compiling MUMPS. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
 
 ## Compile MUMPS
 Suppose you downloaded the 5.5.0 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
@@ -88,3 +92,13 @@ If any of them does not run successfully, look back at the compilation of MUMPS 
 If they all pass, congratulations! You are done.
 
 Add this folder of MATLAB interface for MUMPS to the search path of MATLAB using the <code>addpath</code> command in MATLAB, so <code>mesti()</code> can find the function file <code>zmumps.m</code> there. You can also have this path to be added every time MATLAB starts by editing <code>startup.m</code> with the <code>edit(fullfile(userpath,'startup.m'))</code> command.
+
+
+
+If you would like to use METIS, but your cluster cannot find METIS libraries by itself when you run MATLAB interface for MUMPS. You can type 
+
+```shell
+export LD_LIBRARY_PATH=$LMETISDIR
+```
+
+where `LMETISDIR` is the path to the folder where the METIS library is.
