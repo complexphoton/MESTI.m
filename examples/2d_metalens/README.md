@@ -179,7 +179,7 @@ time2 = clock; timing_compress = etime(time2,time1);
 # Compute the scattering matrix
 
 ```matlab
-C = 'transpose_B'; % Specify C = transpose(B)
+C = 'transpose(B)'; % Specify C = transpose(B)
 D = []; % We only need the transmission matrix, for which D=0
 opts.clear_syst = true; % syst can be cleared in mesti()
 opts.clear_BC = true;   % B can be cleared in mesti()
@@ -464,6 +464,7 @@ norm_factor = 100/max(intensity_profiles, [], 'all');
 % Loop through Gaussian beams focused at different locations.
 colormap('hot');
 deg = char(176);
+figure
 for ii = 1:n_angles_profiles
     a_ii = a_list(ii);
     theta_in = theta_in_list(a_ii);

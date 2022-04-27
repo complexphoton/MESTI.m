@@ -18,14 +18,14 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      Matrix A in the C*inv(A)*B or inv(A)*B returned.
 %   B (numeric matrix; required):
 %      Matrix B in the C*inv(A)*B or inv(A)*B returned.
-%   C (numeric matrix or 'transpose_B' or []; optional):
+%   C (numeric matrix or 'transpose(B)' or []; optional):
 %      Matrix C in the C*inv(A)*B returned.
-%         If C = transpose(B), the user can set C = 'transpose_B' as a character
-%      vector, and it will be replaced by transpose(B) in the code. Doing so has
-%      an advantage: if matrix A is symmetric, C = 'transpose_B', opts.solver =
-%      'MUMPS', and opts.method = 'APF', the matrix K = [A,B;C,0] will be
-%      treated as symmetric when computing its Schur complement to lower
-%      computing time and memory usage.
+%         If C = transpose(B), the user can set C = 'transpose(B)' as a
+%      character vector, which will be replaced by transpose(B) in the code. If
+%      matrix A is symmetric, C = 'transpose(B)', opts.solver = 'MUMPS', and
+%      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
+%      symmetric when computing its Schur complement to lower computing time and
+%      memory usage.
 %         To compute X = inv(A)*B, the user can simply omit C from the input
 %      argument if there is no need to change the default opts. If opts is
 %      needed, the user can set C = [] here.
@@ -157,11 +157,11 @@ if isempty(C)  % return_X = isempty(C), but is easier to understand the meaning 
 elseif ismatrix(C) && isnumeric(C)
     return_X = false;
     use_transpose_B = false;
-elseif isequal(C, 'transpose_B')
+elseif isequal(C, 'transpose(B)')
     return_X = false;
     use_transpose_B = true;
 else
-    error('Input argument ''C'' must be a numeric matrix or ''transpose_B'' or [], if given.');
+    error('Input argument ''C'' must be a numeric matrix or ''transpose(B)'' or [], if given.');
 end
 C_name = inputname(3); % name of the variable we call C in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
@@ -175,7 +175,7 @@ end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
+    error('opts.symmetrize_K is not used in mesti_matrix_solver(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose(B)'', make sure matrix A is symmetric, set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
 end
 
 % Turn on verbal output by default
@@ -250,7 +250,7 @@ if return_X
     use_C = false;
 elseif use_transpose_B
     if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MUMPS')
-        % In this case, we keep C = 'transpose_B' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
+        % In this case, we keep C = 'transpose(B)' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
         use_C = false;
     else
         % In other cases, we may as well allocate the memory for C now
@@ -260,7 +260,7 @@ elseif use_transpose_B
 end
 % At this point, there are two possibilites for which use_C=false:
 % (1) C = [], return_X = true, opts.method = 'factorize_and_solve'
-% (2) C = 'transpose_B', return_X = false, use_transpose_B = true, opts.method = 'APF', opts.solver = 'MUMPS'
+% (2) C = 'transpose(B)', return_X = false, use_transpose_B = true, opts.method = 'APF', opts.solver = 'MUMPS'
 
 % Check matrix sizes
 [sz_A_1, sz_A_2] = size(A);
@@ -423,7 +423,7 @@ elseif strcmpi(opts.method, 'APF')
             end
             D = sparse(M_tot, M_tot); % zero matrix
             K = [[A; C], [B; D]];
-            is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set C = 'transpose_B' if C=B.'
+            is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set C = 'transpose(B)' if C=B.'
         end
         if opts.clear_memory
             clear A B C D

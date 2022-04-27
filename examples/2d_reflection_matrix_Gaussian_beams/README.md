@@ -185,7 +185,7 @@ max(|C_L-transpose(B_L)|) = 1.38778e-16
 % This is expected by reciprocity -- when the set of inputs equals the set
 % of outputs, we typically have C = transpose(B) or its permutation.
 clear C_struct
-C = 'transpose_B';
+C = 'transpose(B)';
 ```
 
 # Compute reflection matrix in Gaussian-beam basis
@@ -264,6 +264,7 @@ cmap_bluered = colorcet('D09'); % use a blue-white-red colormap from colorcet
 figure
 for ii = 1:M_in
     % Plot the total field profile; exclude PML
+    clf
     ax1 = subplot(1,2,1);
     imagesc(x, y, ...
         real(field_profiles((nPML+1):(ny-nPML), (nPML+1):(nx-nPML), ii)));

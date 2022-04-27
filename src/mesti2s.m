@@ -1303,7 +1303,7 @@ else
             C(2).data = reshape(C_R, ny, 1, M_out_R);
         end
     elseif use_transpose_B
-        C = 'transpose_B';
+        C = 'transpose(B)';
     else
         C = [];
     end

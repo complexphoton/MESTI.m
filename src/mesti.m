@@ -235,16 +235,16 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      have the same fields [e.g., one cannot specify B_struct(1).pos and
 %      B_struct(2).ind], so the more general B_struct.ind syntax should be used
 %      when some of the inputs are rectangular and some are not.
-%   C (numeric matrix or structure array or 'transpose_B' or []; optional):
+%   C (numeric matrix or structure array or 'transpose(B)' or []; optional):
 %      Matrix specifying the output projections in the C*inv(A)*B - D or
 %      C*inv(A)*B returned. When the input argument C is a matrix, it is
 %      directly used, and size(C,2) must equal ny*nx = numel(syst.epsilon);
 %      different rows of C correspond to different outputs.
 %         Scattering matrix computations often have C = transpose(B); if that
-%      is the case, the user can set C = 'transpose_B' as a character vector,
+%      is the case, the user can set C = 'transpose(B)' as a character vector,
 %      and it will be replaced by transpose(B) in the code. Doing so has an
 %      advantage: if matrix A is symmetric (which is the case with UPML without
-%      Bloch periodic boundary), C = 'transpose_B', opts.solver = 'MUMPS', and
+%      Bloch periodic boundary), C = 'transpose(B)', opts.solver = 'MUMPS', and
 %      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
 %      symmetric when computing its Schur complement to lower computing time and
 %      memory usage.
@@ -632,16 +632,16 @@ if isempty(C) && ~isstruct(C)
 elseif (ismatrix(C) && isnumeric(C)) || (isstruct(C) && ~isempty(C))
     opts.return_field_profile = false;
     use_transpose_B = false;
-elseif isequal(C, 'transpose_B')
+elseif isequal(C, 'transpose(B)')
     opts.return_field_profile = false;
     use_transpose_B = true;
 else
-    error('Input argument ''C'' must be a numeric matrix or a non-empty structure array or ''transpose_B'' or [], if given.');
+    error('Input argument ''C'' must be a numeric matrix or a non-empty structure array or ''transpose(B)'' or [], if given.');
 end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(opts, 'symmetrize_K') && ~isempty(opts.symmetrize_K)
-    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose_B'', make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
+    error('opts.symmetrize_K is not used in mesti(); to symmetrize matrix K = [A,B;C,0], set C = ''transpose(B)'', make sure matrix A is symmetric (syst.PML_type = ''UPML'' and no Bloch periodic boundary), set opts.solver = ''MUMPS'', and set opts.method = ''APF''.');
 end
 
 % Turn on verbal output by default

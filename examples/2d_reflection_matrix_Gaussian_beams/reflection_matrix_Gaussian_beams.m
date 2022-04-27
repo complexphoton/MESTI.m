@@ -35,7 +35,7 @@ epsilon = n_bg^2*ones(ny, nx);
 epsilon((X-x_0).^2+(Y-y_0).^2 < r_0^2) = n_scat^2;
 
 % Plot the relative permittivity profile
-clf
+figure
 imagesc(x, y, epsilon)
 set(gca,'YDir','normal')
 colorbar
@@ -45,7 +45,6 @@ xlabel('x (µm)')
 ylabel('y (µm)')
 axis image
 set(gca, 'FontSize', 18)
-input('continue?')
 
 %% Build the input sources
 %
@@ -138,7 +137,7 @@ B_struct.data = B_L;
 % We check that the input sources are sufficiently localized with little 
 % penetration into the PML; otherwise the Gaussian beams will not be
 % accurately generated.
-clf
+figure
 imagesc([1, M_in], y, abs(B_L))
 set(gca,'YDir','normal')
 colorbar
@@ -147,7 +146,6 @@ title('|B_L|')
 xlabel('Input index')
 ylabel('y (µm)')
 set(gca, 'FontSize', 18)
-input('continue?')
 
 %% Build the output projections
 %
@@ -209,7 +207,7 @@ fprintf('max(|C_L-transpose(B_L)|) = %g\n', max(abs(C_L - B_L.'), [], 'all'));
 % This is expected by reciprocity -- when the set of inputs equals the set
 % of outputs, we typically have C = transpose(B) or its permutation.
 clear C_struct
-C = 'transpose_B';
+C = 'transpose(B)';
 
 %% Compute reflection matrix in Gaussian-beam basis
 % The scattering matrix is given by S = C*inv(A)*B - D, with D =
@@ -246,9 +244,10 @@ circ_y = sin(theta);
 cmap_bluered = colorcet('D09'); % use a blue-white-red colormap from colorcet
 
 % Loop through Gaussian beams focused at different locations.
-clf
+figure
 for ii = 1:M_in
     % Plot the total field profile; exclude PML
+    clf
     ax1 = subplot(1,2,1);
     imagesc(x, y, ...
         real(field_profiles((nPML+1):(ny-nPML), (nPML+1):(nx-nPML), ii)));
