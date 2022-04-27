@@ -62,7 +62,7 @@ LPORD    = -L$(LPORDDIR) -lpord
 
 # Uncomment the two lines below if you installed METIS to the default /usr/local folder
 #LMETISDIR = /usr/local/lib
-#IMETIS    = /usr/local/include
+#IMETIS    = -I/usr/local/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
