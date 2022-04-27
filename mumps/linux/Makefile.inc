@@ -64,7 +64,7 @@ LPORD    = -L$(LPORDDIR) -lpord
 # your own path of METIS.
 # The following is the path of the METIS on Hsu's group in USC Discovery cluster:
 #LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
-#IMETIS    = /project/cwhsu_38/shared/software/metis-5.1.0/include
+#IMETIS    = -I/project/cwhsu_38/shared/software/metis-5.1.0/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only

@@ -55,15 +55,7 @@ If you are using in Lmod module system and Intel MKL are installed, you can use
 
 ```shell
 module load intel
-```
-```shell
 module load intel-mkl
-```
-
-
-and
-
-```shell
 echo $MKLROOT
 ```
 
@@ -86,16 +78,24 @@ echo $MKLROOT
 
 
 
-In some cases, your cluster cannot find the BLAS and LAPACK libraries by itself when users run MATLAB interface for MUMPS. To solve this issue, users can `export LD_PRELOAD` and `LD_LIBRARY_PATH` before running MATLAB. For example, if BLAS and LAPACK libraries are used through Intel MKL, users can type,
+In some cases, your cluster cannot find the BLAS and LAPACK libraries by itself when you run MATLAB interface for MUMPS. To solve this issue, you can `export LD_PRELOAD` and `LD_LIBRARY_PATH` before running MATLAB. For example, if BLAS and LAPACK libraries are used through Intel MKL, you can type,
 
 ```shell
 export LD_PRELOAD=$MKLROOT/lib/intel64/libmkl_intel_lp64.so:$MKLROOT/lib/intel64/libmkl_sequential.so:$MKLROOT/lib/intel64/libmkl_intel_thread.so:$MKLROOT/lib/intel64/libmkl_core.so
-```
-
-and
-```shell
 export LD_LIBRARY_PATH=$MKLROOT/lib/intel64
 ```
+
+If you would like to METIS, but your cluster cannot find METIS libraries by itself when you run MATLAB interface for MUMPS. You can type 
+```shell
+export  LD_PRELOAD=$LMETISDIR/libmetis.a
+```
+or
+```shell
+export  LD_PRELOAD=$LMETISDIR/libmetis.so
+```
+
+where `LMETISDIR` is the path to the folder where the METIS library is.
+
 
 
 If you still cannot figure out the path of the libraries, you may need to contact the maintenance team of your cluster.
