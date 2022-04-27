@@ -86,9 +86,11 @@ x = (-(opts.nx_L-0.5):(nx+opts.nx_R))*dx;
 y = (0.5:ny)*dx;
 
 % Animate the field profile with plane-wave input
+figure
 animate_field_profile(field_profiles(:,:,1), x0_list, y0_list, r0_list, x, y, ...
     nperiod, nframes_per_period);
 
 % Animate the field profile of the open channel
+figure
 animate_field_profile(field_profiles(:,:,2), x0_list, y0_list, r0_list, x, y, ...
     nperiod, nframes_per_period);

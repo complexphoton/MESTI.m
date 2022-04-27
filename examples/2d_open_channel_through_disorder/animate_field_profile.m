@@ -5,8 +5,7 @@ theta = linspace(0, 2*pi, 100);
 circ_x = cos(theta);
 circ_y = sin(theta);
 
-clf
-colorcet('D09') % use a blue-white-red colormap from colorcet
+colormap(colorcet_D09); % use a blue-white-red colormap from ColorCET
 set(gcf,'color','w');
 for ii = 1:nperiod
     for jj = 0:(nframes_per_period-1)

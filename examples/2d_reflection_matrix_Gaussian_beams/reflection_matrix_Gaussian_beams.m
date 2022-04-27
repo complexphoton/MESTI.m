@@ -241,7 +241,7 @@ theta = linspace(0, 2*pi, 100);
 circ_x = cos(theta);
 circ_y = sin(theta);
 
-cmap_bluered = colorcet('D09'); % use a blue-white-red colormap from colorcet
+cmap_bluered = colorcet_D09(); % use a blue-white-red colormap from ColorCET
 
 % Loop through Gaussian beams focused at different locations.
 figure
