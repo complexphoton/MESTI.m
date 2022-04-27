@@ -10,7 +10,7 @@
 #
 #
 #   This defines some parameters dependent on your platform; you should
-#   look for the approriate file in the directory ./Make.inc/ and copy it
+#   look for the appropriate file in the directory ./Make.inc/ and copy it
 #   into a file called Makefile.inc. For example, from the MUMPS root
 #   directory, use 
 #   "cp Make.inc/Makefile.inc.generic.SEQ ./Makefile.inc"
@@ -112,7 +112,7 @@ FL      = gfortran
 #      keep a space at the end if options have to be separated from lib name
 AR      = ar vr 
 # RANLIB : generate index of an archive file
-#   (optionnal use "RANLIB = echo" in case of problem)
+#   (optional use "RANLIB = echo" in case of problem)
 RANLIB  = ranlib
 #RANLIB  = echo
 
