@@ -65,7 +65,7 @@ in terminal. This will install the GNU compiler collection, which includes the F
 
 MUMPS uses BLAS extensively, so we need a BLAS library. One option is Apple's vecLib (which is already installed above with Xcode); another is [OpenBLAS](https://www.openblas.net/).
 
-If you have an Apple silicon Mac, you should use vecLib, which we found to be much faster than OpenBLAS on an M1 Macbook Pro. (In fact, it is the vecLib improvement that makes an M1 Mac faster than an Intel Mac; when OpenBLAS is used, we found there to be no performance difference between an M1 Macbook Pro and an Intel Mackbook Pro when running MESTI with APF.) So, skip this part.
+If you have an Apple silicon Mac, you should use vecLib, which we found to be much faster than OpenBLAS on an M1 Macbook Pro, consistent with [what others have found](https://github.com/danielchalef/openblas-benchmark-m1). (In fact, it is the vecLib improvement that makes an M1 Mac faster than an Intel Mac; when OpenBLAS is used, we found there to be no performance difference between an M1 Macbook Pro and an Intel Mackbook Pro when running MESTI with APF.) So, skip this part.
 
 If you have an Intel Mac, you can consider installing OpenBLAS. It's optional. But we found on an Intel Macbook Pro that MESTI with the APF method is about 30% faster when MUMPS is compiled with OpenBLAS compared to with vecLib.
 
