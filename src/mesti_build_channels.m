@@ -1,14 +1,16 @@
-function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, use_continuous_dispersion, m0)
+function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L, epsilon_R, use_continuous_dispersion, m0)
 %MESTI_BUILD_CHANNELS Set up properties of channels in the homogeneous space.
-%   MESTI_BUILD_CHANNELS(ny, yBC, k0dx, epsilon_bg) returns a structure
-%   containing properties of the propagating and evanescent channels in a
-%   homogeneous space with ny pixels in the transverse (y) direction, boundary
-%   condition yBC along y, background relative permittivity epsilon_bg, and
-%   dimensionless frequency k0dx = (2*pi/vacuum_wavelength)*dx.
+%   MESTI_BUILD_CHANNELS(ny, polarization, yBC, k0dx, epsilon_bg) returns a
+%   structure containing properties of the propagating and evanescent channels
+%   in a discretized homogeneous space with ny pixels in the transverse (y)
+%   direction, with the given polarization, boundary condition yBC along y,
+%   background relative permittivity epsilon_bg, and dimensionless frequency
+%   k0dx = (2*pi/vacuum_wavelength)*dx where dx is the discretization grid size.
 %
-%   MESTI_BUILD_CHANNELS(ny, yBC, k0dx, epsilon_L, epsilon_R) returns a
-%   structure containing the properties of homogeneous spaces with relative
-%   permittivities epsilon_L and epsilon_R.
+%   MESTI_BUILD_CHANNELS(ny, polarization, yBC, k0dx, epsilon_L, epsilon_R)
+%   returns a structure containing the properties of discretized homogeneous
+%   spaces with relative permittivities epsilon_L on the left, epsilon_R on the
+%   right.
 %
 %   MESTI_BUILD_CHANNELS(syst) does the same but with the parameters extracted
 %   from structure syst; see 'help mesti2s' for the fields required for
@@ -17,22 +19,30 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %   === Input Arguments ===
 %   ny (positive integer scalar; required):
 %      Number of grid points in the transverse (y) direction.
+%   polarization (character vector; required):
+%      Polarization. Possible choices are:
+%         'TM' - Ez component of transverse-magnetic waves, (Hx, Hy, Ez)
+%         'TE' - Hz component of transverse-electric waves, (Ex, Ey, Hz)
 %   yBC (character vector or scalar number; required):
-%      Boundary condition in the y direction.
-%      When yBC is a character vector, available choices are (case-insensitive):
-%         'periodic'  - f(m+ny) = f(m)
-%         'PEC'       - f(0) = f(ny+1) = 0
-%         'PMC'       - f(0) = f(1); f(ny+1) = f(ny)
-%         'PECPMC'    - f(0) = 0; f(ny+1) = f(ny)
-%         'PMCPEC'    - f(0) = f(1); f(ny+1) = 0
-%         'Dirichlet' - same as 'PEC'
-%         'Neumann'   - same as 'PMC'
-%         'DirichletNeumann' - same as 'PECPMC'
-%         'NeumannDirichlet' - same as 'PMCPEC'
-%      When yBC is a scalar number, the Bloch periodic boundary condition is
-%      used with f(m+ny) = f(m)*exp(1i*yBC); in other words, yBC = ky_B*ny*dx =
-%      ky_B*p where ky_B is the Bloch wave number and p = ny*dx is the
-%      periodicity in y.
+%      Boundary condition (BC) at the two ends in y direction, effectively
+%      specifying Ez(m,n) or Hz(m,n) at m=0 and m=ny+1 which are one pixel
+%      beyond our computation domain. For character inputs, the options are:
+%         'periodic'         - f(m+ny,n) = f(m,n)
+%         'Dirichlet'        - f(0,n) = f(ny+1,n) = 0
+%         'Neumann'          - f(0,n) = f(1,n); f(ny+1,n) = f(ny,n)
+%         'DirichletNeumann' - f(0,n) = 0; f(ny+1,n) = f(ny,n)
+%         'NeumannDirichlet' - f(0,n) = f(1,n); f(ny+1,n) = 0
+%      where f = Ez or Hz depending on the polarization.
+%         One can also specify 'PEC', 'PMC', 'PECPMC', or 'PMCPEC'. For TM
+%      polarization, PEC is equivalent to Dirichlet for which Ez = 0 at the
+%      boundary, and PMC is equivalent to Neumann for which dEz/dx or dEz/dy = 0
+%      at the boundary. For TE polarization, PMC is equivalent to Dirichlet for
+%      which Hz = 0 at the boundary, and PEC is equivalent to Neumann for which
+%      dHz/dx or dHz/dy = 0 at the boundary.
+%         When yBC is a numeric scalar, the Bloch periodic boundary condition is
+%      used with f(m+ny,n) = f(m,n)*exp(1i*yBC); in other words, yBC =
+%      ky_B*ny*dx = ky_B*p where ky_B is the Bloch wave number and p = ny*dx is
+%      the periodicity in y.
 %   k0dx (numeric scalar, real or complex; required):
 %      Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx.
 %   epsilon_L (numeric scalar, real or complex; required):
@@ -96,9 +106,12 @@ function channels = mesti_build_channels(ny, yBC, k0dx, epsilon_L, epsilon_R, us
 %         Dimensionless transverse wave number ky*dx for the N_prop propagating
 %         channels, equal to channels.kydx_all(channels.L.ind_prop).
 %      channels.L.sqrt_mu (1-by-N_prop row vector):
-%         Square root of the normalized longitudinal group velocity of the
-%         propagating channels, sqrt_mu = sqrt(sin(kxdx)). The longitudinal
-%         group velocity is v_g = (sin(kxdx)/k0dx)*(c/epsilon_L).
+%         Normalization factor for the longitudinal flux of the propagating
+%         transverse modes: sqrt_mu = sqrt(sin(kxdx)) for TM polarization,
+%         sqrt_mu = sqrt(sin(kxdx)/epsilon_L) for TE polarization, such that
+%         the x component of the Poynting vector a transverse mode integrated
+%         over y is proportional to sqrt_mu^2. The longitudinal group velocity
+%         is v_g = (sin(kxdx)/k0dx)*(c/epsilon_L).
 %      channels.L.ind_prop_conj (1-by-N_prop integer row vector; optional):
 %         A permutation vector that switches one propagating channel with one
 %         having a complex-conjugated transverse profile. In particular,
@@ -126,9 +139,33 @@ if nargin == 1
     syst = ny;
     if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
 
-    if ~isfield(syst, 'epsilon'); error('Input argument ''syst'' must have field ''epsilon''.'); end
-    if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon)); error('syst.epsilon must be a numeric matrix.'); end
-    ny = size(syst.epsilon, 1);
+    % TM polarization uses syst.epsilon
+    % TE polarization uses syst.inv_epsilon
+    if isfield(syst, 'epsilon')
+        if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
+            error('syst.epsilon must be a numeric matrix, if given.');
+        elseif isfield(syst, 'inv_epsilon') && ~isempty(syst.inv_epsilon)
+            error('syst.epsilon and syst.inv_epsilon cannot both be given.');
+        elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TM')
+            error('syst.polarization, if given, must be ''TM'' when syst.epsilon is given.');
+        end
+        polarization = 'TM';
+        ny = size(syst.epsilon, 1);
+    elseif isfield(syst, 'inv_epsilon')
+        if numel(syst.inv_epsilon) ~= 2
+            error('syst.inv_epsilon must be a two-element cell array, if given.');
+        elseif ~(ismatrix(syst.inv_epsilon{1}) && isnumeric(syst.inv_epsilon{1}))
+            error('syst.inv_epsilon{1} must be a numeric matrix.');
+        elseif ~(ismatrix(syst.inv_epsilon{2}) && isnumeric(syst.inv_epsilon{2}))
+            error('syst.inv_epsilon{2} must be a numeric matrix.');
+        elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TE')
+            error('syst.polarization, if given, must be ''TE'' when syst.inv_epsilon is given.');
+        end
+        polarization = 'TE';
+        ny = size(syst.inv_epsilon{2}, 1); % inv_epsilon_yy
+    else
+        error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+    end
 
     if ~isfield(syst, 'epsilon_L'); error('Input argument ''syst'' must have field ''epsilon_L''.'); end
     epsilon_L = syst.epsilon_L;
@@ -176,16 +213,16 @@ if nargin == 1
         m0 = syst.m0;
     end
 else
-    if nargin < 4
+    if nargin < 5
         error('Not enough input arguments.');
     end
-    if nargin < 5
+    if nargin < 6
         epsilon_R = [];
     end
-    if nargin < 6
+    if nargin < 7
         use_continuous_dispersion = [];
     end
-    if nargin < 7
+    if nargin < 8
         m0 = [];
     end
 end
@@ -193,28 +230,57 @@ end
 % Check input arguments and set default values
 if ~(isreal(ny) && isscalar(ny) && round(ny)==ny && ny>0)
     error('Input argument ny must be a positive integer scalar.');
+elseif ~(strcmpi(polarization, 'TM') || strcmpi(polarization, 'TE'))
+    error('Input argument polarization or syst.polarization must be either ''TM'' or ''TE''.');
 elseif ~((ischar(yBC) && isrow(yBC)) || ((isstring(yBC) || isnumeric(yBC)) && isscalar(yBC)))
     error('Input argument yBC must be a character vector or string, or numeric scalar (for Bloch periodic boundary).');
 elseif ~(isscalar(k0dx) && isnumeric(k0dx))
     error('Input argument k0dx must be a numeric scalar.');
 elseif ~(isscalar(epsilon_L) && isnumeric(epsilon_L))
-    error('Input argument epsilon_L must be a numeric scalar.');
+    error('Input argument epsilon_L or syst.epsilon_L must be a numeric scalar.');
 end
 if isempty(epsilon_R)
     two_sided = false;
 else
     two_sided = true;
-    if ~(isscalar(epsilon_R) && isnumeric(epsilon_R)); error('Input argument epsilon_R must be a numeric scalar, if given.'); end
+    if ~(isscalar(epsilon_R) && isnumeric(epsilon_R)); error('Input argument epsilon_R or syst.epsilon_R must be a numeric scalar, if given.'); end
 end
 if isempty(use_continuous_dispersion)
     use_continuous_dispersion = false;
 elseif ~(islogical(use_continuous_dispersion) && isscalar(use_continuous_dispersion))
-    error('Input argument use_continuous_dispersion must be a logical scalar, if given.');
+    error('Input argument use_continuous_dispersion or syst.use_continuous_dispersion must be a logical scalar, if given.');
 end
 if isempty(m0)
     m0 = 0;
 elseif ~(isreal(m0) && isscalar(m0))
-    error('Input argument m0 must be a real scalar, if given.');
+    error('Input argument m0 or syst.m0 must be a real scalar, if given.');
+end
+
+use_TM = strcmpi(polarization, 'TM');
+
+% Convert PEC/PMC to Dirichlet/Neumann based on whether TE or TM polarization is used
+if use_TM
+    % For TM waves, we consider Ez(x,y), so PEC => Dirichlet, PMC => Neumann
+    if strcmpi(yBC, 'PEC')
+        yBC = 'Dirichlet';
+    elseif strcmpi(yBC, 'PMC')
+        yBC = 'Neumann';
+    elseif strcmpi(yBC, 'PECPMC')
+        yBC = 'DirichletNeumann';
+    elseif strcmpi(yBC, 'PMCPEC')
+        yBC = 'NeumannDirichlet';
+    end
+else
+    % For TE waves, we consider Hz(x,y), so PMC => Dirichlet, PEC => Neumann
+    if strcmpi(yBC, 'PMC')
+        yBC = 'Dirichlet';
+    elseif strcmpi(yBC, 'PEC')
+        yBC = 'Neumann';
+    elseif strcmpi(yBC, 'PMCPEC')
+        yBC = 'DirichletNeumann';
+    elseif strcmpi(yBC, 'PECPMC')
+        yBC = 'NeumannDirichlet';
+    end
 end
 
 % These are used only for periodic and Bloch periodic boundary conditions; otherwise they stay empty
@@ -252,12 +318,12 @@ if strcmpi(yBC, 'Bloch')
     channels.kydx_all = (ka/ny) + ((1:ny)-ind_zero_ky)*(2*pi/ny);
     % Dimensionless transverse mode profile: phi_{m,a} = exp(i*(m-m0)*kydx(a))/sqrt(ny)
     channels.fun_phi = @(kydx) exp(((1:ny).'-m0)*(1i*kydx))/sqrt(ny);
-elseif strcmpi(yBC, 'Dirichlet') || strcmpi(yBC, 'PEC') % PEC on both sides
+elseif strcmpi(yBC, 'Dirichlet') % Dirichlet on both sides
     % f(0) = f(ny+1) = 0
     channels.kydx_all = (1:ny)*(pi/(ny+1));
     % Dimensionless transverse mode profile: phi_{m,a} = sin(m*kydx(a))*sqrt(2/(ny+1))
     channels.fun_phi = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+1)); 
-elseif strcmpi(yBC, 'Neumann') || strcmpi(yBC, 'PMC') % PMC on both sides
+elseif strcmpi(yBC, 'Neumann') % Neumann on both sides
     % f(0) = f(1), f(ny+1) = f(ny)
     channels.kydx_all = ((1:ny)-1)*(pi/ny);
     % Dimensionless transverse mode profile:
@@ -265,12 +331,12 @@ elseif strcmpi(yBC, 'Neumann') || strcmpi(yBC, 'PMC') % PMC on both sides
     % When kydx != 0: phi_{m,a} = cos((m-0.5)*kydx(a))*sqrt(2/ny)
     % We subtract (~kydx)*(1-sqrt(1/2)) from the cos() which is nonzero only when kydx=0
     channels.fun_phi = @(kydx) (cos(((0.5:ny).')*kydx)-((~kydx)*(1-sqrt(1/2))))*sqrt(2/ny); 
-elseif strcmpi(yBC, 'DirichletNeumann') || strcmpi(yBC, 'PECPMC') % PEC on the low side, PMC on the high side
+elseif strcmpi(yBC, 'DirichletNeumann') % Dirichlet on the low side, Neumann on the high side
     % f(0) = 0, f(ny+1) = f(ny)
     channels.kydx_all = (0.5:ny)*(pi/(ny+0.5));
     % Dimensionless transverse mode profile: phi_{m,a} = sin(m*kydx(a))*sqrt(2/(ny+0.5))
     channels.fun_phi = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+0.5)); 
-elseif strcmpi(yBC, 'NeumannDirichlet') || strcmpi(yBC, 'PMCPEC') % PMC on the low side, PEC on the high side
+elseif strcmpi(yBC, 'NeumannDirichlet') % Neumann on the low side, Dirichlet on the high side
     % f(0) = f(1), f(ny+1) = 0
     channels.kydx_all = (0.5:ny)*(pi/(ny+0.5));
     % Dimensionless transverse mode profile: phi_{m,a} = cos((m-0.5)*kydx(a))*sqrt(2/(ny+0.5))
@@ -280,7 +346,7 @@ else
 end
 
 % Properties for the homogeneous space on the left (kxdx, sqrt_mu, number of propagating channels, etc; depends on epsilon_L/R)
-side = setup_longitudinal((k0dx^2)*epsilon_L, channels.kydx_all, ka, ind_zero_ky, use_continuous_dispersion);
+side = setup_longitudinal(k0dx, epsilon_L, channels.kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion);
 
 if two_sided
     channels.L = side;
@@ -288,7 +354,7 @@ if two_sided
     if epsilon_R == epsilon_L
         channels.R = side;
     elseif ~isnan(epsilon_R)
-        channels.R = setup_longitudinal((k0dx^2)*epsilon_R, channels.kydx_all, ka, ind_zero_ky, use_continuous_dispersion);
+        channels.R = setup_longitudinal(k0dx, epsilon_R, channels.kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion);
     end
 else
     % add the fields of 'side' to 'channels'
@@ -301,8 +367,10 @@ end
 end
 
 
-function side = setup_longitudinal(k0dx2_epsilon, kydx_all, ka, ind_zero_ky, use_continuous_dispersion)
+function side = setup_longitudinal(k0dx, epsilon_bg, kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion)
 % Returns a structure 'side'. See comments at the beginning of this file for more info.
+
+k0dx2_epsilon = (k0dx^2)*epsilon_bg;
 
 if ~use_continuous_dispersion
     % use the finite-difference dispersion for homogeneous space: k0dx2_epsilon = 4*sin^2(kxdx/2) + 4*sin^2(kydx/2)
@@ -354,9 +422,15 @@ if side.N_prop==0 && length(kydx_all)==1; side.ind_prop = zeros(1,0); end  % a r
 side.kxdx_prop = side.kxdx_all(side.ind_prop);
 side.kydx_prop = kydx_all(side.ind_prop);
     
-% Square root of the normalized longitudinal group velocity, sqrt(sin(kxdx)), for the propagating channels
+% Square root of the normalized longitudinal group velocity, for the propagating channels
+%  TM waves: sqrt_mu = sqrt(sin(kxdx))
+%  TE waves: sqrt_mu = sqrt(sin(kxdx)/epsilon_bg)
 % When k0dx2_epsilon is real, sqrt_mu is also real. When k0dx2_epsilon is complex, sqrt_mu is also complex.
-side.sqrt_mu = sqrt(sin(side.kxdx_prop));
+if use_TM
+    side.sqrt_mu = sqrt(sin(side.kxdx_prop));
+else
+    side.sqrt_mu = sqrt(sin(side.kxdx_prop)/epsilon_bg);
+end
 
 % Permutation that switches one propagating channel with one having a complex-conjugated transverse profile.
 if isempty(ka)

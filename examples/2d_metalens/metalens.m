@@ -117,8 +117,8 @@ time1 = clock;
 BC = 'periodic'; % Periodic boundary condition means the propagating channels are plane waves
 k0dx = 2*pi/wavelength*dx; % Dimensionless frequency k0*dx
 use_continuous_dispersion = true; % Use continuous dispersion relation for (kx,ky)
-channels_L = mesti_build_channels(ny_L, BC, k0dx, epsilon_L, [], use_continuous_dispersion);
-channels_R = mesti_build_channels(ny_R, BC, k0dx, epsilon_R, [], use_continuous_dispersion);
+channels_L = mesti_build_channels(ny_L, 'TM', BC, k0dx, epsilon_L, [], use_continuous_dispersion);
+channels_R = mesti_build_channels(ny_R, 'TM', BC, k0dx, epsilon_R, [], use_continuous_dispersion);
 
 % We use all propagating plane-wave channels on the right, over width W_out.
 M_R = channels_R.N_prop; % Number of channels on the right

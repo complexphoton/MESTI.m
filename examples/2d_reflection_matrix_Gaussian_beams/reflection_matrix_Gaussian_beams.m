@@ -91,10 +91,10 @@ E_f = exp(-(y.' - y_f).^2/(w_0^2)); % size(E_f) = [ny, M_in]
 
 % Get properties of propagating channels in the free space.
 % We use PEC as the boundary condition for such channels since the default
-% boundary condition in mesti() is PEC, but the choice has little effect
-% since E^in should be exponentially small at the boundary of the simulation
-% domain.
-channels = mesti_build_channels(ny,'PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2); 
+% boundary condition in mesti() is PEC for TM waves, but the choice has
+% little effect since E^in should be exponentially small at the boundary of
+% the simulation domain.
+channels = mesti_build_channels(ny,'TM','PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2); 
 
 % Transverse profiles of the propagating channels. Each column of phi is
 % one transverse profile. Different columns are orthonormal.

@@ -258,7 +258,7 @@ elseif use_transpose_B
         use_C = true;
     end
 end
-% At this point, there are two possibilites for which use_C=false:
+% At this point, there are two possibilities for which use_C=false:
 % (1) C = [], return_X = true, opts.method = 'factorize_and_solve'
 % (2) C = 'transpose(B)', return_X = false, use_transpose_B = true, opts.method = 'APF', opts.solver = 'MUMPS'
 
@@ -463,7 +463,7 @@ elseif strcmpi(opts.method, 'APF')
         stat.timing.factorize = stat.timing.factorize + etime(t2,t1);
         stat.timing.solve = 0;
     else % Compute C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
-        % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are premutation matrices
+        % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
         % For simplicity, we refer to this as A = L*U below
         [L, U, P, Q, R, stat] = MATLAB_factorize(A, opts);
         stat.timing.build = 0;  % the build time for A, B, C will be added in addition to this
@@ -474,7 +474,7 @@ elseif strcmpi(opts.method, 'APF')
             end
         end
 
-        % Here, we evalulate C*inv(A)*B, not necessarily as C*[inv(A)*B], but more generally as C*inv(U)*inv(L)*B.
+        % Here, we evaluate C*inv(A)*B, not necessarily as C*[inv(A)*B], but more generally as C*inv(U)*inv(L)*B.
         % The full expression is C*inv(A)*B = C*Q*inv(U)*inv(L)*P*inv(R)*B.
         % There are a few ways to group the mldivide or mrdivide operations. Like matrix multiplications, it is generally faster and more memory efficient to group such that we operate onto the side with fewer elements first.
         if opts.verbal; fprintf('Solving     ... '); end
@@ -655,7 +655,7 @@ else
     spparms('spumoni',0)
 end
 
-% P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are premutation matrices
+% P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
 [L,U,P,Q,R] = lu(A);
 
 t2 = clock; stat.timing.factorize = etime(t2,t1);
@@ -688,7 +688,7 @@ else
     id.ICNTL(3) = 0; % turn off output
 end
 
-% set the number of OpenMP threads, if given (only avaiable after MUMPS 5.2.0)
+% set the number of OpenMP threads, if given (only available after MUMPS 5.2.0)
 if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
     id.ICNTL(16) = opts.nthreads_OMP;
 end
@@ -761,7 +761,7 @@ if nargin == 4
     if isempty(ind_schur)
         id.SCHUR = zeros(0,0);
     else
-        % What the MEX function zmumpsmex() returns is not schur but its tranpose, probably because C is row major while MATLAB is column major.
+        % What the MEX function zmumpsmex() returns is not schur but its transpose, probably because C is row major while MATLAB is column major.
         % When A is not symmetric, line 77 of the MATLAB interface zmumps.m attempts to undo the transpose by returning schur', which would have worked if ' were to be transpose. But ' is conjugate transpose. So we need to conjugate it
         % When A is symmetric, MUMPS only returns the lower triangular part and the diagonal of the Schur complement (see MUMPS userguide)
         % line 79 of the MATLAB interface zmumps.m attempts to undo the transpose and to complete the other half by returning triu(schur)+tril(schur',-1), which would have worked if ' were to be transpose. But ' is conjugate transpose. So the lower triangular part (excluding the diagonal) has the wrong sign in its imaginary part. Now we need to fix that.

@@ -1,10 +1,10 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetics simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **augmented partial factorization (APF)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to perform a single simulation.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetic simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **augmented partial factorization (APF)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to perform a single simulation.
 
-MESTI.m uses MATLAB and considers transverse-magnetic (TM) waves in 2D. A 3D vectorial version of MESTI written in Julia is under development and will be released in the future.
+MESTI.m uses MATLAB and considers 2D systems, with either transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) or transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*). A 3D vectorial version of MESTI written in Julia is under development and will be released in the future.
 
-MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all of the common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to APF, MESTI also implements conventional direct methods.
+MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to APF, MESTI also implements conventional direct methods.
 
 ## Installation
 
@@ -12,19 +12,24 @@ No installation is required for MESTI itself; just download it and add the <code
 
 However, to use the APF method, the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
-## Functions 
+## Summary 
 
-The function <code>mesti(syst, B, C, D)</code> provides the most flexibility. The user can use <code>syst</code> to specify arbitrary permittivity profiles, any combination of boundary conditions, PML on any or all sides, the wavelength, and discretization grid size. Any list of input source profiles can be specified with <code>B</code>, and any list of output projection profiles can be specified with <code>C</code>; matrix <code>D</code> subtracts the baseline contribution for scattering matrix computations.
+The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. The user can use <code>syst</code> to specify arbitrary permittivity profiles, any combination of boundary conditions, PML on any or all sides, the wavelength, and discretization grid size. Any list of input source profiles can be specified with <code>B</code>, and any list of output projection profiles can be specified with <code>C</code>; matrix <code>D</code> subtracts the baseline contribution for scattering matrix computations.
 
-The function <code>mesti2s(syst, in, out)</code> deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or perfect electric conductor). The user only needs to specify the input and output channel indices or wavefronts through <code>in</code> and <code>out</code>; <code>mesti2s()</code> builds the list of input source profiles and output projection profiles, and then calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* based on the Green's function in free space, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
+The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or perfect electric conductor). The user only needs to specify the input and output channel indices or wavefronts through <code>in</code> and <code>out</code>; <code>mesti2s()</code> builds the list of input source profiles and output projection profiles, and then calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* based on the Green's function in free space, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
 
 To compute the complete field profiles, simply omit the argument <code>C</code> or  <code>out</code>, or set it to <code>[]</code>.
 
-Detailed usage of these functions are given in the documentation section (comment lines at the beginning) of the <code>.m</code> function files in the [src](./src) folder. For example, typing <code>help mesti</code> in MATLAB brings up the full documentation for <code>mesti()</code>.
+The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.m) can be used to build the input and/or output matrices when using <code>mesti()</code>, or to determine which channels are of interest when using <code>mesti2s()</code>.
 
-In addition, the user can use the function <code>mesti_build_channels()</code> to build the input and/or output matrices when using <code>mesti()</code>, or to determine which subset of the channels are of interest when using <code>mesti2s()</code>.
+## Documentation
 
-MESTI has two other functions <code>mesti_build_fdfd_matrix()</code> and <code>mesti_matrix_solver()</code> that are also general purpose, but most users shouldn't need to use them directly.
+Detailed documentation is given in comments at the beginning of the function files:
+ - [<code>mesti.m</code>](./src/mesti.m)
+ - [<code>mesti2s.m</code>](./src/mesti2s.m)
+ - [<code>mesti_build_channels.m</code>](./src/mesti_build_channels.m)
+
+For example, typing <code>help mesti</code> in MATLAB brings up the documentation for <code>mesti()</code>.
 
 ## Examples
 
@@ -58,7 +63,6 @@ Here are some images from the examples above:
 
 For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
 
-- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively-multi-channel optics using augmented partial factorization,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively multi-channel optics using augmented partial factorization,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
 
 Please cite this paper when you use MESTI.
-

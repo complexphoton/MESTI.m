@@ -79,10 +79,10 @@ E_f = exp(-(y.' - y_f).^2/(w_0^2)); % size(E_f) = [ny, M_in]
 
 % Get properties of propagating channels in the free space.
 % We use PEC as the boundary condition for such channels since the default
-% boundary condition in mesti() is PEC, but the choice has little effect
-% since E^in should be exponentially small at the boundary of the simulation
-% domain.
-channels = mesti_build_channels(ny,'PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2); 
+% boundary condition in mesti() is PEC for TM waves, but the choice has
+% little effect since E^in should be exponentially small at the boundary of
+% the simulation domain.
+channels = mesti_build_channels(ny,'TM','PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2); 
 
 % Transverse profiles of the propagating channels. Each column of phi is
 % one transverse profile. Different columns are orthonormal.
@@ -202,7 +202,7 @@ D = mesti(syst, B_struct, C, [], opts);
 ```
 
 ```text:Output
-System size: ny = 400, nx = 41
+System size: ny = 400, nx = 41; Ez polarization
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.001 secs
 Building A  ... elapsed time:   0.016 secs
@@ -220,7 +220,7 @@ r = mesti(syst, B_struct, C, D, opts);
 ```
 
 ```text:Output
-System size: ny = 400, nx = 200
+System size: ny = 400, nx = 200; Ez polarization
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.000 secs
 Building A  ... elapsed time:   0.040 secs
@@ -240,7 +240,7 @@ field_profiles = mesti(syst, B_struct, [], [], opts);
 ```
 
 ```text:Output
-System size: ny = 400, nx = 200
+System size: ny = 400, nx = 200; Ez polarization
 UPML on -x +x -y +y sides; xBC = PEC; yBC = PEC
 Building B,C... elapsed time:   0.000 secs
 Building A  ... elapsed time:   0.046 secs

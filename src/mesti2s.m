@@ -1,19 +1,24 @@
 function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
 %   [field_profiles, channels, stat] = MESTI2S(syst, in) returns the spatial
-%   field profiles E_z(x,y) for scattering problems of 2D transverse-magnetic
-%   (TM) fields:
-%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon_r(x,y)] E_z(x,y) = 0.
-%   The system epsilon_r(x,y) is specified by structure 'syst' and must have
-%   homogeneous spaces on the left (-x) and right (+x) sides, with an outgoing
-%   boundary in x for the scattered waves and a closed (e.g., periodic) boundary
-%   in y. The incident wavefronts from left and/or left are specified by
-%   variable 'in'. The returned 'field_profiles' is a 3D array, with
-%   field_profiles(:,:,i) being the field profile given the i-th input
-%   wavefront. The returned 'channels' is a structure containing properties of
-%   the propagating and evanescent channels in the homogeneous spaces on the
-%   left and right. The statistics of the computation is returned in structure
-%   'stat'.
+%   field profiles of Ez(x,y) for scattering problems of 2D transverse-magnetic
+%   (TM) waves satisfying
+%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = 0,
+%   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
+%      [- (d/dx)*inv(epsilon(x,y))*(d/dx) - (d/dy)*inv(epsilon(x,y))*(d/dy) ...
+%          - (omega/c)^2] Hz(x,y) = 0.
+%   The polarization (TM or TE), relative permittivity profile epsilon(x,y),
+%   frequency omega, and boundary conditions are specified by structure 'syst';
+%   epsilon(x,y) must have homogeneous spaces on the left (-x) and right (+x)
+%   sides, with an outgoing boundary in x for the scattered waves and a closed
+%   boundary in y.
+%      The incident wavefronts from left and/or left are specified by variable
+%   'in'.
+%      The returned 'field_profiles' is a 3D array, with field_profiles(:,:,i)
+%   being the field profile given the i-th input wavefront. The returned
+%   'channels' is a structure containing properties of the propagating and
+%   evanescent channels in the homogeneous spaces on the left and right. The
+%   statistics of the computation is returned in structure 'stat'.
 %
 %   [S, channels, stat] = MESTI2S(syst, in, out) returns the scattering matrix
 %   S, where 'in' and 'out' specify either the list of input/output channels or
@@ -28,16 +33,15 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
 %   PEC). Given the closed boundary, the set of transverse modes forms a
 %   complete and orthonormal basis of propagating and evanescent channels.
-%   The inputs and outputs are therefore specified in the basis of those
-%   propagating channels, with coefficients normalized with respect to the flux
-%   in the longitudinal (x) direction. Properties of those channels are given by
+%   The inputs and outputs are specified in the basis of these propagating 
+%   channels, with coefficients normalized with respect to the flux in the
+%   longitudinal (x) direction. Properties of those channels are given by
 %   mesti_build_channels().
 %
 %   When an open boundary in y is of interest, the appropriate input/output
-%   channel basis to use is application specific and requires more care. So, the
-%   user needs to use the more general function mesti() for such problems, and
-%   will need to build the input and output matrices B and C, as in the example
-%   on reflection matrix computation in Gaussian beam basis.
+%   basis depends on the problem, so the user should use the more general
+%   function mesti() and will need to specify the input and output matrices B
+%   and C.
 %
 %   This file builds the input and output channels using mesti_build_channels(),
 %   builds the matrices B and C, and then calls mesti() to solve the scattering
@@ -48,26 +52,49 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   syst (scalar structure; required):
 %      A structure that specifies the system, used to build the FDFD matrix A.
 %      It contains the following fields:
-%      syst.epsilon (numeric matrix, real or complex; required):
-%         Discretized relative permittivity profile, with syst.epsilon(m,n)
-%         being the relative permittivity epsilon_r(x,y) averaged over a square
-%         with area (syst.dx)^2 centered at x = x_n = (n-0.5)*syst.dx, y = y_m =
-%         (m-0.5)*syst.dx. The system size is size(syst.epsilon) = (ny, nx).
-%         Note that y corresponds to the first index m, and x corresponds to the
-%         second index n.
+%      syst.polarization (character vector; optional):
+%         Polarization. Possible choices are:
+%            'TM' - Ez component of transverse-magnetic waves, (Hx, Hy, Ez)
+%            'TE' - Hz component of transverse-electric waves, (Ex, Ey, Hz)
+%         If syst.polarization is not given, it will be automatically picked
+%         based on whether syst.epsilon or syst.inv_epsilon is given.
+%      syst.epsilon (numeric matrix, real or complex; required for TM):
+%         Discretized relative permittivity profile used for TM polarization,
+%            syst.epsilon: ny-by-nx matrix discretizing epsilon(x,y).
+%         Specifically, syst.epsilon(m,n) is the relative permittivity
+%         epsilon(x,y) averaged over a square with area (syst.dx)^2 centered at
+%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx.
+%            Note that y corresponds to the first index m, and x corresponds to
+%         the second index n.
 %            The positive imaginary part of syst.epsilon describes absorption,
 %         and the negative imaginary part describes linear gain.
 %            One can use syst.epsilon with ny=1 and with a periodic or Bloch
 %         periodic boundary in y to simulate 1D systems where the relative
 %         permittivity profile is translationally invariant in y.
 %            In mesti2s(), syst.epsilon does not include the homogeneous spaces
-%         on the two sides; nx=0 corresponds to no scattering region.
+%         on the two sides; nx=0 is allowed and corresponds to having no
+%         scattering region.
+%      syst.inv_epsilon (two-element cell array; required for TE):
+%         Discretized inverse relative permittivity profile used for TE
+%         polarization, with
+%            inv_epsilon{1}: ny_d-by-nx matrix discretizing inv(epsilon(x,y))_xx
+%            inv_epsilon{2}: ny-by-nx_d matrix discretizing inv(epsilon(x,y))_yy
+%         where inv(epsilon(x,y)) is a diagonal tensor.
+%            Here, ny_d is the number of grid points of Ex ~ dHz/dy on
+%         half-integer sites in y, and nx_d = nx + 1 is the number of grid
+%         points of Ey ~ dHz/dx on half-integer sites in x; ny_d depends on the
+%         boundary condition: ny_d = ny for Bloch periodic, DirichletNeumann,
+%         and NeumannDirichlet boundary conditions; ny_d = ny + 1 for Dirichlet
+%         boundary condition, and ny_d = ny - 1 for Neumann boundary condition.
+%            In mesti2s(), syst.inv_epsilon does not include the homogeneous
+%         spaces on the two sides; nx=0 corresponds to no scattering region.
 %      syst.epsilon_L (real scalar; required):
 %         Relative permittivity of the homogeneous space on the left.
 %      syst.epsilon_R (real scalar or []; optional):
 %         Relative permittivity of the homogeneous space on the right. If
 %         syst.epsilon_R is not given or is empty, the system will be one-sided,
-%         terminated with a PEC boundary on the right with E_z(m,nx+1) = 0.
+%         terminated with a Dirichlet boundary on the right with Ez(m,nx+1) = 0
+%         or Hz(m,nx+1) = 0.
 %      syst.length_unit (anything; optional):
 %         Length unit, such as micron, nm, or some reference wavelength. This
 %         code only uses dimensionless quantities, so syst.length_unit is never
@@ -79,17 +106,22 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         Discretization grid size, in units of syst.length_unit.
 %      syst.yBC (character vector; required unless syst.ky_B is specified):
 %         Boundary condition (BC) at the two ends in y direction, effectively
-%         specifying E_z(m,n) at m=0 and m=ny+1 which are one pixel beyond our
-%         computation domain. Available choices are (case-insensitive):
-%            'Bloch'     - E_z(m+ny,n) = E_z(m,n)*exp(1i*syst.ky_B*ny*syst.dx)
-%            'periodic'  - E_z(m+ny,n) = E_z(m,n)
-%            'PEC'       - E_z(0,n) = E_z(ny+1,n) = 0
-%            'PMC'       - E_z(0,n) = E_z(1,n); E_z(ny+1,n) = E_z(ny,n)
-%            'PECPMC'    - E_z(0,n) = 0; E_z(ny+1,n) = E_z(ny,n)
-%            'PMCPEC'    - E_z(0,n) = E_z(1,n); E_z(ny+1,n) = 0
-%            'Dirichlet' - same as 'PEC'
-%            'Neumann'   - same as 'PMC'
-%         Note that this yBC also defines a complete and orthonormal set of
+%         specifying Ez(m,n) or Hz(m,n) at m=0 and m=ny+1 which are one pixel
+%         beyond our computation domain. Available choices (case-insensitive):
+%           'Bloch'            - f(m+ny,n) = f(m,n)*exp(1i*syst.ky_B*ny*syst.dx)
+%           'periodic'         - f(m+ny,n) = f(m,n)
+%           'Dirichlet'        - f(0,n) = f(ny+1,n) = 0
+%           'Neumann'          - f(0,n) = f(1,n); f(ny+1,n) = f(ny,n)
+%           'DirichletNeumann' - f(0,n) = 0; f(ny+1,n) = f(ny,n)
+%           'NeumannDirichlet' - f(0,n) = f(1,n); f(ny+1,n) = 0
+%         where f = Ez or Hz depending on the polarization.
+%            One can also specify 'PEC', 'PMC', 'PECPMC', or 'PMCPEC'. For TM
+%         polarization, PEC is equivalent to Dirichlet for which Ez = 0 at the
+%         boundary, and PMC is equivalent to Neumann for which dEz/dx or dEz/dy
+%         = 0 at the boundary. For TE polarization, PMC is equivalent to
+%         Dirichlet for which Hz = 0 at the boundary, and PEC is equivalent to
+%         Neumann for which dHz/dx or dHz/dy = 0 at the boundary.
+%            Note that this yBC also defines a complete and orthonormal set of
 %         transverse modes, upon which the input and output channels in input
 %         arguments 'in' and 'out' are defined; mesti2s() does not support PML
 %         in y direction because a closed boundary is necessary for defining
@@ -105,7 +137,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         In mesti(), outgoing boundary condition is always used in x direction.
 %         But there are different options for implementing such outgoing
 %         boundary. By default, 
-%            syst.xBC = 'outgoing'
+%            syst.xBC = 'outgoing';
 %         in which case self-energy based on the retarded Green's function of a
 %         semi-infinite discrete homogeneous space is used to enforce an exact
 %         outgoing boundary for all propagating and evanescent waves on both
@@ -116,20 +148,23 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         every pair of pixels in y direction on that slice, making matrix A
 %         less sparse. When the system is wide (roughly when ny > 800), it is
 %         more efficient to implement the outgoing boundary using perfectly
-%         matched layer (PML).
-%            To use PML for the outgoing boundary, set syst.xBC to be a scalar
-%         structure containing the PML parameters. Note that here the PML is
-%         placed in the homogeneous specified by syst.epsilon_L, added outside
-%         of syst.epsilon. (This is different from the more general function
-%         mesti(), where syst.epsilon specifies the entire simulation domain, so
-%         PML is placed inside syst.epsilon.) In this case, the structure
-%         syst.xBC can contain the following fields:
+%         matched layer (PML), which attenuates outgoing waves with minimal
+%         reflection.
+%            Note that in mesti2s(), the PML is placed in the homogeneous spaces
+%         specified by syst.epsilon_L and syst.epsilon_R, outside of the
+%         scattering region specified by syst.epsilon or syst.inv_epsilon. (This
+%         is different from the more general function mesti(), where
+%         syst.epsilon specifies the entire simulation domain, so PML is placed
+%         inside syst.epsilon.)
+%            To use the same PML on both sides or to use PML on the left of a
+%         one-sided geometry, set syst.xBC to be a scalar structure with the
+%         following fields:
 %            npixels_PML (positive integer scalar; required): Number of PML
-%               pixels. This number of pixels is added in addition to
-%               syst.epsilon.
+%               pixels. This number of pixels is added in addition to nx.
 %            npixels_spacer (non-negative integer scalar; optional): Number of
 %               homogeneous-space pixels to be added between the PML pixels and
-%               syst.epsilon, used to attenuate evanescent waves. Defaults to 0.
+%               syst.epsilon/syst.inv_epsilon, used to attenuate evanescent
+%               waves. Defaults to 0.
 %            power_sigma (non-negative scalar; optional): Power of the
 %               polynomial grading for the conductivity sigma; defaults to 3.
 %            sigma_max_over_omega (non-negative scalar; optional):
@@ -168,7 +203,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         do so, set syst.xBC to a two-element cell array, with the first
 %         element specifying parameters on the left, the second element
 %         specifying parameters on the right. For example,
-%            syst.xBC = {'outgoing', struct('npixels_PML', 40)}
+%            syst.xBC = {'outgoing', struct('npixels_PML', 40)};
 %         specifies exact outgoing boundary on the left, 40 pixels of PML on the
 %         right.
 %            With real-coordinate stretching, PML can attenuate evanescent waves
@@ -178,7 +213,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         numbers (i.e., angles) involved; more PML pixels gives lower
 %         reflectivity. Typically 10-40 pixels are sufficient.
 %            PML is a layer, not technically a boundary condition. In mesti2s(),
-%         PEC is used as the boundary condition behind the PML.
+%         the boundary condition behind the PML is Dirichlet.
 %            Note that PML cannot be used when opts.method = 'RGF'.
 %      syst.use_continuous_dispersion (logical scalar; optional):
 %         Whether to use the dispersion equation of the continuous wave equation
@@ -205,25 +240,27 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %               propagating channels incident on the right side.
 %      One can provide only in.ind_L or only in.ind_R or both of them.
 %         The above generates flux-normalized single-channel inputs of the form
-%            psi_a^L(m,n) = 1/sqrt(mu_L(a))*phi_a(m)*exp(i*kxdx_L(a)*n)
+%            f_a^L(m,n) = 1/sqrt(mu_L(a))*phi_a(m)*exp(i*kxdx_L(a)*n)
 %      for input channel 'a' from the left, and/or
-%            psi_a^R(m,n) = 1/sqrt(mu_R(a))*phi_a(m)*exp(-i*kxdx_R(a)*(n-nx-1))
-%      for input channel 'a' from the right, where mu = sin(kxdx) normalizes
-%      flux in the x direction, kxdx = kx*syst.dx is the longitudinal wave
-%      number, and phi_a(m) is the transverse profile of the a-th propagating
-%      channel.
+%            f_a^R(m,n) = 1/sqrt(mu_R(a))*phi_a(m)*exp(-i*kxdx_R(a)*(n-nx-1))
+%      for input channel 'a' from the right, where mu normalizes flux in the x
+%      direction, kxdx = kx*syst.dx is the longitudinal wave number, and
+%      phi_a(m) is the transverse profile of the a-th propagating channel; mu =
+%      sin(kxdx(a)) for TM polarization, mu = sin(kxdx(a))/epsilon_bg for TE
+%      polarization.
 %         The user can first use mesti_build_channels() to get the indices, wave
-%      numbers, and transverse profiles of the propagating channels; base on
-%      that, the user can specify the list of channels of interest or a list of
-%      customized wavefronts as described below.
-%         When the input(s) of interests are not in a single channel but a
+%      numbers, and transverse profiles of the propagating channels; based on
+%      that, the user can specify the list of channels of interest through
+%      in.ind_L and in.ind_R above, or a list of customized wavefronts through
+%      in.v_L and in.v_R below.
+%         When the input(s) of interests are not a single channel but a
 %      superposition of multiple propagating channels, such custom input
 %      wavefronts can be specified by letting 'in' be a scalar structure with
 %      the following fields:
 %            in.v_L (numeric matrix): Matrix where each column specifies the
 %               coefficients of propagating channels on the left for one input
 %               wavefront from the left; the wavefront is a superposition of all
-%               propagating channels of the form psi_a^L(m,n) above, with the
+%               propagating channels of the form f_a^L(m,n) above, with the
 %               superposition coefficients given by that column of in.v_L.
 %               size(in.v_L, 1) must equal N_prop_L, the total number of
 %               propagating channels on the left; size(in.v_L, 2) is the number
@@ -232,15 +269,16 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %               input wavefronts from the right instead.
 %      Note that the input wavefronts from the left and the input wavefronts
 %      from the right are treated as separate inputs. In other words, each input
-%      either comes from the left or comes from the right; it cannot come from
-%      both sides. If an input with incidence from both sides is of interest,
-%      the user can manually superimpose results from the separate-side
+%      either comes from the left or comes from the right, but not from both
+%      sides. If an input with incidence from both sides is of interest, the
+%      user can manually superimpose results from the separate-side
 %      computations.
 %   out (cell array or scalar structure or []; optional):
 %      The set of output channels or output wavefronts.
 %         When out=[] or when out is omitted as in input argument (i.e., when
 %      nargin <= 2), no output projection is used, and the spatial field
-%      profiles E_z(x,y) corresponding to the set of inputs are returned.
+%      profiles Ez(x,y) or Hz(x,y) corresponding to the set of inputs are
+%      returned.
 %         When out is given, the scattering matrix is returned, with the output
 %      basis of the scattering matrix specified by out. In this case, out
 %      follows the same syntax as the input argument 'in'. Specifically, one can
@@ -310,12 +348,13 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %                    project with C.
 %            'RGF' - Recursive Green's function method. Cannot be used for
 %                    computing the full field profile or with iterative
-%                    refinement, and cannot be used with PML.
+%                    refinement, and cannot be used with PML or with TE
+%                    polarization.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if the input argument 'out' is not given or if
 %         opts.iterative_refinement = true, then 'factorize_and_solve' is used.
-%         Otherwise, 'APF' is used if ny is large or if PML has been specified;
-%         'RGF' is used otherwise.
+%         Otherwise, 'APF' is used if ny is large or if TE polarization is used
+%         or if PML has been specified; 'RGF' is used otherwise.
 %      opts.symmetrize_K (logical scalar; optional):
 %         Whether or not to pad input and/or output channels and perform
 %         permutations to make matrix K = [A,B;C,0] symmetric when computing its
@@ -331,8 +370,8 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      opts.clear_syst (logical scalar; optional, defaults to false):
 %         When opts.clear_syst = true and opts.method is not 'RGF', variable
 %         'syst' will be cleared in the caller's workspace to reduce peak memory
-%         usage. Can be used when syst.epsilon takes up significant memory and
-%         is not needed after calling mesti2s().
+%         usage. This can be used when syst.epsilon or syst.inv_epsilon takes up
+%         significant memory and is not needed after calling mesti2s().
 %      opts.clear_memory (logical scalar; optional, defaults to true):
 %         Whether or not to clear variables inside mesti2s() to reduce peak
 %         memory usage.
@@ -378,8 +417,8 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      field profile corresponding to the a-th input wavefront; S(:,:,a) has
 %      size [ny, opts.nx_L + nx + opts.nx_R], containing the field profile in
 %      opts.nx_L pixels of homogeneous space on the left, nx pixels of the
-%      scattering region syst.epsilon, and opts.nx_R pixels of homogeneous space
-%      on the right, across the full ny-pixels height of the system.
+%      scattering region, and opts.nx_R pixels of homogeneous space on the
+%      right, across the full ny-pixels height of the system.
 %         For scattering-matrix computations (i.e., when 'out' is given), S is
 %      the scattering matrix, such that S(b,a) is the flux-normalized
 %      coefficient in the b-th propagating output channel (or the b-th output
@@ -460,11 +499,9 @@ t0 = clock;
 
 if nargin < 2; error('Not enough input arguments.'); end
 if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
-if ~isfield(syst, 'epsilon');           error('Input argument ''syst'' must have field ''epsilon''.'); end
 if ~isfield(syst, 'epsilon_L');         error('Input argument ''syst'' must have field ''epsilon_L''.'); end
 if ~isfield(syst, 'wavelength');        error('Input argument ''syst'' must have field ''wavelength''.'); end
 if ~isfield(syst, 'dx');                error('Input argument ''syst'' must have field ''dx''.'); end
-if ~(isnumeric(syst.epsilon)    && ismatrix(syst.epsilon));    error('syst.epsilon must be a numeric matrix.'); end
 if ~(isreal(syst.epsilon_L)     && isscalar(syst.epsilon_L));  error('syst.epsilon_L must be a real scalar.'); end
 if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
 if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0);     error('syst.dx must be a positive scalar.'); end
@@ -477,6 +514,36 @@ elseif ~(isreal(syst.epsilon_R) && isscalar(syst.epsilon_R))
     error('syst.epsilon_R must be a real scalar, if given.');
 else
     two_sided = true;
+end
+
+% TM polarization uses syst.epsilon
+% TE polarization uses syst.inv_epsilon
+if isfield(syst, 'epsilon')
+    use_TM = true;
+    if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
+        error('syst.epsilon must be a numeric matrix, if given.');
+    elseif isfield(syst, 'inv_epsilon') && ~isempty(syst.inv_epsilon)
+        error('syst.epsilon and syst.inv_epsilon cannot both be given.');
+    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TM')
+        error('syst.polarization, if given, must be ''TM'' when syst.epsilon is given.');
+    end
+    syst.polarization = 'TM';
+    str_pol = 'Ez'; % for printing system info
+elseif isfield(syst, 'inv_epsilon')
+    use_TM = false;
+    if numel(syst.inv_epsilon) ~= 2
+        error('syst.inv_epsilon must be a two-element cell array, if given.');
+    elseif ~(ismatrix(syst.inv_epsilon{1}) && isnumeric(syst.inv_epsilon{1}))
+        error('syst.inv_epsilon{1} must be a numeric matrix.');
+    elseif ~(ismatrix(syst.inv_epsilon{2}) && isnumeric(syst.inv_epsilon{2}))
+        error('syst.inv_epsilon{2} must be a numeric matrix.');
+    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TE')
+        error('syst.polarization, if given, must be ''TE'' when syst.inv_epsilon is given.');
+    end
+    syst.polarization = 'TE';
+    str_pol = 'Hz'; % for printing system info
+else
+    error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
 end
 
 % Check that the user did not accidentally use options only in mesti()
@@ -492,8 +559,14 @@ elseif isfield(syst, 'PML_type') && ~isempty(syst.PML_type)
 end
 
 % Number of grid points in y and x
-[ny, nx] = size(syst.epsilon);
-if ny==0; error('ny = size(syst.epsilon,1) cannot be zero.'); end
+if use_TM
+    [ny, nx] = size(syst.epsilon);
+    if ny==0; error('ny = size(syst.epsilon,1) cannot be zero.'); end
+else
+    [ny_d, nx] = size(syst.inv_epsilon{1}); % inv_epsilon_xx
+    [ny  , ~ ] = size(syst.inv_epsilon{2}); % inv_epsilon_yy
+    if ny==0; error('ny = size(syst.inv_epsilon{2},1) cannot be zero.'); end
+end
 
 % Check boundary condition in y
 if isfield(syst, 'ky_B') && ~isempty(syst.ky_B)
@@ -529,7 +602,7 @@ end
 if ~(iscell(syst.xBC) && numel(syst.xBC)==2)
     syst.xBC = {syst.xBC, syst.xBC};
 elseif ~two_sided
-    error('For a one-sided geometry, BC on the right will be PEC; syst.xBC must be ''outgoing'' or a scalar structure, if given, to specify only BC on the left.');
+    error('For a one-sided geometry, boundary condition on the right is Dirichlet; syst.xBC only specifies boundary condition on the left and must be ''outgoing'' or a scalar structure, if given.');
 end
 
 % Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on all sides
@@ -590,7 +663,7 @@ for ii = 1:n_sides
             error('syst.xBC{%d}.npixels_spacer must be a non-negative integer scalar, if given.', ii);
         end
 
-        % number of pixels in x to be added outside of syst.epsilon
+        % number of pixels in x to be added outside of syst.epsilon or syst.inv_epsilon
         nx_extra(ii) = 1 + npix_PML + npix_spacer;
 
         PML_ii = rmfield(PML_ii, {'npixels_PML', 'npixels_spacer'}); % these won't be used in mesti()
@@ -642,7 +715,7 @@ end
 % This opts.return_field_profile is not specified by the user; it will be returned as stat.opts.return_field_profile to help debugging
 opts.return_field_profile = isempty(out);
 
-% By default, for field profile computation, we only return result within the [ny, nx] box of syst.epsilon, setting nx_L = nx_R = 0.
+% By default, for field-profile computation, we only return result within the [ny, nx] box syst.epsilon or syst.inv_epsilon, setting nx_L = nx_R = 0.
 if opts.return_field_profile
     if ~isfield(opts, 'nx_L') || isempty(opts.nx_L)
         opts.nx_L = 0;
@@ -703,12 +776,13 @@ elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
 end
 
 if ~isfield(opts, 'method') || isempty(opts.method)
-    % By default, if opts.return_field_profile = true or opts.iterative_refinement = true,
-    % then 'factorize_and_solve' is used. Otherwise, 'APF' is used if
-    % ny is large or if PML has been specified; 'RGF' is used otherwise.
+    % By default, if the input argument 'out' is not given or if
+    % opts.iterative_refinement = true, then 'factorize_and_solve' is used.
+    % Otherwise, 'APF' is used if ny is large or if TE polarization is used
+    % or if PML has been specified; 'RGF' is used otherwise.
     if opts.return_field_profile || (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true))
         opts.method = 'factorize_and_solve';
-    elseif n_PML > 0
+    elseif n_PML > 0 || ~use_TM
         opts.method = 'APF';
     elseif strcmpi(opts.solver, 'MUMPS') && isfield(opts, 'store_ordering') && isequal(opts.store_ordering, true)
         opts.method = 'APF';
@@ -733,7 +807,7 @@ elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) &
 elseif ~ismember(lower(opts.method), lower({'APF', 'factorize_and_solve', 'FS', 'RGF'}))
     error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
 elseif opts.return_field_profile && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
-    error('opts.method = ''%s'' cannot be used for field profile computations where out = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
+    error('opts.method = ''%s'' cannot be used for field-profile computations where out = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
     error('opts.method = ''%s'' cannot be used when opts.iterative_refinement = true; use opts.method = ''factorize_and_solve'' instead.', opts.method)
 elseif strcmpi(opts.method, 'FS')
@@ -746,6 +820,8 @@ if strcmpi(opts.method, 'RGF')
     opts = rmfield(opts, 'clear_syst'); % not used in RGF
     if n_PML > 0
         error('PML cannot be used when opts.method = ''RGF''; use syst.xBC = ''outgoing'' or change opts.method.');
+    elseif ~use_TM
+        error('Our RGF implementation only works with TM polarization; choose a different opts.method.');
     end
     if isfield(opts, 'nrhs') && ~isempty(opts.nrhs)
         warning('opts.nrhs is not used when opts.method = ''RGF''; will be ignored.');
@@ -789,7 +865,7 @@ if ~two_sided
     syst.epsilon_R = NaN;
 end
 % we can also use channels = mesti_build_channels(syst);
-channels = mesti_build_channels(ny, yBC, k0dx, syst.epsilon_L, syst.epsilon_R, syst.use_continuous_dispersion, syst.m0);
+channels = mesti_build_channels(ny, syst.polarization, yBC, k0dx, syst.epsilon_L, syst.epsilon_R, syst.use_continuous_dispersion, syst.m0);
 N_prop_L = channels.L.N_prop;
 if two_sided
     N_prop_R = channels.R.N_prop;
@@ -801,11 +877,11 @@ if opts.verbal
     if two_sided
         fprintf('; N_prop= {%d, %d}\nxBC = {%s, %s}', N_prop_L, N_prop_R, str_xBS{1}, str_xBS{2});
     else
-        fprintf('; one-sided; N_prop_L = %d\nxBC = {%s, PEC}', N_prop_L, str_xBS{1});
+        fprintf('; one-sided; N_prop_L = %d\nxBC = {%s, Dirichlet}', N_prop_L, str_xBS{1});
     end
     fprintf('; yBC = %s', syst.yBC);
     if strcmpi(syst.yBC, 'Bloch'); fprintf(' (ky_B = %.4f)', syst.ky_B); end
-    fprintf('\n');
+    fprintf('; %s polarization\n', str_pol);
 end
 
 t1 = clock; timing_init = etime(t1,t0); % Initialization time
@@ -824,13 +900,26 @@ if use_self_energy(1) || use_self_energy(2)
     phi = channels.fun_phi(channels.kydx_all);
 
     % Retarded Green's function G0 of a semi-infinite homogeneous space, evaluated at the surface (just before the space is terminated)
+    % A few notes about TE polarization:
+    % In homogeneous space, A0_TE = (A0_TM)/epsilon_bg, so G0_TE = G0_TM*epsilon_bg.
+    % When we compute the self-energy = V_SF*inv(A_F)*V_FS below, we get an additional (1/epsilon_bg)^2 prefactor for TE polarization from V_SF and V_FS.
+    % So, overall, (self-energy)_TE = (self-energy)_TM/epsilon_bg.
+    % Here, we absorb the additional (1/epsilon_bg)^2 prefactor into G0_TE. So, for TE polarization, the G0_L and G0_R below is actually G0_L/syst.epsilon_L^2 and G0_R/syst.epsilon_R^2. This is fine since we won't use G0 anywhere else; RGF is currently not supported for TE.
     if use_self_energy(1)
-        G0_L = (phi.*exp(1i*channels.L.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        if use_TM
+            G0_L = (phi.*exp(1i*channels.L.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        else
+            G0_L = (phi.*(exp(1i*channels.L.kxdx_all)/syst.epsilon_L))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        end
     end
     if all(use_self_energy) && syst.epsilon_R == syst.epsilon_L
         G0_R = G0_L;
     elseif use_self_energy(2)
-        G0_R = (phi.*exp(1i*channels.R.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        if use_TM
+            G0_R = (phi.*exp(1i*channels.R.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        else
+            G0_R = (phi.*(exp(1i*channels.R.kxdx_all)/syst.epsilon_R))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+        end
     end
 
     % phi_prop_L and phi_prop_R will be used later for building B and/or C
@@ -848,7 +937,7 @@ if use_self_energy(1) || use_self_energy(2)
 
     % self-energy can be used instead of PML to implement exact outgoing boundary condition.
     % self-energy is the retarded Green's function of the surrounding space (with a Dirichlet boundary surrounding the scattering region) evaluated on the surface.
-    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
+    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon or syst.inv_epsilon, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
     % For the geometry here, self-energy equals the retarded Green's function of a semi-infinite homogeneous space.
     if ~use_RGF
         % syst.self_energy will be used in mesti()
@@ -1130,8 +1219,8 @@ end
 % Here we build:
 % (1) the blocks of input matrix B on the left and right surfaces: B_L (at n=0) and B_R (at n=nx+1)
 % (2) the blocks of output matrix C on the left and right surfaces: C_L (at n=0) and C_R (at n=nx+1)
-% B_L, C_L, B_R, C_R are at one pixel outside syst.epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx. All of them are dense matrices with size(..., 1) = ny.
-% A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx).
+% B_L, C_L, B_R, C_R are at one pixel outside syst.epsilon or syst.inv_epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx. All of them are dense matrices with size(..., 1) = ny.
+% A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx) for TM polarization, mu = sin(kxdx)/epsilon_bg for TE polarization.
 % Recall that x_n = (n-0.5)*dx. We want the reference plane to be at x=0, which is at n=0.5. But the source will be placed at n=0. So we need to shift the phase by back propagating half a pixel.
 % Therefore, we want B_L(m,a) = -2i*sqrt(mu(a))*exp(-i*kxdx(a)/2)*phi(m,a); we will multiple the -2i prefactor at the end.
 % The flux-normalized output projection is sqrt(mu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). If we put the output projection at n=0 or n=nx+1, it is half a pixel away from the reference plane at x=0 or x=L, so we also need to shift the phase by back propagating half a pixel.
@@ -1261,15 +1350,25 @@ if use_RGF
     [S, stat] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts);
 else
     % Add syst.epsilon_L and syst.epsilon_R, to be used in mesti()
-    if two_sided
-        syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon, syst.epsilon_R*ones(ny,nx_extra(2))];
+    if use_TM
+        if two_sided
+            syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon, syst.epsilon_R*ones(ny,nx_extra(2))];
+        else
+            syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon];
+        end
     else
-        syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon];
+        if two_sided
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)), syst.inv_epsilon{1}, (1/syst.epsilon_R)*ones(ny_d,nx_extra(2))];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny  ,nx_extra(1)), syst.inv_epsilon{2}, (1/syst.epsilon_R)*ones(ny  ,nx_extra(2))];
+        else
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)), syst.inv_epsilon{1}];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny  ,nx_extra(1)), syst.inv_epsilon{2}];
+        end
     end
     syst.epsilon_L = []; % mesti() will throw warning if syst.epsilon_L is given
     syst.epsilon_R = []; % mesti() will throw warning if syst.epsilon_R is given
 
-    % The original syst.epsilon is no longer needed but still exists in the caller's workspace; we may clear it to reduce memory usage
+    % The original syst.epsilon or syst.inv_epsilon is no longer needed but still exists in the caller's workspace; we may clear it to reduce memory usage
     if opts.clear_syst
         syst_name = inputname(1); % name of the variable we call syst in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
         if ~isempty(syst_name)
@@ -1277,8 +1376,8 @@ else
         end
     end
 
-    % Whether we use self-energy or PML or have a one-sided geometry, the BC in x direction will be PEC when building matrix A
-    syst.xBC = 'PEC'; % to be used in mesti()
+    % Whether we use self-energy or PML or have a one-sided geometry, the BC in x direction will be Dirichlet when building matrix A
+    syst.xBC = 'Dirichlet'; % to be used in mesti()
 
     % Specify inputs
     if two_sided; B = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
@@ -1532,7 +1631,8 @@ end
 
 
 % Compute scattering matrix using the recursive Green's function (RGF) method.
-% RGF proceeds by incrementally adding slices of the system and evalulating the Green's function on the two surfaces.
+% RGF proceeds by incrementally adding slices of the system and evaluating the Green's function on the two surfaces.
+% This implementation only works for TM polarization.
 function [S, stat] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts)
 
 t1 = clock;

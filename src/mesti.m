@@ -1,27 +1,31 @@
 function [S, stat] = mesti(syst, B, C, D, opts)
-%MESTI Frequency-domain electromagnetics simulations.
+%MESTI Frequency-domain electromagnetic simulations.
 %   [field_profiles, stat] = MESTI(syst, B) returns the spatial field profiles
-%   E_z(x,y) for 2D transverse-magnetic (TM) waves satisfying
-%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon_r(x,y)] E_z(x,y) = 0.
-%   The frequency omega, the relative permittivity profile epsilon_r(x,y), and
-%   the boundary conditions are aspecified by structure 'syst'. Each column of
-%   matrix 'B' specifies a distinct input source profile. The returned
-%   'field_profiles' is a 3D array, with field_profiles(:,:,i) being the field
-%   profile given the i-th input source profile. The statistics of the
-%   computation is returned in structure 'stat'.
+%   of Ez(x,y) for 2D transverse-magnetic (TM) waves satisfying
+%      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = source(x,y),
+%   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
+%      [- (d/dx)*inv(epsilon(x,y))*(d/dx) - (d/dy)*inv(epsilon(x,y))*(d/dy) ...
+%          - (omega/c)^2] Hz(x,y) = source(x,y).
+%   The polarization (TM or TE), relative permittivity profile epsilon(x,y),
+%   frequency omega, and boundary conditions are specified by structure 'syst'.
+%      Each column of matrix 'B' specifies a distinct input source profile.
+%      The returned 'field_profiles' is a 3D array, with field_profiles(:,:,i)
+%   being the field profile given the i-th input source profile. The statistics
+%   of the computation is returned in structure 'stat'.
 %
 %   MESTI uses finite-difference discretization, after which the differential
-%   operator becomes an nx*ny-by-nx*ny sparse matrix A where [ny, nx] =
-%   size(syst.epsilon), and the field profiles are given by
+%   operator becomes an (nx*ny)-by-(nx*ny) sparse matrix A where [ny, nx] is the
+%   number of grid points Ez or Hz is discretized onto (same as the size of
+%   syst.epsilon or syst.inv_epsilon), and the field profiles are given by
 %   reshape(inv(A)*B, ny, nx, []).
 %
 %   [S, stat] = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
 %   inv(A)*B is projected onto the output channels or locations of interest
-%   throught matrix C; each row of matrix 'C' is a distinct output profile,
-%   discretized into a 1-by-(nx*ny) vector in the same oreder as matrix A and
-%   reshape(syst.epsilon, 1, []). When the MUMPS function zmumps() is
-%   available, this is done by computing the Schur complement of an augmented
-%   matrix K = [A,B;C,0] through a partial factorization.
+%   through matrix C; each row of matrix 'C' is a distinct output projection
+%   profile, discretized into a 1-by-(nx*ny) vector in the same order as matrix
+%   A. When the MUMPS function zmumps() is available, this is done by computing
+%   the Schur complement of an augmented matrix K = [A,B;C,0] through a partial
+%   factorization.
 %
 %   [S, stat] = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
 %   used for the computation of scattering matrices, where S is the scattering
@@ -35,7 +39,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   with structure 'opts'.
 %
 %   This file checks and parses the parameters, and it can build matrices B and
-%   C from the non-zero parts specified by the user (see details below). It
+%   C from its non-zero elements specified by the user (see details below). It
 %   calls function mesti_build_fdfd_matrix() to build matrix A and function
 %   mesti_matrix_solver() to compute C*inv(A)*B or inv(A)*B, where most of the
 %   computation is done.
@@ -44,15 +48,37 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   syst (scalar structure; required):
 %      A structure that specifies the system, used to build the FDFD matrix A.
 %      It contains the following fields:
-%      syst.epsilon (numeric matrix, real or complex; required):
-%         Discretized relative permittivity profile, with syst.epsilon(m,n)
-%         being the relative permittivity epsilon_r(x,y) averaged over a square
-%         with area (syst.dx)^2 centered at x = x_n = (n-0.5)*syst.dx, y = y_m =
-%         (m-0.5)*syst.dx. The system size is size(syst.epsilon) = (ny, nx).
-%         Note that y corresponds to the first index m, and x corresponds to the
-%         second index n.
+%      syst.polarization (character vector; optional):
+%         Polarization. Possible choices are:
+%            'TM' - Ez component of transverse-magnetic waves, (Hx, Hy, Ez)
+%            'TE' - Hz component of transverse-electric waves, (Ex, Ey, Hz)
+%         If syst.polarization is not given, it will be automatically picked
+%         based on whether syst.epsilon or syst.inv_epsilon is given.
+%      syst.epsilon (numeric matrix, real or complex; required for TM):
+%         Discretized relative permittivity profile used for TM polarization,
+%            syst.epsilon: ny-by-nx matrix discretizing epsilon(x,y).
+%         Specifically, syst.epsilon(m,n) is the relative permittivity
+%         epsilon(x,y) averaged over a square with area (syst.dx)^2 centered at
+%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx.
+%            Note that y corresponds to the first index m, and x corresponds to
+%         the second index n.
 %            The positive imaginary part of syst.epsilon describes absorption,
 %         and the negative imaginary part describes linear gain.
+%            One can use syst.epsilon with ny=1 and with a periodic or Bloch
+%         periodic boundary in y to simulate 1D systems where the relative
+%         permittivity profile is translationally invariant in y.
+%      syst.inv_epsilon (two-element cell array; required for TE):
+%         Discretized inverse relative permittivity profile used for TE
+%         polarization, with
+%            inv_epsilon{1}: ny_d-by-nx matrix discretizing inv(epsilon(x,y))_xx
+%            inv_epsilon{2}: ny-by-nx_d matrix discretizing inv(epsilon(x,y))_yy
+%         where inv(epsilon(x,y)) is a diagonal tensor.
+%            Here, ny_d is the number of grid points of Ex ~ dHz/dy on
+%         half-integer sites in y, and nx_d is the number of grid points of Ey ~
+%         dHz/dx on half-integer sites in x; they depend on the boundary
+%         condition: n_d = n for Bloch periodic, DirichletNeumann, and
+%         NeumannDirichlet boundary conditions; n_d = n + 1 for Dirichlet
+%         boundary condition, and n_d = n - 1 for Neumann boundary condition.
 %      syst.length_unit (anything; optional):
 %         Length unit, such as micron, nm, or some reference wavelength. This
 %         code only uses dimensionless quantities, so syst.length_unit is never
@@ -66,18 +92,19 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         Parameters of the perfectly matched layer (PML) used to simulate an
 %         open boundary. Note that PML is not a boundary condition; it is a
 %         layer placed within the simulation domain (just before the boundary)
-%         that attenuates outgoing waves with minimal reflection. In mesti(), the
-%         PML starts from within syst.epsilon and ends at the first or last
-%         pixel of syst.epsilon. (Note: this is different from the function
-%         mesti2s() that handles two-sided geometries, where the homogeneous
-%         spaces on the left and right are specified separately through
-%         syst.epsilon_L and syst.epsilon_R, and where PML is placed in such
-%         homogeneous space, outside of syst.epsilon.) When only one set of PML
-%         parameters is used in the system (as is the most common), such
-%         parameters can be specified by using a scalar structure syst.PML
-%         containing the following fields:
+%         that attenuates outgoing waves with minimal reflection.
+%            In mesti(), the PML starts from the interior of syst.epsilon (or
+%         syst.inv_epsilon) and ends at the first or last pixel inside
+%         syst.epsilon (or syst.inv_epsilon). (Note: this is different from the
+%         function mesti2s() that handles two-sided geometries, where the
+%         homogeneous spaces on the left and right are specified separately
+%         through syst.epsilon_L and syst.epsilon_R, and where PML is placed in
+%         such homogeneous space, outside of syst.epsilon.)
+%            When only one set of PML parameters is used in the system (as is
+%         the most common), such parameters can be specified with a scalar
+%         structure syst.PML that contains the following fields:
 %            npixels (positive integer scalar; required): Number of PML pixels.
-%               Note this is within syst.epsilon.
+%               Note this is within the system size [ny, nx], not in addition to.
 %            direction (character vector; optional): Direction(s) where PML is
 %               placed. Available choices are (case-insensitive):
 %                  'all' - (default) PML in both x and y directions
@@ -97,8 +124,8 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %               Conductivity at the end of the PML; defaults to
 %                  0.8*(power_sigma+1)/((2*pi/wavelength)*dx*sqrt(epsilon_bg)).
 %               where epsilon_bg is the average relative permittivity along the
-%               last slice of syst.epsilon of the PML. This is used to attenuate
-%               propagating waves.
+%               last slice of the PML. This is used to attenuate propagating
+%               waves.
 %            power_kappa (non-negative scalar; optional): Power of the
 %               polynomial grading for the real-coordinate-stretching factor
 %               kappa; defaults to 3.
@@ -148,19 +175,26 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         SC-PML has lower condition number.
 %      syst.xBC (character vector; optional):
 %         Boundary condition (BC) at the two ends in x direction, effectively
-%         specifying E_z(m,n) at n=0 and n=nx+1 which are one pixel beyond our
-%         computation domain. Available choices are (case-insensitive):
-%            'Bloch'     - E_z(m,n+nx) = E_z(m,n)*exp(1i*syst.kx_B*nx*syst.dx)
-%            'periodic'  - E_z(m,n+nx) = E_z(m,n)
-%            'PEC'       - E_z(m,0) = E_z(m,nx+1) = 0
-%            'PMC'       - E_z(m,0) = E_z(m,1); E_z(m,nx+1) = E_z(m,nx)
-%            'PECPMC'    - E_z(m,0) = 0; E_z(m,nx+1) = E_z(m,nx)
-%            'PMCPEC'    - E_z(m,0) = E_z(m,1); E_z(m,nx+1) = 0
-%            'Dirichlet' - same as 'PEC'
-%            'Neumann'   - same as 'PMC'
-%         By default, syst.xBC = 'Bloch' if syst.kx_B is given; syst.xBC = 'PEC'
-%         otherwise. The choice of syst.xBC has little effect on the numerical
-%         accuracy when PML is used.
+%         specifying Ez(m,n) or Hz(m,n) at n=0 and n=nx+1 which are one pixel
+%         beyond our computation domain. Available choices (case-insensitive):
+%           'Bloch'            - f(m,n+nx) = f(m,n)*exp(1i*syst.kx_B*nx*syst.dx)
+%           'periodic'         - f(m,n+nx) = f(m,n)
+%           'Dirichlet'        - f(m,0) = f(m,nx+1) = 0
+%           'Neumann'          - f(m,0) = f(m,1); f(m,nx+1) = f(m,nx)
+%           'DirichletNeumann' - f(m,0) = 0; f(m,nx+1) = f(m,nx)
+%           'NeumannDirichlet' - f(m,0) = f(m,1); f(m,nx+1) = 0
+%         where f = Ez or Hz depending on the polarization.
+%            One can also specify 'PEC', 'PMC', 'PECPMC', or 'PMCPEC'. For TM
+%         polarization, PEC is equivalent to Dirichlet for which Ez = 0 at the
+%         boundary, and PMC is equivalent to Neumann for which dEz/dx or dEz/dy
+%         = 0 at the boundary. For TE polarization, PMC is equivalent to
+%         Dirichlet for which Hz = 0 at the boundary, and PEC is equivalent to
+%         Neumann for which dHz/dx or dHz/dy = 0 at the boundary. By default,
+%            syst.xBC = 'Bloch' if syst.kx_B is given; otherwise,
+%            syst.xBC = 'PEC' if syst.polarization = 'TM',
+%            syst.xBC = 'PMC' if syst.polarization = 'TE'.
+%         The choice of syst.xBC has little effect on the numerical accuracy
+%         when PML is used.
 %      syst.kx_B (real scalar; optional):
 %         Bloch wave number in x direction, in units of 1/syst.length_unit.
 %         syst.kx_B is only used when syst.xBC = 'Bloch'. It is allowed to
@@ -178,8 +212,8 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   B (numeric matrix or structure array; required):
 %      Matrix specifying the input in the C*inv(A)*B - D or C*inv(A)*B or
 %      inv(A)*B returned. When the input argument B is a matrix, it is directly
-%      used, and size(B,1) must equal ny*nx = numel(syst.epsilon); different
-%      columns of B correspond to different inputs.
+%      used, and size(B,1) must equal ny*nx; different columns of B correspond
+%      to different inputs.
 %         Instead of specifying matrix B directly, one can specify only its
 %      non-zero parts, from which mesti() will build the sparse matrix B. To do
 %      so, B in the input argument should be set as a structure array; here we
@@ -191,20 +225,19 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %            [m1, n1, h, w] specifies the location and the size of the
 %            rectangle. Here, (m1, n1) is the index of the (y,x) coordinate of
 %            the smaller-y, smaller-x corner of the rectangle, at the location
-%            of syst.epsilon(m1, n1); (h, w) is the height and width of the
-%            rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index of
-%            the higher-index corner of the rectangle, at the location of
-%            syst.epsilon(m2, n2).
+%            of f(m1, n1) where f = Ez or Hz; (h, w) is the height and width of
+%            the rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index
+%            of the higher-index corner of the rectangle.
 %         B_struct.data (2D or 3D numeric array): non-zero elements of matrix B
-%            within the rectangle specified by B_struct.pos. When it is a 3D
-%            array, B_struct.data(m',n',a) is the a-th input source at the
-%            location of syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes
+%            within the rectangle specified by B_struct.pos.
+%               When it is a 3D array, B_struct.data(m',n',a) is the a-th input
+%            source at the location of f(m=m1+m'-1, n=n1+n'-1), which becomes
 %            B(m+(n-1)*ny, a). In other words, B_struct.data(:,:,a) gives the
-%            sources at the rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))).
-%            So, size(B_struct.data, [1,2]) must equal [h, w], and
-%            size(B_struct.data, 3) is the number of inputs. Alternatively,
-%            B_struct.data can be a 2D array that is equivalent to
-%            reshape(data_in_3D_array, h*w, []), in which case
+%            sources at the rectangle f(m1+(0:(h-1)), n1+(0:(w-1))). So,
+%            size(B_struct.data, [1,2]) must equal [h, w], and
+%            size(B_struct.data, 3) is the number of inputs.
+%               Alternatively, B_struct.data can be a 2D array that is
+%            equivalent to reshape(data_in_3D_array, h*w, []), in which case
 %            size(B_struct.data, 2) is the number of inputs; in this case,
 %            B_struct.data can be a sparse matrix, and its sparsity will be
 %            preserved when building matrix B.
@@ -221,13 +254,13 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      can use a structure array with the following fields:
 %         B_struct.ind (integer vector): linear indices of the spatial
 %            locations of the non-zero elements of matrix B, such that
-%            syst.epsilon(B_struct.ind) are the points where the source is
-%            placed. Such linear indices can be constructed from sub2ind().
+%            f(B_struct.ind) are the points where the source is placed. Such
+%            linear indices can be constructed from sub2ind().
 %         B_struct.data (2D numeric matrix): non-zero elements of matrix B at
 %            the locations specified by B_struct.ind. Specifically,
 %            B_struct.data(i,a) is the a-th input source at the location of
-%            syst.epsilon(B_struct.ind(i)), which becomes B(B_struct.ind(i), a).
-%            So, size(B_struct.data, 1) must equal numel(B_struct.ind), and
+%            f(B_struct.ind(i)), which becomes B(B_struct.ind(i), a). So,
+%            size(B_struct.data, 1) must equal numel(B_struct.ind), and
 %            size(B_struct.data, 2) is the number of inputs.
 %         Similarly, one can use B_struct(1).ind, B_struct(2).ind etc together
 %      with B_struct(1).data, B_struct(2).data etc to specify inputs at
@@ -238,8 +271,8 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   C (numeric matrix or structure array or 'transpose(B)' or []; optional):
 %      Matrix specifying the output projections in the C*inv(A)*B - D or
 %      C*inv(A)*B returned. When the input argument C is a matrix, it is
-%      directly used, and size(C,2) must equal ny*nx = numel(syst.epsilon);
-%      different rows of C correspond to different outputs.
+%      directly used, and size(C,2) must equal ny*nx; different rows of C
+%      correspond to different outputs.
 %         Scattering matrix computations often have C = transpose(B); if that
 %      is the case, the user can set C = 'transpose(B)' as a character vector,
 %      and it will be replaced by transpose(B) in the code. Doing so has an
@@ -248,7 +281,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
 %      symmetric when computing its Schur complement to lower computing time and
 %      memory usage.
-%         For field profile computations, the user can simply omit C from the
+%         For field-profile computations, the user can simply omit C from the
 %      input argument, as in mesti(syst, B), if there is no need to change the
 %      default opts. If opts is needed, the user can use
 %      mesti(syst, B, [], [], opts), namely setting C = [] and D = [].
@@ -263,20 +296,19 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %            [m1, n1, h, w] specifies the location and the size of the
 %            rectangle. Here, (m1, n1) is the index of the (y,x) coordinate of
 %            the smaller-y, smaller-x corner of the rectangle, at the location
-%            of syst.epsilon(m1, n1); (h, w) is the height and width of the
-%            rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index of
-%            the higher-index corner of the rectangle, at the location of
-%            syst.epsilon(m2, n2).
+%            of f(m1, n1) where f = Ez or Hz; (h, w) is the height and width of
+%            the rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index
+%            of the higher-index corner of the rectangle.
 %         C_struct.data (2D or 3D numeric array): non-zero elements of matrix C
-%            within the rectangle specified by C_struct.pos. When it is a 3D
-%            array, C_struct.data(m',n',b) is the b-th output projection at the
-%            location of syst.epsilon(m=m1+m'-1, n=n1+n'-1), which becomes
-%            C(b, m+(n-1)*ny). In other words, C_struct.data(:,:,b) gives the
-%            projection at the rectangle syst.epsilon(m1+(0:(h-1)), n1+(0:(w-1))).
+%            within the rectangle specified by C_struct.pos.
+%               When it is a 3D array, C_struct.data(m',n',b) is the b-th output
+%            projection at the location of f(m=m1+m'-1, n=n1+n'-1), which
+%            becomes C(b, m+(n-1)*ny). In other words, C_struct.data(:,:,b)
+%            gives the projection at the rectangle f(m1+(0:(h-1)),n1+(0:(w-1))).
 %            So, size(C_struct.data, [1,2]) must equal [h, w], and
-%            size(C_struct.data, 3) is the number of outputs. Alternatively,
-%            C_struct.data can be a 2D array that is equivalent to
-%            reshape(data_in_3D_array, h*w, []), in which case
+%            size(C_struct.data, 3) is the number of outputs.
+%               Alternatively, C_struct.data can be a 2D array that is
+%            equivalent to reshape(data_in_3D_array, h*w, []), in which case
 %            size(C_struct.data, 2) is the number of outputs; in this case,
 %            C_struct.data can be a sparse matrix, and its sparsity will be
 %            preserved when building matrix C.
@@ -285,13 +317,13 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      to a structure array with the following fields:
 %         C_struct.ind (integer vector): linear indices of the spatial
 %            locations of the non-zero elements of matrix C, such that
-%            syst.epsilon(C_struct.ind) are the points where the projection is
-%            placed. Such linear indices can be constructed from sub2ind().
+%            f(C_struct.ind) are the points where the projection is placed. Such
+%            linear indices can be constructed from sub2ind().
 %         C_struct.data (2D numeric matrix): non-zero elements of matrix C at
 %            the locations specified by C_struct.ind. Specifically,
 %            C_struct.data(i,b) is the b-th projection at the location of
-%            syst.epsilon(C_struct.ind(i)), which becomes C(b, C_struct.ind(i)).
-%            So, size(C_struct.data, 1) must equal numel(C_struct.ind), and
+%            f(C_struct.ind(i)), which becomes C(b, C_struct.ind(i)). So,
+%            size(C_struct.data, 1) must equal numel(C_struct.ind), and
 %            size(C_struct.data, 2) is the number of outputs.
 %         Like in B_struct, one can use structure arrays with multiple elements
 %      to specify outputs at different spatial locations.
@@ -345,9 +377,9 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         mesti().
 %      opts.clear_syst (logical scalar; optional, defaults to false):
 %         When opts.clear_syst = true, variable 'syst' will be cleared in the
-%         caller's workspace to reduce peak memory usage. Can be used when
-%         syst.epsilon and/or syst.self_energy take up significant memory and
-%         are not needed after calling mesti().
+%         caller's workspace to reduce peak memory usage. This can be used when
+%         syst.epsilon/syst.inv_epsilon and/or syst.self_energy take up
+%         significant memory and are not needed after calling mesti().
 %      opts.clear_memory (logical scalar; optional, defaults to true):
 %         Whether or not to clear variables inside mesti() to reduce peak memory
 %         usage.
@@ -422,12 +454,40 @@ t0 = clock;
 
 if nargin < 2; error('Not enough input arguments.'); end
 if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
-if ~isfield(syst, 'epsilon');           error('Input argument ''syst'' must have field ''epsilon''.'); end
 if ~isfield(syst, 'wavelength');        error('Input argument ''syst'' must have field ''wavelength''.'); end
 if ~isfield(syst, 'dx');                error('Input argument ''syst'' must have field ''dx''.'); end
-if ~(isnumeric(syst.epsilon)    && ismatrix(syst.epsilon));    error('syst.epsilon must be a numeric matrix.'); end
 if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
 if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0);     error('syst.dx must be a positive scalar.'); end
+
+% TM polarization uses syst.epsilon
+% TE polarization uses syst.inv_epsilon
+if isfield(syst, 'epsilon')
+    use_TM = true;
+    if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
+        error('syst.epsilon must be a numeric matrix, if given.');
+    elseif isfield(syst, 'inv_epsilon') && ~isempty(syst.inv_epsilon)
+        error('syst.epsilon and syst.inv_epsilon cannot both be given.');
+    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TM')
+        error('syst.polarization, if given, must be ''TM'' when syst.epsilon is given.');
+    end
+    syst.polarization = 'TM';
+    str_pol = 'Ez'; % for printing system info
+elseif isfield(syst, 'inv_epsilon')
+    use_TM = false;
+    if numel(syst.inv_epsilon) ~= 2
+        error('syst.inv_epsilon must be a two-element cell array, if given.');
+    elseif ~(ismatrix(syst.inv_epsilon{1}) && isnumeric(syst.inv_epsilon{1}))
+        error('syst.inv_epsilon{1} must be a numeric matrix.');
+    elseif ~(ismatrix(syst.inv_epsilon{2}) && isnumeric(syst.inv_epsilon{2}))
+        error('syst.inv_epsilon{2} must be a numeric matrix.');
+    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TE')
+        error('syst.polarization, if given, must be ''TE'' when syst.inv_epsilon is given.');
+    end
+    syst.polarization = 'TE';
+    str_pol = 'Hz'; % for printing system info
+else
+    error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+end
 
 % Check that the user did not accidentally use options only in mesti2s()
 if isfield(syst, 'epsilon_L') && ~isempty(syst.epsilon_L)
@@ -438,7 +498,12 @@ if isfield(syst, 'epsilon_R') && ~isempty(syst.epsilon_R)
 end
 
 % Number of grid points in y and x
-[ny, nx] = size(syst.epsilon);
+if use_TM
+    [ny, nx] = size(syst.epsilon);
+else
+    nx = size(syst.inv_epsilon{1}, 2); % inv_epsilon_xx
+    ny = size(syst.inv_epsilon{2}, 1); % inv_epsilon_yy
+end
 nxy = nx*ny;
 
 % Check boundary condition in x
@@ -452,9 +517,13 @@ if isfield(syst, 'kx_B') && ~isempty(syst.kx_B)
     % mesti_build_fdfd_matrix() uses (kx_B,ky_B)*periodicity as the input arguments xBC and yBC for Bloch BC
     xBC = (syst.kx_B)*(nx*syst.dx); % dimensionless
 else
-    % Defaults to PEC boundary condition unless syst.kx_B is given
+    % Defaults to Dirichlet boundary condition unless syst.kx_B is given
     if ~isfield(syst, 'xBC') || isempty(syst.xBC)
-        syst.xBC = 'PEC';
+        if use_TM
+            syst.xBC = 'PEC';
+        else
+            syst.xBC = 'PMC';
+        end
     elseif ~((ischar(syst.xBC) && isrow(syst.xBC)) || (isstring(syst.xBC) && isscalar(syst.xBC)))
         error('syst.xBC must be a character vector or string, if given.');
     elseif ~ismember(lower(syst.xBC), {'bloch', 'periodic', 'dirichlet', 'pec', 'neumann', 'pmc', 'dirichletneumann', 'pecpmc', 'neumanndirichlet', 'pmcpec'})
@@ -479,9 +548,13 @@ if isfield(syst, 'ky_B') && ~isempty(syst.ky_B)
     % mesti_build_fdfd_matrix() uses (kx_B,ky_B)*periodicity as the input arguments xBC and yBC for Bloch BC
     yBC = (syst.ky_B)*(ny*syst.dx); % dimensionless
 else
-    % Defaults to PEC boundary condition unless syst.ky_B is given
+    % Defaults to Dirichlet boundary condition unless syst.ky_B is given
     if ~isfield(syst, 'yBC') || isempty(syst.yBC)
-        syst.yBC = 'PEC';
+        if use_TM
+            syst.yBC = 'PEC';
+        else
+            syst.yBC = 'PMC';
+        end
     elseif ~((ischar(syst.yBC) && isrow(syst.yBC)) || (isstring(syst.yBC) && isscalar(syst.yBC)))
         error('syst.yBC must be a character vector or string, if given.');
     elseif ~ismember(lower(syst.yBC), {'bloch', 'periodic', 'dirichlet', 'pec', 'neumann', 'pmc', 'dirichletneumann', 'pecpmc', 'neumanndirichlet', 'pmcpec'})
@@ -672,7 +745,7 @@ elseif ~(islogical(opts.clear_BC) && isscalar(opts.clear_BC))
     error('opts.clear_BC must be a logical scalar, if given.');
 end
 
-% By default, we will clear internal variables; only useed in mesti_matrix_solver()
+% By default, we will clear internal variables to save memory; this is only used in mesti_matrix_solver()
 % Note that mesti_matrix_solver() defaults opts.clear_memory to false because some users that use mesti_matrix_solver() directly may want to keep the input arguments A,B,C after calling it. But the opts.clear_memory in mesti() here only deals with the variables internal to mesti() and mesti_matrix_solver(); it doesn't deal with the input arguments provided by the user (which are specified by opts.clear_syst and opts.clear_BC), so it is safe to default opts.clear_memory to true here.
 if ~isfield(opts, 'clear_memory') || isempty(opts.clear_memory)
     opts.clear_memory = true;
@@ -699,7 +772,7 @@ if opts.verbal
         fprintf('            ... ');
     else
         called_from_mesti2s = false;
-        fprintf('System size: ny = %d, nx = %d\n', ny, nx);
+        fprintf('System size: ny = %d, nx = %d; %s polarization\n', ny, nx, str_pol);
         if use_PML
             fprintf('%s on ', syst.PML_type);
             for ind_side = 1:4
@@ -744,7 +817,7 @@ if isstruct(B)
     end
 
     % We first pick the most efficient way to build matrix B.
-    % If all of the following are satisfied: (1) numel(B_struct) is small, (2) B_struct.pos is used, and (3) the rectangle specified by B_struct.pos is a single vertical slice or if it spans the full height of syst.epsilon, then we will stack reshaped B_struct(ii).data with zeros. This avoids the overhead of building B with index-value pairs.
+    % If all of the following are satisfied: (1) numel(B_struct) is small, (2) B_struct.pos is used, and (3) the rectangle specified by B_struct.pos is a single vertical slice or if it spans the full height of ny, then we will stack reshaped B_struct(ii).data with zeros. This avoids the overhead of building B with index-value pairs.
     % If any of the above is not satisfied, we will build B with index-value pairs.
     use_iv_pairs = false;
     if numel(B_struct) > 10
@@ -780,7 +853,7 @@ if isstruct(B)
     for ii = 1:numel(B_struct)
         data = B_struct(ii).data;
         if isfield(B_struct, 'pos')
-            % B_struct(ii).pos specifies a rectangle inside syst.epsilon; (m1,n1) and (m2,n2) are its two diagonal corners
+            % B_struct(ii).pos specifies a rectangle inside [ny, nx]; (m1,n1) and (m2,n2) are its two diagonal corners
             pos = B_struct(ii).pos;
             m1 = pos(1); % first index in y
             n1 = pos(2); % first index in x
@@ -788,13 +861,13 @@ if isstruct(B)
             n2 = n1 + pos(4) - 1; % last index in x
             nxy_data = pos(3)*pos(4); % number of elements in this rectangle
             if m1 > ny
-                error('B(%d).pos(1) = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, m1, ny);
+                error('B(%d).pos(1) = %d exceeds ny = %d.', ii, m1, ny);
             elseif n1 > nx
-                error('B(%d).pos(2) = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, n1, nx);
+                error('B(%d).pos(2) = %d exceeds nx = %d.', ii, n1, nx);
             elseif m2 > ny
-                error('B(%d).pos(1) + B(%d).pos(3) - 1 = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, ii, m2, ny);
+                error('B(%d).pos(1) + B(%d).pos(3) - 1 = %d exceeds ny = %d.', ii, ii, m2, ny);
             elseif n2 > nx
-                error('B(%d).pos(2) + B(%d).pos(4) - 1 = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, ii, n2, nx);
+                error('B(%d).pos(2) + B(%d).pos(4) - 1 = %d exceeds nx = %d.', ii, ii, n2, nx);
             elseif ~(ndims(data) <= 3 && isnumeric(data))
                 error('B(%d).data must be a 2D or 3D numeric array when B.pos is given.', ii);
             elseif isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
@@ -811,7 +884,7 @@ if isstruct(B)
                 ind = reshape(sub2ind([ny, nx], m_list, n_list), nxy_data, 1);
             end
         else
-            % B_struct(ii).ind specifies linear indices of syst.epsilon
+            % B_struct(ii).ind specifies linear indices of [ny, nx]
             ind = B_struct(ii).ind;
             if ~(isreal(ind) && isvector(ind) && isequal(ind, round(ind)) && min(ind)>0 && max(ind)<=nxy && numel(ind)==numel(unique(ind)))
                 error('B(%d).ind must be a vector with no repeated elements, where every element is an integer between 1 and nx*ny = %d.', ii, nxy);
@@ -836,7 +909,7 @@ if isstruct(B)
             N = N + N_ii; % number of non-zero elements in matrix B up to the ii-th part
             M = M + M_ii; % number of columns in matrix B up to the ii-th part
         else
-            % If the rectangle of B_struct.pos is a single vertical slice or if it spans the full height of syst.epsilon, we can stack reshaped B_struct(ii).data with zeros to avoid the overhead of building B with index-value pairs. But then B must be built incrementally, which is slow when numel(B_struct) is large.
+            % If the rectangle of B_struct.pos is a single vertical slice or if it spans the full height of ny, we can stack reshaped B_struct(ii).data with zeros to avoid the overhead of building B with index-value pairs. But then B must be built incrementally, which is slow when numel(B_struct) is large.
             nxy_before = sub2ind([ny, nx], m1, n1) - 1;
             nxy_after  = nxy - sub2ind([ny, nx], m2, n2);
             B = [B, [sparse(nxy_before, M_ii); reshape(data, nxy_data, M_ii); sparse(nxy_after, M_ii)]];
@@ -876,7 +949,7 @@ if isstruct(C)
     end
 
     % We first pick the most efficient way to build matrix C.
-    % If all of the following are satisfied: (1) numel(C_struct) is small, (2) C_struct.pos is used, and (3) the rectangle specified by C_struct.pos is a single vertical slice or if it spans the full height of syst.epsilon, then we will stack reshaped C_struct(ii).data with zeros. This avoids the overhead of building C with index-value pairs.
+    % If all of the following are satisfied: (1) numel(C_struct) is small, (2) C_struct.pos is used, and (3) the rectangle specified by C_struct.pos is a single vertical slice or if it spans the full height of ny, then we will stack reshaped C_struct(ii).data with zeros. This avoids the overhead of building C with index-value pairs.
     % If any of the above is not satisfied, we will build C with index-value pairs.
     use_iv_pairs = false;
     if numel(C_struct) > 10
@@ -912,7 +985,7 @@ if isstruct(C)
     for ii = 1:numel(C_struct)
         data = C_struct(ii).data;
         if isfield(C_struct, 'pos')
-            % C_struct(ii).pos specifies a rectangle inside syst.epsilon; (m1,n1) and (m2,n2) are its two diagonal corners
+            % C_struct(ii).pos specifies a rectangle inside [ny, nx]; (m1,n1) and (m2,n2) are its two diagonal corners
             pos = C_struct(ii).pos;
             m1 = pos(1); % first index in y
             n1 = pos(2); % first index in x
@@ -920,13 +993,13 @@ if isstruct(C)
             n2 = n1 + pos(4) - 1; % last index in x
             nxy_data = pos(3)*pos(4); % number of elements in this rectangle
             if m1 > ny
-                error('C(%d).pos(1) = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, m1, ny);
+                error('C(%d).pos(1) = %d exceeds ny = %d.', ii, m1, ny);
             elseif n1 > nx
-                error('C(%d).pos(2) = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, n1, nx);
+                error('C(%d).pos(2) = %d exceeds nx = %d.', ii, n1, nx);
             elseif m2 > ny
-                error('C(%d).pos(1) + C(%d).pos(3) - 1 = %d exceeds ny = size(syst.epsilon, 1) = %d.', ii, ii, m2, ny);
+                error('C(%d).pos(1) + C(%d).pos(3) - 1 = %d exceeds ny = %d.', ii, ii, m2, ny);
             elseif n2 > nx
-                error('C(%d).pos(2) + C(%d).pos(4) - 1 = %d exceeds nx = size(syst.epsilon, 2) = %d.', ii, ii, n2, nx);
+                error('C(%d).pos(2) + C(%d).pos(4) - 1 = %d exceeds nx = %d.', ii, ii, n2, nx);
             elseif ~(ndims(data) <= 3 && isnumeric(data))
                 error('C(%d).data must be a 2D or 3D numeric array when C.pos is given.', ii);
             elseif isequal(size(data, [1,2]), [pos(3), pos(4)]) % this way to use size() is supported starting MATLAB R2019b
@@ -943,7 +1016,7 @@ if isstruct(C)
                 ind = reshape(sub2ind([ny, nx], m_list, n_list), nxy_data, 1);
             end
         else
-            % C_struct(ii).ind specifies linear indices of syst.epsilon
+            % C_struct(ii).ind specifies linear indices of [ny, nx]
             ind = C_struct(ii).ind;
             if ~(isreal(ind) && isvector(ind) && isequal(ind, round(ind)) && min(ind)>0 && max(ind)<=nxy && numel(ind)==numel(unique(ind)))
                 error('C(%d).ind must be a vector with no repeated elements, where every element is an integer between 1 and nx*ny = %d.', ii, nxy);
@@ -968,7 +1041,7 @@ if isstruct(C)
             N = N + N_ii; % number of non-zero elements in matrix C up to the ii-th part
             M = M + M_ii; % number of rows in matrix C up to the ii-th part
         else
-            % If the rectangle of C_struct.pos is a single vertical slice or if it spans the full height of syst.epsilon, we can stack reshaped C_struct(ii).data with zeros to avoid the overhead of building C with index-value pairs. But then C must be built incrementally, which is slow when numel(C_struct) is large.
+            % If the rectangle of C_struct.pos is a single vertical slice or if it spans the full height of ny, we can stack reshaped C_struct(ii).data with zeros to avoid the overhead of building C with index-value pairs. But then C must be built incrementally, which is slow when numel(C_struct) is large.
             nxy_before = sub2ind([ny, nx], m1, n1) - 1;
             nxy_after  = nxy - sub2ind([ny, nx], m2, n2);
             C = [C; [sparse(M_ii, nxy_before), reshape(data, nxy_data, M_ii).', sparse(M_ii, nxy_after)]];
@@ -1009,12 +1082,17 @@ if (sz_B_2 == 0 || (~opts.return_field_profile && ~use_transpose_B && sz_C_1 == 
     is_symmetric_A = true;
 else
     % Build the finite-difference differential operator
+    if use_TM
+        eps_or_inv_eps = syst.epsilon;
+    else
+        eps_or_inv_eps = syst.inv_epsilon;
+    end
     k0dx = (2*pi/syst.wavelength)*(syst.dx);
-    [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(syst.epsilon, k0dx, xBC, yBC, xPML, yPML, use_UPML);
+    [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(eps_or_inv_eps, k0dx, xBC, yBC, xPML, yPML, use_UPML);
 
     % Use self-energy (instead of PML) to implement exact outgoing boundary condition.
     % self-energy is the retarded Green's function of the surrounding space (with a Dirichlet boundary surrounding the scattering region) evaluated on the surface.
-    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region as given by syst.epsilon, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
+    % Specifically, self-energy = V_SF*inv(A_F)*V_FS where F denotes the surrounding infinite free space, S denotes the scattering region, A_F is the differential operator of the free space with a Dirichlet boundary surrounding the scattering region S, and V_FS is the coupling matrix between F and S (which is nonzero only along the interface between F and S).
     % On the sides where self-energy is used, we must have Dirichlet boundary condition with no PML. But it's tricky to check which side(s) self-energy is used, so we don't check it.
     % self_energy should have the same symmetry as A; we don't check it.
     if isfield(syst, 'self_energy') && ~isempty(syst.self_energy)
@@ -1027,7 +1105,7 @@ else
     end
 end
 if opts.clear_syst
-    clear syst
+    clear syst eps_or_inv_eps
     syst_name = inputname(1); % name of the variable we call syst in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
     if ~isempty(syst_name)
         evalin('caller', ['clear ', syst_name]); % do 'clear syst' in caller's workspace
@@ -1061,7 +1139,7 @@ end
 
 % subtract D
 if ~isempty(D)
-    if opts.return_field_profile; error('Input argument ''D'' must be empty for field profile computations where C = [].'); end
+    if opts.return_field_profile; error('Input argument ''D'' must be empty for field-profile computations where C = [].'); end
     [sz_D_1, sz_D_2] = size(D);
     if sz_D_1~=sz_C_1; error('size(D,1) must equal size(C,1); size(D,1) = %d, size(C,1) = %d.', sz_D_1, sz_C_1); end
     if sz_D_2~=sz_B_2; error('size(D,2) must equal size(B,2); size(D,2) = %d, size(B,2) = %d.', sz_D_2, sz_B_2); end
