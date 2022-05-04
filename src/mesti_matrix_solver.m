@@ -1,16 +1,16 @@
-function [S, stat] = mesti_matrix_solver(A, B, C, opts)
+function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %MESTI_MATRIX_SOLVER Computes C*inv(A)*B or inv(A)*B.
-%   [X, stat] = MESTI_MATRIX_SOLVER(A, B) returns X = inv(A)*B for sparse matrix
-%   A and (sparse or dense) matrix B, with the statistics of the computation
-%   returned in structure 'stat'.
+%   [X, info] = MESTI_MATRIX_SOLVER(A, B) returns X = inv(A)*B for sparse matrix
+%   A and (sparse or dense) matrix B, with the information of the computation
+%   returned in structure 'info'.
 %
-%   [S, stat] = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
+%   [S, info] = MESTI_MATRIX_SOLVER(A, B, C) returns S = C*inv(A)*B where matrix
 %   C is either sparse or dense. When the MUMPS function zmumps() is available,
 %   this is done by computing the Schur complement of an augmented matrix K =
 %   [A,B;C,0] through a partial factorization.
 %
-%   [X, stat] = MESTI_MATRIX_SOLVER(A, B, [], opts) and
-%   [S, stat] = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
+%   [X, info] = MESTI_MATRIX_SOLVER(A, B, [], opts) and
+%   [S, info] = MESTI_MATRIX_SOLVER(A, B, C, opts) allow detailed options to be
 %   specified with structure 'opts' of the input arguments.
 %
 %   === Input Arguments ===
@@ -33,7 +33,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %      A structure that specifies the options of computation; defaults to an
 %      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
-%         Whether to print info and timing to the standard output.
+%         Whether to print system information and timing to the standard output.
 %      opts.is_symmetric_A (logical scalar; optional):
 %         Whether matrix A is symmetric or not. This is only used when
 %         opts.solver = 'MUMPS', in which case opts.is_symmetric_A will be
@@ -88,7 +88,7 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %         Whether to store the ordering sequence (permutation) for matrix A or
 %         matrix K; only possible when opts.solver = 'MUMPS'. If
 %         opts.store_ordering = true, the ordering will be returned in
-%         stat.ordering.
+%         info.ordering.
 %      opts.ordering (positive integer vector; optional):
 %         A user-specified ordering sequence for matrix A or matrix K, used only
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
@@ -102,30 +102,30 @@ function [S, stat] = mesti_matrix_solver(A, B, C, opts)
 %         errors. Iterative refinement can only be used when opts.solver =
 %         'MUMPS' and opts.method = 'factorize_and_solve' and C is given, in
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
-%         relevant information will be returned in stat.itr_ref_nsteps,
-%         stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
+%         relevant information will be returned in info.itr_ref_nsteps,
+%         info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
 %   S (full numeric matrix):
 %      C*inv(A)*B or inv(A)*B.
-%   stat (scalar structure):
+%   info (scalar structure):
 %      A structure that contains the following fields:
-%      stat.opts (scalar structure):
+%      info.opts (scalar structure):
 %         The final 'opts' used, excluding the user-specified matrix ordering.
-%      stat.timing (scalar structure):
+%      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
-%      stat.ordering_method (character vector; optional):
+%      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
-%      stat.ordering (positive integer vector; optional):
+%      info.ordering (positive integer vector; optional):
 %         Ordering sequence returned by MUMPS when opts.store_ordering = true.
-%      stat.itr_ref_nsteps (integer vector; optional):
+%      info.itr_ref_nsteps (integer vector; optional):
 %         Number of steps of iterative refinement for each input, if
 %         opts.iterative_refinement = true; 0 means no iterative refinement.
-%      stat.itr_ref_omega_1 (real vector; optional):
+%      info.itr_ref_omega_1 (real vector; optional):
 %         Scaled residual omega_1 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
-%      stat.itr_ref_omega_2 (real vector; optional):
+%      info.itr_ref_omega_2 (real vector; optional):
 %         Scaled residual omega_2 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
 
@@ -393,10 +393,10 @@ end
 
 if strcmpi(opts.method, 'None')
     S = zeros(sz_C_1, sz_B_2);
-    stat.timing.build = 0;
-    stat.timing.analyze = 0;
-    stat.timing.factorize = 0;
-    stat.timing.solve = 0;
+    info.timing.build = 0;
+    info.timing.analyze = 0;
+    info.timing.factorize = 0;
+    info.timing.solve = 0;
 elseif strcmpi(opts.method, 'APF')
 %% Compute S=C*inv(A)*B with APF (augmented partial factorization)
     if strcmpi(opts.solver, 'MUMPS') % Build matrix K=[A,B;C,0] and use MUMPS to compute its Schur complement -C*inv(A)*B with the LU factors discarded.
@@ -438,9 +438,9 @@ elseif strcmpi(opts.method, 'APF')
 
         % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
         % This is typically the most memory-consuming part of the whole simulation
-        [id, stat] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
+        [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
 
-        stat.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
+        info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
         t1 = clock;
 
         % Retrieve C*inv(A)*B = -H = -K/A, stored as a dense matrix
@@ -460,13 +460,13 @@ elseif strcmpi(opts.method, 'APF')
         [~] = zmumps(id);
 
         t2 = clock;
-        stat.timing.factorize = stat.timing.factorize + etime(t2,t1);
-        stat.timing.solve = 0;
+        info.timing.factorize = info.timing.factorize + etime(t2,t1);
+        info.timing.solve = 0;
     else % Compute C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
         % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
         % For simplicity, we refer to this as A = L*U below
-        [L, U, P, Q, R, stat] = MATLAB_factorize(A, opts);
-        stat.timing.build = 0;  % the build time for A, B, C will be added in addition to this
+        [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
+        info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
         if opts.clear_memory
             clear A
             if ~isempty(A_name)
@@ -512,16 +512,16 @@ elseif strcmpi(opts.method, 'APF')
                 S = full(C_inv_U/L)*(P*(R\B));   % [[C*inv(U)]*inv(L)]*B
             end
         end
-        t2 = clock; stat.timing.solve = etime(t2,t1);
-        if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.solve); end
+        t2 = clock; info.timing.solve = etime(t2,t1);
+        if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
     end
 elseif strcmpi(opts.method, 'factorize_and_solve')
 %% Compute S=C*inv(A)*B or X=inv(A)*B by factorizing A and solving for X column by column
     % Factorize A = L*U where L and U are upper and lower triangular, with permutations
     if strcmpi(opts.solver, 'MUMPS')
-        [id, stat] = MUMPS_analyze_and_factorize(A, opts, opts.is_symmetric_A);
+        [id, info] = MUMPS_analyze_and_factorize(A, opts, opts.is_symmetric_A);
     else
-        [L, U, P, Q, R, stat] = MATLAB_factorize(A, opts);
+        [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
         if opts.clear_memory
             clear A
             if ~isempty(A_name)
@@ -529,7 +529,7 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
             end
         end
     end
-    stat.timing.build = 0;  % the build time for A, B, C will be added in addition to this
+    info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
 
     % Solve stage (forward and backward substitutions)
     if opts.verbal; fprintf('Solving     ... '); end
@@ -565,9 +565,9 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
         % Storing the whole X=inv(A)*B wastes memory, so we solve for opts.nrhs columns of X each time and only keep its projection onto C.
         if strcmpi(opts.solver, 'MUMPS')
             if opts.iterative_refinement
-                stat.itr_ref_nsteps = zeros(M_in,1);
-                stat.itr_ref_omega_1 = zeros(M_in,1);
-                stat.itr_ref_omega_2 = zeros(M_in,1);
+                info.itr_ref_nsteps = zeros(M_in,1);
+                info.itr_ref_omega_1 = zeros(M_in,1);
+                info.itr_ref_omega_2 = zeros(M_in,1);
             end
             for k = 1:opts.nrhs:M_in
                 in_list = k:min([k+opts.nrhs-1, M_in]);
@@ -578,9 +578,9 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
                 if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
                 S(:,in_list) = C*id.SOL; % X = id.XOL
                 if opts.iterative_refinement  % we must have opts.nrhs = 1 in this case
-                    stat.itr_ref_nsteps(k) = id.INFOG(15); % number of steps of iterative refinement
-                    stat.itr_ref_omega_1(k) = id.RINFOG(7); % scaled residual 1; see MUMPS user guide section 3.3.2
-                    stat.itr_ref_omega_2(k) = id.RINFOG(8); % scaled residual 2; see MUMPS user guide section 3.3.2
+                    info.itr_ref_nsteps(k) = id.INFOG(15); % number of steps of iterative refinement
+                    info.itr_ref_omega_1(k) = id.RINFOG(7); % scaled residual 1; see MUMPS user guide section 3.3.2
+                    info.itr_ref_omega_2(k) = id.RINFOG(8); % scaled residual 2; see MUMPS user guide section 3.3.2
                 end
             end
             % Destroy the MUMPS instance and deallocate memory
@@ -602,15 +602,15 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
         end
     end
     if issparse(S); S = full(S); end
-    t2 = clock; stat.timing.solve = etime(t2,t1);
-    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.solve); end
+    t2 = clock; info.timing.solve = etime(t2,t1);
+    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
 else
     error('opts.method = ''%s'' is not a supported option.', opts.method);
 end
 
-% Convert stat.ordering_method from integer to character array, per MUMPS definition of ICNTL(7)
+% Convert info.ordering_method from integer to character array, per MUMPS definition of ICNTL(7)
 if strcmpi(opts.solver, 'MUMPS')
-    switch stat.ordering_method
+    switch info.ordering_method
         case 0
             str_ordering = 'AMD';
         case 1
@@ -629,22 +629,22 @@ if strcmpi(opts.solver, 'MUMPS')
             str_ordering = 'N/A';
     end
     % Check if METIS ordering was actually used in MUMPS
-    if opts.use_METIS && stat.ordering_method ~= 5
+    if opts.use_METIS && info.ordering_method ~= 5
         warning('opts.use_METIS = true, but %s ordering was used in MUMPS.', str_ordering);
     end
-    stat.ordering_method = str_ordering;
+    info.ordering_method = str_ordering;
 end
 
 if opts.use_given_ordering; opts = rmfield(opts, 'ordering'); end % We don't return the user-specified ordering again since it can be large
-stat.opts = opts; % Return the parameters used for user's reference
-stat.timing.init = timing_init; % Initialization time
-t2 = clock; stat.timing.total = etime(t2,t0); % Total computing time
+info.opts = opts; % Return the parameters used for user's reference
+info.timing.init = timing_init; % Initialization time
+t2 = clock; info.timing.total = etime(t2,t0); % Total computing time
 
 end
 
 
 %% Call MATLAB's lu() to factorize matrix A
-function [L, U, P, Q, R, stat] = MATLAB_factorize(A, opts)
+function [L, U, P, Q, R, info] = MATLAB_factorize(A, opts)
 
 if opts.verbal; fprintf('Factorizing ... '); end
 t1 = clock;
@@ -658,15 +658,15 @@ end
 % P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
 [L,U,P,Q,R] = lu(A);
 
-t2 = clock; stat.timing.factorize = etime(t2,t1);
-stat.timing.analyze = 0; % the analysis time is already counted in the factorization time
-if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.factorize); end
+t2 = clock; info.timing.factorize = etime(t2,t1);
+info.timing.analyze = 0; % the analysis time is already counted in the factorization time
+if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.factorize); end
 
 end
 
 
 %% Call MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
-function [id, stat] = MUMPS_analyze_and_factorize(A, opts, is_symmetric, ind_schur)
+function [id, info] = MUMPS_analyze_and_factorize(A, opts, is_symmetric, ind_schur)
 
 %% Initialize MUMPS
 N = size(A,1);
@@ -739,17 +739,17 @@ end
 id = zmumps(id,A);  % run the analysis
 if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
 
-% Store statistics and ordering info
-stat.ordering_method = id.INFOG(7); % the ordering method that was actually used
+% Store information on the ordering used
+info.ordering_method = id.INFOG(7); % the ordering method that was actually used
 if opts.store_ordering
     % Store the ordering (a permutation vector) that was computed
     % line 84 of the MATLAB interface zmumps.m actually stores the inverse ordering rather than the ordering, so we need to undo the inversion here
-    stat.ordering = zeros(1,N);
-    stat.ordering(id.SYM_PERM) = 1:N;
+    info.ordering = zeros(1,N);
+    info.ordering(id.SYM_PERM) = 1:N;
 end
 
-t2 = clock; stat.timing.analyze = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing ... ', stat.timing.analyze); end
+t2 = clock; info.timing.analyze = etime(t2,t1);
+if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing ... ', info.timing.analyze); end
 
 %% Factorization stage
 t1 = clock;
@@ -773,8 +773,8 @@ if nargin == 4
     end
 end
 
-t2 = clock; stat.timing.factorize = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.factorize); end
+t2 = clock; info.timing.factorize = etime(t2,t1);
+if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.factorize); end
 
 end
 

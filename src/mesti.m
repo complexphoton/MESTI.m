@@ -1,6 +1,6 @@
-function [S, stat] = mesti(syst, B, C, D, opts)
+function [S, info] = mesti(syst, B, C, D, opts)
 %MESTI Frequency-domain electromagnetic simulations.
-%   [field_profiles, stat] = MESTI(syst, B) returns the spatial field profiles
+%   [field_profiles, info] = MESTI(syst, B) returns the spatial field profiles
 %   of Ez(x,y) for 2D transverse-magnetic (TM) waves satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = source(x,y),
 %   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
@@ -10,8 +10,8 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   frequency omega, and boundary conditions are specified by structure 'syst'.
 %      Each column of matrix 'B' specifies a distinct input source profile.
 %      The returned 'field_profiles' is a 3D array, with field_profiles(:,:,i)
-%   being the field profile given the i-th input source profile. The statistics
-%   of the computation is returned in structure 'stat'.
+%   being the field profile given the i-th input source profile. The information
+%   of the computation is returned in structure 'info'.
 %
 %   MESTI uses finite-difference discretization, after which the differential
 %   operator becomes an (nx*ny)-by-(nx*ny) sparse matrix A where [ny, nx] is the
@@ -19,7 +19,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   syst.epsilon or syst.inv_epsilon), and the field profiles are given by
 %   reshape(inv(A)*B, ny, nx, []).
 %
-%   [S, stat] = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
+%   [S, info] = MESTI(syst, B, C) returns S = C*inv(A)*B where the solution
 %   inv(A)*B is projected onto the output channels or locations of interest
 %   through matrix C; each row of matrix 'C' is a distinct output projection
 %   profile, discretized into a 1-by-(nx*ny) vector in the same order as matrix
@@ -27,15 +27,15 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %   the Schur complement of an augmented matrix K = [A,B;C,0] through a partial
 %   factorization.
 %
-%   [S, stat] = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
+%   [S, info] = MESTI(syst, B, C, D) returns S = C*inv(A)*B - D. This can be
 %   used for the computation of scattering matrices, where S is the scattering
 %   matrix, and matrix D can be derived analytically or computed as D =
 %   C*inv(A0)*B - S0 from a reference system A0 for which the scattering matrix
 %   S0 is known.
 %
-%   [field_profiles, stat] = MESTI(syst, B, [], [], opts),
-%   [S, stat] = MESTI(syst, B, C, [], opts), and
-%   [S, stat] = MESTI(syst, B, C, D, opts) allow detailed options to be specified
+%   [field_profiles, info] = MESTI(syst, B, [], [], opts),
+%   [S, info] = MESTI(syst, B, C, [], opts), and
+%   [S, info] = MESTI(syst, B, C, D, opts) allow detailed options to be specified
 %   with structure 'opts'.
 %
 %   This file checks and parses the parameters, and it can build matrices B and
@@ -337,7 +337,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %      A structure that specifies the options of computation; defaults to an
 %      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
-%         Whether to print info and timing to the standard output.
+%         Whether to print system information and timing to the standard output.
 %      opts.prefactor (numeric scalar, real or complex; optional):
 %         When opts.prefactor is given, mesti() will return
 %         opts.prefactor*C*inv(A)*B - D or opts.prefactor*C*inv(A)*B or
@@ -401,7 +401,7 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         Whether to store the ordering sequence (permutation) for matrix A or
 %         matrix K; only possible when opts.solver = 'MUMPS'. If
 %         opts.store_ordering = true, the ordering will be returned in
-%         stat.ordering.
+%         info.ordering.
 %      opts.ordering (positive integer vector; optional):
 %         A user-specified ordering sequence for matrix A or matrix K, used only
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
@@ -415,34 +415,34 @@ function [S, stat] = mesti(syst, B, C, D, opts)
 %         errors. Iterative refinement can only be used when opts.solver =
 %         'MUMPS' and opts.method = 'factorize_and_solve' and C is given, in
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
-%         relevant information will be returned in stat.itr_ref_nsteps,
-%         stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
+%         relevant information will be returned in info.itr_ref_nsteps,
+%         info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
 %   S (full numeric matrix or 3d array):
 %      C*inv(A)*B or reshape(inv(A)*B, ny, nx, []).
-%   stat (scalar structure):
+%   info (scalar structure):
 %      A structure that contains the following fields:
-%      stat.opts (scalar structure):
+%      info.opts (scalar structure):
 %         The final 'opts' used, excluding the user-specified matrix ordering.
-%      stat.timing (scalar structure):
+%      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
-%      stat.xPML (two-element cell array; optional);
+%      info.xPML (two-element cell array; optional);
 %         PML parameters on the low and high sides of x direction, if used.
-%      stat.yPML (two-element cell array; optional);
+%      info.yPML (two-element cell array; optional);
 %         PML parameters on the low and high sides of y direction, if used.
-%      stat.ordering_method (character vector; optional):
+%      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
-%      stat.ordering (positive integer vector; optional):
+%      info.ordering (positive integer vector; optional):
 %         Ordering sequence returned by MUMPS when opts.store_ordering = true.
-%      stat.itr_ref_nsteps (integer vector; optional):
+%      info.itr_ref_nsteps (integer vector; optional):
 %         Number of steps of iterative refinement for each input, if
 %         opts.iterative_refinement = true; 0 means no iterative refinement.
-%      stat.itr_ref_omega_1 (real vector; optional):
+%      info.itr_ref_omega_1 (real vector; optional):
 %         Scaled residual omega_1 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
-%      stat.itr_ref_omega_2 (real vector; optional):
+%      info.itr_ref_omega_2 (real vector; optional):
 %         Scaled residual omega_2 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
 %
@@ -1120,12 +1120,12 @@ if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build_A); end
 
 % This is where most of the computation is done
 % Note that A, B, C in this workspace may be cleared after calling mesti_matrix_solver() if opts.clear_memory = true (which is the default), so we should no longer use A, B, C below
-[S, stat] = mesti_matrix_solver(A, B, C, opts);
+[S, info] = mesti_matrix_solver(A, B, C, opts);
 
-stat.timing.init = stat.timing.init + timing_init;
-stat.timing.build = stat.timing.build + timing_build_BC + timing_build_A; % combine with build time for K
-if ~isempty(xPML); stat.xPML = xPML; end
-if ~isempty(yPML); stat.yPML = yPML; end
+info.timing.init = info.timing.init + timing_init;
+info.timing.build = info.timing.build + timing_build_BC + timing_build_A; % combine with build time for K
+if ~isempty(xPML); info.xPML = xPML; end
+if ~isempty(yPML); info.yPML = yPML; end
 
 t1 = clock;
 
@@ -1146,9 +1146,9 @@ if ~isempty(D)
     S = S - D;
 end
 
-t2 = clock; stat.timing.solve = stat.timing.solve + etime(t2,t1); % Add the little bit of post-processing time
+t2 = clock; info.timing.solve = info.timing.solve + etime(t2,t1); % Add the little bit of post-processing time
 
-stat.timing.total = etime(t2,t0);
-if opts.verbal && ~called_from_mesti2s; fprintf('          Total elapsed time: %7.3f secs\n', stat.timing.total); end
+info.timing.total = etime(t2,t0);
+if opts.verbal && ~called_from_mesti2s; fprintf('          Total elapsed time: %7.3f secs\n', info.timing.total); end
 
 end

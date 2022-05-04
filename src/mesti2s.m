@@ -1,6 +1,6 @@
-function [S, channels, stat] = mesti2s(syst, in, out, opts)
+function [S, channels, info] = mesti2s(syst, in, out, opts)
 %MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
-%   [field_profiles, channels, stat] = MESTI2S(syst, in) returns the spatial
+%   [field_profiles, channels, info] = MESTI2S(syst, in) returns the spatial
 %   field profiles of Ez(x,y) for scattering problems of 2D transverse-magnetic
 %   (TM) waves satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = 0,
@@ -18,16 +18,16 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %   being the field profile given the i-th input wavefront. The returned
 %   'channels' is a structure containing properties of the propagating and
 %   evanescent channels in the homogeneous spaces on the left and right. The
-%   statistics of the computation is returned in structure 'stat'.
+%   information of the computation is returned in structure 'info'.
 %
-%   [S, channels, stat] = MESTI2S(syst, in, out) returns the scattering matrix
+%   [S, channels, info] = MESTI2S(syst, in, out) returns the scattering matrix
 %   S, where 'in' and 'out' specify either the list of input/output channels or
 %   the input/output wavefronts. When the MUMPS function zmumps() is available,
 %   this is typically done by computing the Schur complement of an augmented
 %   matrix K through a partial factorization.
 %
-%   [field_profiles, channels, stat] = MESTI2S(syst, in, [], opts) and
-%   [S, channels, stat] = MESTI2S(syst, in, out, opts) allow detailed options to
+%   [field_profiles, channels, info] = MESTI2S(syst, in, [], opts) and
+%   [S, channels, info] = MESTI2S(syst, in, out, opts) allow detailed options to
 %   be specified with structure 'opts'.
 %
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
@@ -310,7 +310,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      A structure that specifies the options of computation; defaults to an
 %      empty structure. It can contain the following fields (all optional):
 %      opts.verbal (logical scalar; optional, defaults to true):
-%         Whether to print info and timing to the standard output.
+%         Whether to print system information and timing to the standard output.
 %      opts.nx_L (non-negative integer scalar; optional, defaults to 0):
 %         Number of pixels of homogeneous space on the left (syst.epsilon_L) to
 %         include when returning the spatial field profile; not used for
@@ -393,7 +393,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         Whether to store the ordering sequence (permutation) for matrix A or
 %         matrix K; only possible when opts.solver = 'MUMPS'. If
 %         opts.store_ordering = true, the ordering will be returned in
-%         stat.ordering.
+%         info.ordering.
 %      opts.ordering (positive integer vector; optional):
 %         A user-specified ordering sequence for matrix A or matrix K, used only
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
@@ -408,7 +408,7 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %         'MUMPS' and opts.method = 'factorize_and_solve' and input argument
 %         'out' is given, in which case opts.nrhs must equal 1. When iterative
 %         refinement is used, the relevant information will be returned in
-%         stat.itr_ref_nsteps, stat.itr_ref_omega_1, and stat.itr_ref_omega_2.
+%         info.itr_ref_nsteps, info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
 %   S (full numeric matrix or 3d array):
@@ -468,26 +468,26 @@ function [S, channels, stat] = mesti2s(syst, in, out, opts)
 %      properties of the propagating and evanescent channels of the homogeneous
 %      spaces on the left and right. Type "help mesti_build_channels" for more
 %      information.
-%   stat (scalar structure):
+%   info (scalar structure):
 %      A structure that contains the following fields:
-%      stat.opts (scalar structure):
+%      info.opts (scalar structure):
 %         The final 'opts' used, excluding the user-specified matrix ordering.
-%      stat.timing (scalar structure):
+%      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
-%      stat.xPML (two-element cell array; optional);
+%      info.xPML (two-element cell array; optional);
 %         PML parameters on the low and high sides of x direction, if used.
-%      stat.ordering_method (character vector; optional):
+%      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
-%      stat.ordering (positive integer vector; optional):
+%      info.ordering (positive integer vector; optional):
 %         Ordering sequence returned by MUMPS when opts.store_ordering = true.
-%      stat.itr_ref_nsteps (integer vector; optional):
+%      info.itr_ref_nsteps (integer vector; optional):
 %         Number of steps of iterative refinement for each input, if
 %         opts.iterative_refinement = true; 0 means no iterative refinement.
-%      stat.itr_ref_omega_1 (real vector; optional):
+%      info.itr_ref_omega_1 (real vector; optional):
 %         Scaled residual omega_1 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
-%      stat.itr_ref_omega_2 (real vector; optional):
+%      info.itr_ref_omega_2 (real vector; optional):
 %         Scaled residual omega_2 at the end of iterative refinement for each
 %         input; see MUMPS user guide section 3.3.2 for definition.
 %
@@ -712,7 +712,7 @@ if isfield(opts, 'prefactor') && ~isempty(opts.prefactor)
 end
 
 % We return the scattering matrix S=C*inv(A)*B if out is given from input argument; else we return the spatial field profiles
-% This opts.return_field_profile is not specified by the user; it will be returned as stat.opts.return_field_profile to help debugging
+% This opts.return_field_profile is not specified by the user; it will be returned as info.opts.return_field_profile to help debugging
 opts.return_field_profile = isempty(out);
 
 % By default, for field-profile computation, we only return result within the [ny, nx] box syst.epsilon or syst.inv_epsilon, setting nx_L = nx_R = 0.
@@ -1347,7 +1347,7 @@ if use_RGF
     C_L = C_L.';
     C_R = C_R.';
     syst.yBC = yBC;
-    [S, stat] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts);
+    [S, info] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts);
 else
     % Add syst.epsilon_L and syst.epsilon_R, to be used in mesti()
     if use_TM
@@ -1420,7 +1420,7 @@ else
 
     % Main computation happens here
     % Note that we should no longer use syst, B, and C beyond this point since they may be cleared inside mesti()
-    [S, stat] = mesti(syst, B, C, D, opts);
+    [S, info] = mesti(syst, B, C, D, opts);
 end
 
 t1 = clock;
@@ -1620,12 +1620,12 @@ else % when opts.return_field_profile = true
 end
 
 t3 = clock;
-stat.timing.init  = stat.timing.init  + timing_init;
-stat.timing.build = stat.timing.build + timing_build_G0 + timing_build_BC; % combine with build time for A and K
-stat.timing.solve = stat.timing.solve + etime(t3,t1); % Add the post-processing time
-stat.timing.total = etime(t3,t0);
+info.timing.init  = info.timing.init  + timing_init;
+info.timing.build = info.timing.build + timing_build_G0 + timing_build_BC; % combine with build time for A and K
+info.timing.solve = info.timing.solve + etime(t3,t1); % Add the post-processing time
+info.timing.total = etime(t3,t0);
 
-if opts.verbal; fprintf('          Total elapsed time: %7.3f secs\n', stat.timing.total); end
+if opts.verbal; fprintf('          Total elapsed time: %7.3f secs\n', info.timing.total); end
 
 end
 
@@ -1633,7 +1633,7 @@ end
 % Compute scattering matrix using the recursive Green's function (RGF) method.
 % RGF proceeds by incrementally adding slices of the system and evaluating the Green's function on the two surfaces.
 % This implementation only works for TM polarization.
-function [S, stat] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts)
+function [S, info] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts)
 
 t1 = clock;
 
@@ -1644,7 +1644,7 @@ t1 = clock;
 A0 = mesti_build_fdfd_matrix(zeros(ny,1), 0, 'Dirichlet', syst.yBC);
 k0dx2 = ((2*pi/syst.wavelength)*(syst.dx))^2;
 
-t2 = clock; stat.timing.build = etime(t2,t1);  % the build time for B, C will be added in addition to this
+t2 = clock; info.timing.build = etime(t2,t1);  % the build time for B, C will be added in addition to this
 t1 = clock;
 
 M_in_L  = size(B_L, 2);
@@ -1734,9 +1734,9 @@ else
 end
 if issparse(S); S = full(S); end
 t2 = clock;
-stat.timing.init  = 0;
-stat.timing.factorize = 0;
-stat.timing.solve = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\n', stat.timing.solve); end
-stat.opts = opts; % Return the parameters used for user's reference
+info.timing.init  = 0;
+info.timing.factorize = 0;
+info.timing.solve = etime(t2,t1);
+if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
+info.opts = opts; % Return the parameters used for user's reference
 end

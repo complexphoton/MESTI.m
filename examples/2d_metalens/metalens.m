@@ -177,7 +177,7 @@ D = []; % We only need the transmission matrix, for which D=0
 opts.clear_syst = true; % syst can be cleared in mesti()
 opts.clear_BC = true;   % B can be cleared in mesti()
 
-[S, stat] = mesti(syst, B_struct, C, D, opts);
+[S, info] = mesti(syst, B_struct, C, D, opts);
 
 %% Decompression step for APF-c
 % Here we undo the compression, as described in supplementary section 5 of
@@ -220,7 +220,7 @@ t = sqrt_mu_R.*t.*sqrt_mu_L; % use implicit expansion
 % Time spent to decompress
 time2 = clock; timing_decompress = etime(time2,time1);
 
-timing_total = stat.timing.total + timing_compress + timing_decompress;
+timing_total = info.timing.total + timing_compress + timing_decompress;
 fprintf('Total elapsed time including compression and decompression: %.3f secs\n', timing_total);
 
 %% Angular spectrum propagation parameters
