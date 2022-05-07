@@ -4,7 +4,7 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %   of Ez(x,y) for 2D transverse-magnetic (TM) waves satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = source(x,y),
 %   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
-%      [- (d/dx)*inv(epsilon(x,y))*(d/dx) - (d/dy)*inv(epsilon(x,y))*(d/dy) ...
+%      [- (d/dx)*(1/epsilon(x,y))_yy*(d/dx) - (d/dy)*(1/epsilon(x,y))_xx*(d/dy)
 %          - (omega/c)^2] Hz(x,y) = source(x,y).
 %   The polarization (TM or TE), relative permittivity profile epsilon(x,y),
 %   frequency omega, and boundary conditions are specified by structure 'syst'.
@@ -38,6 +38,8 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %   [S, info] = MESTI(syst, B, C, D, opts) allow detailed options to be specified
 %   with structure 'opts'.
 %
+%   Both TM and TE waves are discretized on the Yee lattice.
+%
 %   This file checks and parses the parameters, and it can build matrices B and
 %   C from its non-zero elements specified by the user (see details below). It
 %   calls function mesti_build_fdfd_matrix() to build matrix A and function
@@ -59,7 +61,8 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %            syst.epsilon: ny-by-nx matrix discretizing epsilon(x,y).
 %         Specifically, syst.epsilon(m,n) is the relative permittivity
 %         epsilon(x,y) averaged over a square with area (syst.dx)^2 centered at
-%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx.
+%         x = x_n = n*syst.dx, y = y_m = m*syst.dx. This (x_n,y_m) is also the
+%         point where Ez(x,y) is evaluated on the Yee lattice.
 %            Note that y corresponds to the first index m, and x corresponds to
 %         the second index n.
 %            The positive imaginary part of syst.epsilon describes absorption,
@@ -70,15 +73,28 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      syst.inv_epsilon (two-element cell array; required for TE):
 %         Discretized inverse relative permittivity profile used for TE
 %         polarization, with
-%            inv_epsilon{1}: ny_d-by-nx matrix discretizing inv(epsilon(x,y))_xx
-%            inv_epsilon{2}: ny-by-nx_d matrix discretizing inv(epsilon(x,y))_yy
-%         where inv(epsilon(x,y)) is a diagonal tensor.
-%            Here, ny_d is the number of grid points of Ex ~ dHz/dy on
-%         half-integer sites in y, and nx_d is the number of grid points of Ey ~
-%         dHz/dx on half-integer sites in x; they depend on the boundary
-%         condition: n_d = n for Bloch periodic, DirichletNeumann, and
-%         NeumannDirichlet boundary conditions; n_d = n + 1 for Dirichlet
-%         boundary condition, and n_d = n - 1 for Neumann boundary condition.
+%            inv_epsilon{1}: ny_d-by-nx matrix discretizing (1/epsilon(x,y))_xx
+%            inv_epsilon{2}: ny-by-nx_d matrix discretizing (1/epsilon(x,y))_yy
+%         where we assume inv(epsilon(x,y)) to be a diagonal tensor. This is
+%         more complicated than the TM case because on the Yee lattice, Hz(x,y),
+%         (1/epsilon(x,y))_xx, and (1/epsilon(x,y))_yy are all located on
+%         different points. Here:
+%            Hz(x,y) is evaluated at (x_{n+0.5}, y_{m+0.5}) where (x_n, y_m) is
+%         the point of Ez mentioned above.
+%            inv_epsilon{1}(m,n) is the effective (1/epsilon(x,y))_xx averaged
+%         with subpixel smoothing over a square with area (syst.dx)^2 centered
+%         at (x_{n+0.5}, y_m), which is also the point where Ex ~ dHz/dy is
+%         evaluated on the Yee lattice.
+%            inv_epsilon{2}(m,n) is the effective (1/epsilon(x,y))_yy averaged
+%         with subpixel smoothing over a square with area (syst.dx)^2 centered
+%         at (x_n, y_{m+0.5}), which is also the point where Ey ~ dHz/dx is
+%         evaluated on the Yee lattice.
+%            Here, ny_d is the number of grid points of Ex ~ dHz/dy in y, and
+%         nx_d is the number of grid points of Ey ~ dHz/dx in x; they depend on
+%         the boundary condition: n_d = n for periodic, Bloch periodic,
+%         DirichletNeumann, and NeumannDirichlet boundary conditions; n_d = n +
+%         1 for Dirichlet boundary condition, and n_d = n - 1 for Neumann
+%         boundary condition.
 %      syst.length_unit (anything; optional):
 %         Length unit, such as micron, nm, or some reference wavelength. This
 %         code only uses dimensionless quantities, so syst.length_unit is never

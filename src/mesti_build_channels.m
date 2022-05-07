@@ -54,11 +54,10 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %      Whether to use the dispersion equation of the continuous wave equation
 %      when building the input/output channels. Defaults to false, in which case
 %      the finite-difference dispersion is used.
-%   m0 (real numeric scalar, optional, defaults to 0):
+%   m0 (real numeric scalar; optional, defaults to 0):
 %      Center of the transverse mode profile with periodic or Bloch periodic
 %      boundary condition, phi_{m,a} = exp(i*ky(a)*dx*(m-m0))/sqrt(ny), where
-%      ky(a) = ky_B + a*(2*pi/ny*dx). The default of m0 = 0 corresponds to y0 =
-%      (m-0.5)*dx = -dx/2.
+%      ky(a) = ky_B + a*(2*pi/ny*dx).
 %
 %   === Output Arguments ===
 %   channels (scalar structure):

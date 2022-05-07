@@ -5,14 +5,14 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   (TM) waves satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = 0,
 %   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
-%      [- (d/dx)*inv(epsilon(x,y))*(d/dx) - (d/dy)*inv(epsilon(x,y))*(d/dy) ...
+%      [- (d/dx)*(1/epsilon(x,y))_yy*(d/dx) - (d/dy)*(1/epsilon(x,y))_xx*(d/dy)
 %          - (omega/c)^2] Hz(x,y) = 0.
 %   The polarization (TM or TE), relative permittivity profile epsilon(x,y),
 %   frequency omega, and boundary conditions are specified by structure 'syst';
 %   epsilon(x,y) must have homogeneous spaces on the left (-x) and right (+x)
 %   sides, with an outgoing boundary in x for the scattered waves and a closed
 %   boundary in y.
-%      The incident wavefronts from left and/or left are specified by variable
+%      The incident wavefronts from left and/or right are specified by variable
 %   'in'.
 %      The returned 'field_profiles' is a 3D array, with field_profiles(:,:,i)
 %   being the field profile given the i-th input wavefront. The returned
@@ -30,6 +30,8 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   [S, channels, info] = MESTI2S(syst, in, out, opts) allow detailed options to
 %   be specified with structure 'opts'.
 %
+%   Both TM and TE waves are discretized on the Yee lattice.
+%
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
 %   PEC). Given the closed boundary, the set of transverse modes forms a
 %   complete and orthonormal basis of propagating and evanescent channels.
@@ -45,8 +47,9 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %
 %   This file builds the input and output channels using mesti_build_channels(),
 %   builds the matrices B and C, and then calls mesti() to solve the scattering
-%   problems. For scattering-matrix computations, mesti2s() can also use the
-%   recursive Green's function method instead of calling mesti().
+%   problems. For scattering-matrix computations in TM polarization, mesti2s()
+%   can also use the recursive Green's function method instead, which is
+%   efficient in 1D and for 2D systems with a small width in y.
 %
 %   === Input Arguments ===
 %   syst (scalar structure; required):
@@ -59,11 +62,19 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         If syst.polarization is not given, it will be automatically picked
 %         based on whether syst.epsilon or syst.inv_epsilon is given.
 %      syst.epsilon (numeric matrix, real or complex; required for TM):
-%         Discretized relative permittivity profile used for TM polarization,
+%         Discretized relative permittivity profile of the scattering region
+%         (0 < x < L) used for TM polarization, with
 %            syst.epsilon: ny-by-nx matrix discretizing epsilon(x,y).
 %         Specifically, syst.epsilon(m,n) is the relative permittivity
 %         epsilon(x,y) averaged over a square with area (syst.dx)^2 centered at
-%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx.
+%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx. This (x_n,y_m)
+%         is also the point where Ez(x,y) is evaluated on the Yee lattice.
+%         The -0.5 offset is included so that the corner of the scattering
+%         region at x=0, y=0 coincides with the corner of a pixel.
+%            Outside the scattering region (with x < 0 and x > L = nx*syst.dx),
+%         epsilon(x,y) is given by scalars syst.epsilon_L and syst.epsilon_R for
+%         the homogeneous spaces on the two sides. So, nx=0 is allowed and
+%         corresponds to having no scattering region (only homogeneous spaces).
 %            Note that y corresponds to the first index m, and x corresponds to
 %         the second index n.
 %            The positive imaginary part of syst.epsilon describes absorption,
@@ -71,30 +82,46 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %            One can use syst.epsilon with ny=1 and with a periodic or Bloch
 %         periodic boundary in y to simulate 1D systems where the relative
 %         permittivity profile is translationally invariant in y.
-%            In mesti2s(), syst.epsilon does not include the homogeneous spaces
-%         on the two sides; nx=0 is allowed and corresponds to having no
-%         scattering region.
 %      syst.inv_epsilon (two-element cell array; required for TE):
-%         Discretized inverse relative permittivity profile used for TE
-%         polarization, with
-%            inv_epsilon{1}: ny_d-by-nx matrix discretizing inv(epsilon(x,y))_xx
-%            inv_epsilon{2}: ny-by-nx_d matrix discretizing inv(epsilon(x,y))_yy
-%         where inv(epsilon(x,y)) is a diagonal tensor.
-%            Here, ny_d is the number of grid points of Ex ~ dHz/dy on
-%         half-integer sites in y, and nx_d = nx + 1 is the number of grid
-%         points of Ey ~ dHz/dx on half-integer sites in x; ny_d depends on the
-%         boundary condition: ny_d = ny for Bloch periodic, DirichletNeumann,
-%         and NeumannDirichlet boundary conditions; ny_d = ny + 1 for Dirichlet
-%         boundary condition, and ny_d = ny - 1 for Neumann boundary condition.
-%            In mesti2s(), syst.inv_epsilon does not include the homogeneous
-%         spaces on the two sides; nx=0 corresponds to no scattering region.
+%         Discretized inverse relative permittivity profile of the scattering
+%         region (0 < x < L) used for TE polarization, with
+%            inv_epsilon{1}: ny_d-by-(nx+1) matrix discretizing (1/epsilon(x,y))_xx
+%            inv_epsilon{2}: ny-by-nx matrix discretizing (1/epsilon(x,y))_yy
+%         where we assume inv(epsilon(x,y)) to be a diagonal tensor. This is
+%         more complicated than the TM case because on the Yee lattice, Hz(x,y),
+%         (1/epsilon(x,y))_xx, and (1/epsilon(x,y))_yy are all located on
+%         different points. Here:
+%            Hz(x,y) is evaluated at (x_{n-0.5}, y_{m-0.5}) where (x_n, y_m) is
+%         the point of Ez mentioned above.
+%            inv_epsilon{1}(m,n) is the effective (1/epsilon(x,y))_xx averaged
+%         with subpixel smoothing over a square with area (syst.dx)^2 centered
+%         at (x_{n-0.5}, y_m), which is also the point where Ex ~ dHz/dy is
+%         evaluated on the Yee lattice.
+%            inv_epsilon{2}(m,n) is the effective (1/epsilon(x,y))_yy averaged
+%         with subpixel smoothing over a square with area (syst.dx)^2 centered
+%         at (x_n, y_{m-0.5}), which is also the point where Ey ~ dHz/dx is
+%         evaluated on the Yee lattice.
+%            inv_epsilon{1} has one more pixel in x than inv_epsilon{2} because
+%         its first pixel at n=1 extends to x = -dx/2 which is half a pixel into
+%         the homogeneous space on the left, and its last pixel at n=nx+1
+%         extends to x = L + 0.5*dx which is half a pixel into the homogeneous
+%         space on the right. Here, ny_d is the number of grid points of Ex in
+%         y; it depends on the boundary condition in y: ny_d = ny for periodic,
+%         Bloch periodic, DirichletNeumann, and NeumannDirichlet boundary
+%         conditions; ny_d = ny + 1 for Dirichlet boundary condition, and ny_d =
+%         ny - 1 for Neumann boundary condition.
+%            The above assumes a two-sided geometry. For a one-sided geometry
+%         (where syst.epsilon_R is not given), inv_epsilon{1} only needs nx
+%         pixels in x since Hz=0 at x=L.
+%            For a 1D problem with ny = 1 and periodic boundary condition in y,
+%         the y derivative vanishes, so inv_epsilon{1} is not used in such case.
 %      syst.epsilon_L (real scalar; required):
 %         Relative permittivity of the homogeneous space on the left.
 %      syst.epsilon_R (real scalar or []; optional):
 %         Relative permittivity of the homogeneous space on the right. If
 %         syst.epsilon_R is not given or is empty, the system will be one-sided,
-%         terminated with a Dirichlet boundary on the right with Ez(m,nx+1) = 0
-%         or Hz(m,nx+1) = 0.
+%         terminated with a Dirichlet boundary on the right with Ez = 0 at x =
+%         L + 0.5*dx or Hz = 0 at x = L.
 %      syst.length_unit (anything; optional):
 %         Length unit, such as micron, nm, or some reference wavelength. This
 %         code only uses dimensionless quantities, so syst.length_unit is never
@@ -160,7 +187,8 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         one-sided geometry, set syst.xBC to be a scalar structure with the
 %         following fields:
 %            npixels_PML (positive integer scalar; required): Number of PML
-%               pixels. This number of pixels is added in addition to nx.
+%               pixels. This number of pixels is added in addition to the
+%               scattering region.
 %            npixels_spacer (non-negative integer scalar; optional): Number of
 %               homogeneous-space pixels to be added between the PML pixels and
 %               syst.epsilon/syst.inv_epsilon, used to attenuate evanescent
@@ -219,11 +247,10 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         Whether to use the dispersion equation of the continuous wave equation
 %         when building the input/output channels. Defaults to false, in which
 %         case the finite-difference dispersion is used.
-%      syst.m0 (real numeric scalar, optional, defaults to 0):
+%      syst.m0 (real numeric scalar; optional, defaults to 0):
 %         Center of the transverse mode profile with periodic or Bloch periodic
 %         boundary condition, phi_{m,a} = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
-%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx). The default of m0 = 0
-%         corresponds to y0 = (m-0.5)*syst.dx = -syst.dx/2.
+%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx).
 %   in (cell array or scalar structure; required):
 %      The set of input channels or input wavefronts.
 %         To specify all propagating channels on one side or on both sides, use
@@ -240,14 +267,13 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %               propagating channels incident on the right side.
 %      One can provide only in.ind_L or only in.ind_R or both of them.
 %         The above generates flux-normalized single-channel inputs of the form
-%            f_a^L(m,n) = 1/sqrt(mu_L(a))*phi_a(m)*exp(i*kxdx_L(a)*n)
+%            f_a^L(x,y) = 1/sqrt(mu_L(a))*phi_a(y)*exp(i*kx_L(a)*x)
 %      for input channel 'a' from the left, and/or
-%            f_a^R(m,n) = 1/sqrt(mu_R(a))*phi_a(m)*exp(-i*kxdx_R(a)*(n-nx-1))
+%            f_a^R(x,y) = 1/sqrt(mu_R(a))*phi_a(y)*exp(-i*kx_R(a)*(x-L))
 %      for input channel 'a' from the right, where mu normalizes flux in the x
-%      direction, kxdx = kx*syst.dx is the longitudinal wave number, and
-%      phi_a(m) is the transverse profile of the a-th propagating channel; mu =
-%      sin(kxdx(a)) for TM polarization, mu = sin(kxdx(a))/epsilon_bg for TE
-%      polarization.
+%      direction, kx is the longitudinal wave number, and phi_a(y) is the
+%      transverse profile of the a-th propagating channel; mu = sin(kx(a)*dx)
+%      for TM polarization, mu = sin(kx(a)*dx)/epsilon_bg for TE polarization.
 %         The user can first use mesti_build_channels() to get the indices, wave
 %      numbers, and transverse profiles of the propagating channels; based on
 %      that, the user can specify the list of channels of interest through
@@ -260,7 +286,7 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %            in.v_L (numeric matrix): Matrix where each column specifies the
 %               coefficients of propagating channels on the left for one input
 %               wavefront from the left; the wavefront is a superposition of all
-%               propagating channels of the form f_a^L(m,n) above, with the
+%               propagating channels of the form f_a^L(x,y) above, with the
 %               superposition coefficients given by that column of in.v_L.
 %               size(in.v_L, 1) must equal N_prop_L, the total number of
 %               propagating channels on the left; size(in.v_L, 2) is the number
@@ -411,16 +437,25 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         info.itr_ref_nsteps, info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
-%   S (full numeric matrix or 3d array):
-%      For field-profile computations (i.e., when 'out' is not given), S is a 3d
-%      array containing the field profiles, such that S(:,:,a) is the total-
-%      field profile corresponding to the a-th input wavefront; S(:,:,a) has
-%      size [ny, opts.nx_L + nx + opts.nx_R], containing the field profile in
-%      opts.nx_L pixels of homogeneous space on the left, nx pixels of the
-%      scattering region, and opts.nx_R pixels of homogeneous space on the
-%      right, across the full ny-pixels height of the system.
-%         For scattering-matrix computations (i.e., when 'out' is given), S is
-%      the scattering matrix, such that S(b,a) is the flux-normalized
+%   field_profiles (3d array):
+%      For field-profile computations (i.e., when 'out' is not given), the
+%      returned field_profiles is a 3d array containing the field profiles, such
+%      that field_profiles(:,:,a) is the total field of Ez or Hz corresponding
+%      to the a-th input wavefront. Its size depends on the polarization:
+%         TM: size(field_profiles, 2) = opts.nx_L + nx + opts.nx_R
+%         TE: size(field_profiles, 2) = opts.nx_L + nx + 1 + opts.nx_R
+%      because the surfaces of the scattering region (x=0 and x=L) fall on the
+%      edges of the Ez pixels in TM but fall on the centers of the Hz pixels in
+%      TE. In both cases, size(field_profiles, 1) = ny, namely the profiles
+%      across the full system width is returned.
+%         By default, opts.nx_L = opts.nx_R = 0, and field_profiles only contain
+%      Ez or Hz in the scattering region. When opts.nx_L and opts.nx_R are
+%      specified, field_profiles will also contain opts.nx_L pixels of Ez or Hz
+%      in the homogeneous space on the left, opts.nx_R pixels of Ez or Hz
+%      in the homogeneous space on the right.
+%   S (numeric matrix):
+%      For scattering-matrix computations (i.e., when 'out' is given), S is the
+%      scattering matrix, such that S(b,a) is the flux-normalized field
 %      coefficient in the b-th propagating output channel (or the b-th output
 %      wavefront) given incident wave in the a-th propagating input channel (or
 %      the a-th input wavefront).
@@ -445,10 +480,11 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      reference plane. For channels on the left, the reference plane is at
 %      x = 0, corresponding to n = 0.5 (recall that x_n = (n-0.5)*syst.dx),
 %      which is midway between n = 0 (the last pixel of syst.epsilon_L) and
-%      n = 1 (the first pixel of syst.epsilon). For channels on the right, the
-%      reference plane is at x = L = nx*syst.dx, corresponding to n = nx + 0.5,
-%      which is midway between n = nx (the last pixel of syst.epsilon) and n =
-%      nx + 1 (the first pixel of syst.epsilon_R).
+%      n = 1 (the first pixel of syst.epsilon or syst.inv_epsilon{2}). For
+%      channels on the right, the reference plane is at x = L = nx*syst.dx,
+%      corresponding to n = nx + 0.5, which is midway between n = nx (the last
+%      pixel of syst.epsilon or syst.inv_epsilon{2}) and n = nx + 1 (the first
+%      pixel of syst.epsilon_R).
 %         When a subset of the propagating channels are requested, with
 %      in.ind_L, in.ind_R, out.ind_L, and/or out.ind_R, matrix S includes such
 %      subset of the propagating channels. For example, if r_full is the full
@@ -461,8 +497,6 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      full reflection matrix computed with in = {'L'} and out = {'L'}, then the
 %      reflection matrix computed using in.v_L and out.v_L is equivalent to
 %      (out.v_L)'*r_full*in.v_L where ' is the conjugate transpose.
-%         For field-profile computations (i.e., when 'out' is not given), the
-%      inputs follow the same convention as the scattering-matrix computations.
 %   channels (structure):
 %      A structure returned by function mesti_build_channels() that contains
 %      properties of the propagating and evanescent channels of the homogeneous
@@ -562,10 +596,13 @@ end
 if use_TM
     [ny, nx] = size(syst.epsilon);
     if ny==0; error('ny = size(syst.epsilon,1) cannot be zero.'); end
+    nx_s = nx;    % number of pixels of Ez in the scattering region
+    dn = 0.5;     % the source/detection is half a pixel away from x=0 and x=L
 else
-    [ny_d, nx] = size(syst.inv_epsilon{1}); % inv_epsilon_xx
-    [ny  , ~ ] = size(syst.inv_epsilon{2}); % inv_epsilon_yy
+    [ny, nx] = size(syst.inv_epsilon{2}); % (1/epsilon)_yy
     if ny==0; error('ny = size(syst.inv_epsilon{2},1) cannot be zero.'); end
+    nx_s = nx - 1; % number of pixels of Hz in the scattering region, excluding the two surfaces
+    dn = 0;        % the source/detection is already at x=0 and x=L
 end
 
 % Check boundary condition in y
@@ -591,6 +628,41 @@ else
     yBC = syst.yBC;
 end
 
+if ~use_TM
+    % For a two-sided geometry, syst.inv_epsilon{1} = (1/epsilon)_xx requires one extra pixel because its last pixel extends to x = L + 0.5*dx.
+    % For a one-sided geometry, no extra pixel is needed.
+    if two_sided
+        nx_inv_eps_x = nx + 1;
+    else
+        nx_inv_eps_x = nx;
+    end
+    % Set ny_d and check that size(syst.inv_epsilon{1}) = [ny_d, nx_inv_eps_x]
+    if ny == 1 && (strcmpi(syst.yBC, 'periodic') || isequal(yBC, 0))
+        ny_d = ny;
+        syst.inv_epsilon{1} = sparse(ny_d, nx_inv_eps_x); % (1/epsilon)_xx is not used when d/dy = 0
+    else
+        if isequal(size(syst.inv_epsilon{1}), [0, 0]) && ~(nx==0 && ~two_sided && ny==1 && (strcmpi(syst.yBC, 'Neumann') || strcmpi(syst.yBC, 'PEC')))
+            error('syst.inv_epsilon{1} must be given (unless ny = 1 and yBC = ''periodic'').');
+        elseif size(syst.inv_epsilon{1}, 2) ~= nx_inv_eps_x
+            if two_sided
+                error('size(syst.inv_epsilon{1}, 2) must equal nx + 1 = size(syst.inv_epsilon{2}, 2) + 1 for a two-sided geometry.');
+            else
+                error('size(syst.inv_epsilon{1}, 2) must equal nx = size(syst.inv_epsilon{2}, 2) for a one-sided geometry.');
+            end
+        end
+        if strcmpi(syst.yBC, 'Dirichlet') || strcmpi(syst.yBC, 'PMC')
+            ny_d = ny + 1;
+        elseif strcmpi(syst.yBC, 'Neumann') || strcmpi(syst.yBC, 'PEC')
+            ny_d = ny - 1;
+        else
+            ny_d = ny;
+        end
+        if size(syst.inv_epsilon{1}, 1) ~= ny_d
+            error('size(syst.inv_epsilon{1}, 1) must equal ny_d = %d.', ny_d);
+        end
+    end
+end
+
 % Defaults to using an exact outgoing boundary in x
 if ~isfield(syst, 'xBC') || isempty(syst.xBC)
     syst.xBC = 'outgoing';
@@ -606,8 +678,8 @@ elseif ~two_sided
 end
 
 % Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on all sides
-% nx_extra is the number of homogeneous-space pixels to be added in x direction; at least one pixel is needed to put source and detection
-% The two elements of nx_extra and use_self_energy corresponds to the left and right sides
+% nx_extra is the number of homogeneous-space pixels to be added to syst.epsilon or syst.inv_epsilon{2} in x direction.
+% The two elements of nx_extra and use_self_energy correspond to the left and right sides.
 if two_sided
     n_sides = 2;
     nx_extra = [1, 1];
@@ -676,7 +748,7 @@ for ii = 1:n_sides
 end
 
 % Total number of pixels in x
-nx_tot = nx + sum(nx_extra);
+nx_tot = nx_s + sum(nx_extra);
 
 % syst.use_continuous_dispersion and syst.m0 will be initialized/checked in mesti_build_channels()
 if ~isfield(syst, 'use_continuous_dispersion') || isempty(syst.use_continuous_dispersion)
@@ -715,7 +787,7 @@ end
 % This opts.return_field_profile is not specified by the user; it will be returned as info.opts.return_field_profile to help debugging
 opts.return_field_profile = isempty(out);
 
-% By default, for field-profile computation, we only return result within the [ny, nx] box syst.epsilon or syst.inv_epsilon, setting nx_L = nx_R = 0.
+% By default, for field-profile computation, we only return result within the scattering region, setting nx_L = nx_R = 0.
 if opts.return_field_profile
     if ~isfield(opts, 'nx_L') || isempty(opts.nx_L)
         opts.nx_L = 0;
@@ -942,11 +1014,11 @@ if use_self_energy(1) || use_self_energy(2)
     if ~use_RGF
         % syst.self_energy will be used in mesti()
         if all(use_self_energy)
-            syst.self_energy = [[G0_L; sparse((nx+nx_extra(2))*ny, ny)], sparse(nx_tot*ny, nx*ny), [sparse((nx_extra(1)+nx)*ny, ny); G0_R]];
+            syst.self_energy = [[G0_L; sparse((nx_s+nx_extra(2))*ny, ny)], sparse(nx_tot*ny, nx_s*ny), [sparse((nx_extra(1)+nx_s)*ny, ny); G0_R]];
         elseif use_self_energy(1)
-            syst.self_energy = [[G0_L; sparse((nx+nx_extra(2))*ny, ny)], sparse(nx_tot*ny, (nx+nx_extra(2))*ny)];
+            syst.self_energy = [[G0_L; sparse((nx_s+nx_extra(2))*ny, ny)], sparse(nx_tot*ny, (nx_s+nx_extra(2))*ny)];
         elseif use_self_energy(2)
-            syst.self_energy = [sparse(nx_tot*ny, (nx_extra(1)+nx)*ny), [sparse((nx_extra(1)+nx)*ny, ny); G0_R]];
+            syst.self_energy = [sparse(nx_tot*ny, (nx_extra(1)+nx_s)*ny), [sparse((nx_extra(1)+nx_s)*ny, ny); G0_R]];
         end
         if opts.clear_memory; clear G0_L G0_R; end
     end
@@ -1217,17 +1289,19 @@ else
 end
 
 % Here we build:
-% (1) the blocks of input matrix B on the left and right surfaces: B_L (at n=0) and B_R (at n=nx+1)
-% (2) the blocks of output matrix C on the left and right surfaces: C_L (at n=0) and C_R (at n=nx+1)
-% B_L, C_L, B_R, C_R are at one pixel outside syst.epsilon or syst.inv_epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx. All of them are dense matrices with size(..., 1) = ny.
+% (1) the blocks of input matrix B on the left and right surfaces: B_L and B_R
+% (2) the blocks of output matrix C on the left and right surfaces: C_L and C_R
+% B_L, C_L, B_R, C_R are all dense matrices with size(..., 1) = ny. They are inputs/outputs on Ez for TM, Hz for TE.
+% For TM polarization, these inputs/outputs are placed at one pixel outside syst.epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx.
+% For TE polarization, these inputs/outputs are placed at the first and last pixels of syst.inv_epsilon{1} (at n=0.5 and n=nx+0.5), which is at x=0 and x=L.
+% We want the reference plane to be at x=0 and x=L. For TM, we need to shift the phase by back propagating half a pixel (dn = 0.5). For TE, dn = 0.
 % A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx) for TM polarization, mu = sin(kxdx)/epsilon_bg for TE polarization.
-% Recall that x_n = (n-0.5)*dx. We want the reference plane to be at x=0, which is at n=0.5. But the source will be placed at n=0. So we need to shift the phase by back propagating half a pixel.
-% Therefore, we want B_L(m,a) = -2i*sqrt(mu(a))*exp(-i*kxdx(a)/2)*phi(m,a); we will multiple the -2i prefactor at the end.
-% The flux-normalized output projection is sqrt(mu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). If we put the output projection at n=0 or n=nx+1, it is half a pixel away from the reference plane at x=0 or x=L, so we also need to shift the phase by back propagating half a pixel.
-% Therefore, we want C_L(m,b) = sqrt(mu(b))*exp(-i*kxdx(b)/2)*conj(phi(m,b)).
+% Including the back propagation, we want B_L(m,a) = -2i*sqrt(mu(a))*exp(-i*kxdx(a)*dn)*phi(m,a); we will multiple the -2i prefactor at the end.
+% The flux-normalized output projection is sqrt(mu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). We also need to shift the phase by back propagating dn pixel.
+% Therefore, we want C_L(m,b) = sqrt(mu(b))*exp(-i*kxdx(b)*dn)*conj(phi(m,b)).
 % Note that the complex conjugation only applies to phi; the sqrt(mu) prefactor is not conjugated. (At real-valued frequency, mu is real-valued, so this doesn't matter. But at complex-valued frequency, mu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
-% When the input/output channels are specified by channel indices, we will multiply the sqrt(mu(a))*exp(-i*kxdx(a)/2) and sqrt(mu(b))*exp(-i*kxdx(b)/2) prefactors at the end, after C*inv(A)*B is computed.
-% When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_R, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(mu)*exp(-i*kxdx/2) prefactors included.
+% When the input/output channels are specified by channel indices, we will multiply the sqrt(mu(a))*exp(-i*kxdx(a)*dn) and sqrt(mu(b))*exp(-i*kxdx(b)*dn) prefactors at the end, after C*inv(A)*B is computed.
+% When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_R, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(mu)*exp(-i*kxdx*dn) prefactors included.
 if use_transpose_B % when opts.symmetrize_K = true
     % Here, we pad channels and/or permutate them such that C = transpose(B); this makes matrix K = [A,B;C,0] symmetric.
     % To have C=transpose(B), the complex conjugate of the transverse field profiles of the list of output channels must equal the transverse field profiles of the list of input channels, and the list of input channels and the list of output channels must have the same prefactor mu.
@@ -1267,23 +1341,23 @@ else % without opts.symmetrize_K
         end
     else % input wavefronts specified by v_in_L and v_in_R
         if has_phi_prop_L % must be so when nnz(v_in_L) >= N_prop_L
-            B_L = phi_prop_L*(reshape(channels.L.sqrt_mu.*exp(-0.5i*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
+            B_L = phi_prop_L*(reshape(channels.L.sqrt_mu.*exp((-1i*dn)*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
         else
             % build B_L using only the channels used
             B_L = zeros(ny, M_in_L);
             for ii = 1:M_in_L
                 ind = find(v_in_L(:,ii));
-                B_L(:,ii) = channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_mu(ind).*exp(-0.5i*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
+                B_L(:,ii) = channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_mu(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
             end
         end
         if two_sided
             if has_phi_prop_R % must be so when nnz(v_in_R) >= N_prop_R
-                B_R = phi_prop_R*(reshape(channels.R.sqrt_mu.*exp(-0.5i*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
+                B_R = phi_prop_R*(reshape(channels.R.sqrt_mu.*exp((-1i*dn)*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
             else
                 B_R = zeros(ny, M_in_R);
                 for ii = 1:M_in_R
                     ind = find(v_in_R(:,ii));
-                    B_R(:,ii) = channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_mu(ind).*exp(-0.5i*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
+                    B_R(:,ii) = channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_mu(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
                 end
             end
         end
@@ -1306,23 +1380,23 @@ else % without opts.symmetrize_K
             end
         else % output wavefronts specified by v_out_L and v_out_R
             if has_phi_prop_L % must be so when nnz(v_out_L) >= N_prop_L
-                C_L = conj(phi_prop_L*(reshape(conj(channels.L.sqrt_mu.*exp(-0.5i*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
+                C_L = conj(phi_prop_L*(reshape(conj(channels.L.sqrt_mu.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
             else
                 % build C_L using only the channels used
                 C_L = zeros(ny, M_out_L);
                 for ii = 1:M_out_L
                     ind = find(v_out_L(:,ii));
-                    C_L(:,ii) = conj(channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_mu(ind).*exp(-0.5i*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
+                    C_L(:,ii) = conj(channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_mu(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
                 end
             end
             if two_sided
                 if has_phi_prop_R % must be so when nnz(v_out_R) >= N_prop_R
-                    C_R = conj(phi_prop_R*(reshape(conj(channels.R.sqrt_mu.*exp(-0.5i*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
+                    C_R = conj(phi_prop_R*(reshape(conj(channels.R.sqrt_mu.*exp((-1i*dn)*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
                 else
                     C_R = zeros(ny, M_out_R);
                     for ii = 1:M_out_R
                         ind = find(v_out_R(:,ii));
-                        C_R(:,ii) = conj(channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_mu(ind).*exp(-0.5i*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
+                        C_R(:,ii) = conj(channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_mu(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
                     end
                 end
             end
@@ -1357,12 +1431,14 @@ else
             syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon];
         end
     else
+        % We pad one less pixel per side to syst.inv_epsilon{1} since it already extends half a pixel beyond the scattering region.
+        % In mesti(), syst.inv_epsilon{2} should have one more pixel in x than syst.inv_epsilon{1} given a Dirichlet BC in x.
         if two_sided
-            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)), syst.inv_epsilon{1}, (1/syst.epsilon_R)*ones(ny_d,nx_extra(2))];
-            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny  ,nx_extra(1)), syst.inv_epsilon{2}, (1/syst.epsilon_R)*ones(ny  ,nx_extra(2))];
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)-1), syst.inv_epsilon{1}, (1/syst.epsilon_R)*ones(ny_d,nx_extra(2)-1)];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny,  nx_extra(1)  ), syst.inv_epsilon{2}, (1/syst.epsilon_R)*ones(ny,  nx_extra(2)  )];
         else
-            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)), syst.inv_epsilon{1}];
-            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny  ,nx_extra(1)), syst.inv_epsilon{2}];
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)-1), syst.inv_epsilon{1}];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny,  nx_extra(1)  ), syst.inv_epsilon{2}];
         end
     end
     syst.epsilon_L = []; % mesti() will throw warning if syst.epsilon_L is given
@@ -1379,26 +1455,32 @@ else
     % Whether we use self-energy or PML or have a one-sided geometry, the BC in x direction will be Dirichlet when building matrix A
     syst.xBC = 'Dirichlet'; % to be used in mesti()
 
+    % location of inputs/outputs on the left surface (n=0 for TM; n=0.5 for TE)
+    n_L = nx_extra(1);
+
+    % location of inputs/outputs on the right surface (n=nx+1 for TM; n=nx+0.5 for TE)
+    n_R = nx_extra(1) + nx_s + 1;
+
     % Specify inputs
     if two_sided; B = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
-    % inputs on the left surface at n=0
-    B(1).pos  = [1, nx_extra(1), ny, 1];
+    % inputs on the left surface
+    B(1).pos  = [1, n_L, ny, 1];
     B(1).data = reshape(B_L, ny, 1, []); % we don't specify the number of inputs since it can be M_in_L or length(ind_L)
-    % inputs on the right surface at n=nx+1
+    % inputs on the right surface
     if two_sided
-        B(2).pos  = [1, nx_extra(1)+nx+1, ny, 1];
+        B(2).pos  = [1, n_R, ny, 1];
         B(2).data = reshape(B_R, ny, 1, []); % we don't specify the number of inputs since it can be M_in_R or length(ind_R)
     end
 
     % Specify outputs
     if build_C
         if two_sided; C = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
-        % outputs on the left surface at n=0
-        C(1).pos  = [1, nx_extra(1), ny, 1];
+        % outputs on the left surface
+        C(1).pos  = [1, n_L, ny, 1];
         C(1).data = reshape(C_L, ny, 1, M_out_L);
-        % outputs on the right surface at n=nx+1
+        % outputs on the right surface
         if two_sided
-            C(2).pos  = [1, nx_extra(1)+nx+1, ny, 1];
+            C(2).pos  = [1, n_R, ny, 1];
             C(2).data = reshape(C_R, ny, 1, M_out_R);
         end
     elseif use_transpose_B
@@ -1448,11 +1530,11 @@ if use_transpose_B % when opts.symmetrize_K = true
     S = S(ind_out, ind_in);
 end
 
-% Include the sqrt(mu(a))*exp(-i*kxdx/2) prefactors that should have been in the input matrix B
+% Include the sqrt(mu(a))*exp(-i*kxdx*dn) prefactors that should have been in the input matrix B
 if use_ind_in % input channels specified by ind_in_L and ind_in_R
-    prefactor = channels.L.sqrt_mu(ind_in_L).*exp(-0.5i*channels.L.kxdx_prop(ind_in_L));
+    prefactor = channels.L.sqrt_mu(ind_in_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_in_L));
     if two_sided
-        prefactor = [prefactor, channels.R.sqrt_mu(ind_in_R).*exp(-0.5i*channels.R.kxdx_prop(ind_in_R))];
+        prefactor = [prefactor, channels.R.sqrt_mu(ind_in_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_in_R))];
     end
     if opts.return_field_profile
         S = S.*reshape(prefactor, 1, 1, []); % use implicit expansion
@@ -1463,25 +1545,25 @@ end
 
 if ~opts.return_field_profile
 
-    % Include the sqrt(mu(b))*exp(-i*kxdx/2) prefactors that should have been in the output matrix C
+    % Include the sqrt(mu(b))*exp(-i*kxdx*dn) prefactors that should have been in the output matrix C
     if use_ind_out % output channels specified by ind_out_L and ind_out_R
-        prefactor = channels.L.sqrt_mu(ind_out_L).*exp(-0.5i*channels.L.kxdx_prop(ind_out_L));
+        prefactor = channels.L.sqrt_mu(ind_out_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_out_L));
         if two_sided
-            prefactor = [prefactor, channels.R.sqrt_mu(ind_out_R).*exp(-0.5i*channels.R.kxdx_prop(ind_out_R))];
+            prefactor = [prefactor, channels.R.sqrt_mu(ind_out_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_out_R))];
         end
         S = reshape(prefactor, [], 1).*S; % use implicit expansion
     end
 
     % Subtract D = C*inv(A_0)*B - S_0 where A_0 is a reference system and S_0 is its scattering matrix
-    % When use_ind_in = use_ind_out = true, D is basically the identity matrix
-    % But because the source at n=0 and projection at n=nx+1 are half a pixel away from x=0 and x=L, we need to shift the phase back, which means D_ba = delta_ba*exp(-i*kxdx(a))
-    % When user-specified input and output wavefronts are used, we have D_L = (v_out_L')*diag(exp(-i*kxdx))*v_in_L
-    exp_ikxdx_L = reshape(exp(-1i*channels.L.kxdx_prop), [], 1);
+    % When use_ind_in = use_ind_out = true, D is basically the identity matrix.
+    % But we need to shift the phase back by dn, which means D_ba = delta_ba*exp(-i*kxdx(a)*2*dn)
+    % When user-specified input and output wavefronts are used, we have D_L = (v_out_L')*diag(exp(-i*kxdx*2*dn))*v_in_L
+    phase_factor = reshape(exp((-1i*2*dn)*channels.L.kxdx_prop), [], 1);
     if use_ind_in
-        D_L = spdiags(exp_ikxdx_L, 0, N_prop_L, N_prop_L);
+        D_L = spdiags(phase_factor, 0, N_prop_L, N_prop_L);
         D_L = D_L(:, ind_in_L);
     else
-        D_L = exp_ikxdx_L .* v_in_L; % use implicit expansion
+        D_L = phase_factor .* v_in_L; % use implicit expansion
     end
     if use_ind_out
         D_L = D_L(ind_out_L,:);
@@ -1489,12 +1571,12 @@ if ~opts.return_field_profile
         D_L = (v_out_L')*D_L;
     end
     if two_sided && (M_in_R ~= 0 || M_out_R ~= 0)
-        exp_ikxdx_R = reshape(exp(-1i*channels.R.kxdx_prop), [], 1);
+        phase_factor = reshape(exp((-1i*2*dn)*channels.R.kxdx_prop), [], 1);
         if use_ind_in
-            D_R = spdiags(exp_ikxdx_R, 0, N_prop_R, N_prop_R);
+            D_R = spdiags(phase_factor, 0, N_prop_R, N_prop_R);
             D_R = D_R(:, ind_in_R);
         else
-            D_R = exp_ikxdx_R .* v_in_R; % use implicit expansion
+            D_R = phase_factor .* v_in_R; % use implicit expansion
         end
         if use_ind_out
             D_R = D_R(ind_out_R,:);
@@ -1506,7 +1588,7 @@ if ~opts.return_field_profile
         S = S - D_L;
     end
 else % when opts.return_field_profile = true
-    % The S returned by mesti() has size [ny, nx+sum(nx_extra), M_in_L+M_in_R]
+    % The S returned by mesti() has size [ny, nx_tot, M_in_L+M_in_R] where nx_tot = nx_s + sum(nx_extra);
     % Here, we remove the npixels_PML and npixels_spacer pixels
     if n_PML > 0
         nx_remove_L = nx_extra(1) - 1; % we keep the surface pixel
@@ -1515,25 +1597,38 @@ else % when opts.return_field_profile = true
         else
             nx_remove_R = 0;
         end
-        ind_n = (1+nx_remove_L):(nx+sum(nx_extra)-nx_remove_R);
+        ind_n = (1+nx_remove_L):(nx_tot-nx_remove_R);
         S = S(:, ind_n, :);
     end
-    % At this point, S has 1+nx+1 pixels in x if two-sided, 1+nx pixels if one-sided
+    if ~use_TM && ~two_sided
+        % Add the Hz(x=L,y)=0 slice at the end
+        S = cat(2, S, zeros(ny, 1, M_in_L));
+    end
+    % At this point, S has this number of pixels in x:
+    % TM, two-sided: 1+nx+1
+    % TM, one-sided: 1+nx
+    % TE, two-sided: nx+1
+    % TE, one-sided: nx+1
 
-    if opts.nx_L <= 1 && (~two_sided || opts.nx_R <= 1) % nothing to add (except possibly zeros)
+    if use_TM && opts.nx_L <= 1 && (~two_sided || opts.nx_R <= 1) % nothing to add (except possibly zeros)
         if ~(opts.nx_L == 1 && ((two_sided && opts.nx_R == 1) || (~two_sided && opts.nx_R == 0)))
             % Remove pixels such that we have nx_L pixels of syst.epsilon_L and nx_R pixels of syst.epsilon_R
             if two_sided
-                ind_n = (2-opts.nx_L):(nx+1+opts.nx_R);
+                ind_n = (2-opts.nx_L):(1+nx+opts.nx_R);
                 S = S(:, ind_n, :);
             else
-                ind_n = (2-opts.nx_L):(nx+1);
+                ind_n = (2-opts.nx_L):(1+nx);
                 S = S(:, ind_n, :);
                 if opts.nx_R > 0
-                    % adding nx_R slices of zero on the right
+                    % Add nx_R slices of zero on the right
                     S = cat(2, S, zeros(ny, opts.nx_R, M_in_L));
                 end
             end
+        end
+    elseif ~use_TM && opts.nx_L == 0 && (~two_sided || opts.nx_R == 0) % nothing to add (except possibly zeros)
+        if ~two_sided && opts.nx_R > 0
+            % Add nx_R slices of zero on the right
+            S = cat(2, S, zeros(ny, opts.nx_R, M_in_L));
         end
     else
         if opts.verbal; fprintf('            ... '); end
@@ -1544,33 +1639,44 @@ else % when opts.return_field_profile = true
         % We use phi' to project the field on the left or right surface onto the complete and orthonormal set of transverse modes.
         phi_prime = phi';
 
-        if opts.nx_L == 0
+        % Ez already includes one extra pixel on the left
+        if use_TM
+            nx_L_extra = opts.nx_L - 1;
+        else
+            nx_L_extra = opts.nx_L;
+        end
+
+        if nx_L_extra == -1
             % Remove the single pixel of syst.epsilon_L on the left
             S = S(:, 2:end, :);
-        elseif opts.nx_L > 1
-            % Add pixels such that we have nx_L pixels of syst.epsilon_L on the left
-            S_L = zeros(ny, opts.nx_L-1, size(S,3));
-            % We use field at reference plane n0=0, so n = n - n0
-            n = (-(opts.nx_L-1)):1:-1;  % 1-by-(nx_L-1) row vector
-            kx_x = reshape(channels.L.kxdx_all, ny, 1).*n; % kx*x; ny-by-(nx_L-1) matrix through implicit expansion
+        elseif nx_L_extra > 0
+            % Add pixels such that we have opts.nx_L pixels of syst.epsilon_L on the left
+            S_L = zeros(ny, nx_L_extra, size(S,3));
+            % The n below is n = n - n_L, where n_L is the location of the inputs/outputs on the left surface.
+            n = (-nx_L_extra):1:-1;  % 1-by-nx_L_extra row vector
+            kx_x = reshape(channels.L.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_L_extra matrix through implicit expansion
             exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
             exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
             u_in = zeros(ny, 1);
+            n_L = 1; % index for the inputs/outputs on the left surface
+            if M_in_L > 0
+                prefactor = reshape(exp((-1i*dn)*channels.L.kxdx_prop)./channels.L.sqrt_mu, N_prop_L, 1);
+            end
             for ii = 1:M_in_L % input from left
-                u = phi_prime*S(:, 1, ii);  % u is a ny-by-1 column vector of transverse mode coefficients
-                % u_in is the incident wavefront at n=0; note we need to back propagate half a pixel since the input is specified at n=0.5
+                u = phi_prime*S(:, n_L, ii);  % u is a ny-by-1 column vector of transverse mode coefficients
+                % u_in is the incident wavefront at n_L; note we need to back propagate dn pixel from x=0
                 u_in(:) = 0;
                 if use_ind_in
-                    u_in(channels.L.ind_prop(ind_in_L(ii))) = exp(-0.5i*channels.L.kxdx_prop(ind_in_L(ii)))/channels.L.sqrt_mu(ind_in_L(ii));
+                    u_in(channels.L.ind_prop(ind_in_L(ii))) = prefactor(ind_in_L(ii));
                 else
-                    u_in(channels.L.ind_prop) = reshape(exp(-0.5i*channels.L.kxdx_prop)./channels.L.sqrt_mu, N_prop_L, 1).*v_in_L(:,ii);
+                    u_in(channels.L.ind_prop) = prefactor.*v_in_L(:,ii);
                 end
                 u_out = u - u_in;
                 S_L(:, :, ii) = phi*(u_in.*exp_pikx + u_out.*exp_mikx);
             end
             if two_sided
                 for ii = 1:M_in_R % input from right
-                    u_out = phi_prime*S(:, 1, M_in_L+ii); % u_out = u because there is no input on the left side
+                    u_out = phi_prime*S(:, n_L, M_in_L+ii); % u_out = u because there is no input on the left side
                     S_L(:, :, M_in_L+ii) = phi*(u_out.*exp_mikx);
                 end
             end
@@ -1578,31 +1684,42 @@ else % when opts.return_field_profile = true
         end
 
         if two_sided
-            if opts.nx_R == 0
+
+            % Ez already includes one extra pixel on the right
+            if use_TM
+                nx_R_extra = opts.nx_R - 1;
+            else
+                nx_R_extra = opts.nx_R;
+            end
+
+            if nx_R_extra == -1
                 % Remove the single pixel of syst.epsilon_R on the right
                 S = S(:, 1:(end-1), :);
-            elseif opts.nx_R > 1
-                % Add pixels such that we have nx_R pixels of syst.epsilon_R on the right
-                S_R = zeros(ny, opts.nx_R-1, size(S,3));
-                % The n below is actually n = n - n0. Here, n goes from nx+2 to nx+opts.nx_R, and the reference plane is at n0 = nx+1. So the n below goes from 1 to opts.nx_R-1.
-                n = 1:(opts.nx_R-1);  % 1-by-(nx_R-1) row vector
-                kx_x = reshape(channels.R.kxdx_all, ny, 1).*n; % kx*x; ny-by-(nx_R-1) matrix through implicit expansion
+            elseif nx_R_extra > 0
+                % Add pixels such that we have opts.nx_R pixels of syst.epsilon_R on the right
+                S_R = zeros(ny, nx_R_extra, size(S,3));
+                % The n below is n = n - n_R, where n_R is the location of the inputs/outputs on the right surface.
+                n = 1:nx_R_extra;  % 1-by-nx_R_extra row vector
+                kx_x = reshape(channels.R.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_R_extra matrix through implicit expansion
                 exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
                 exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
                 u_in = zeros(ny, 1);
-                n0 = opts.nx_L + nx + 1; % index for right surface at n0 = nx+1, which should be the last pixel
+                n_R = size(S, 2); % index for the inputs/outputs on the right surface
                 for ii = 1:M_in_L % input from left
-                    u_out = phi_prime*S(:, n0, ii); % u_out = u because there is no input on the right side
+                    u_out = phi_prime*S(:, n_R, ii); % u_out = u because there is no input on the right side
                     S_R(:, :, ii) = phi*(u_out.*exp_pikx);
                 end
+                if M_in_R > 0
+                    prefactor = reshape(exp((-1i*dn)*channels.R.kxdx_prop)./channels.R.sqrt_mu, N_prop_R, 1);
+                end
                 for ii = 1:M_in_R % input from right
-                    u = phi_prime*S(:, n0, M_in_L+ii);  % u is a ny-by-1 column vector of transverse mode coefficients
-                    % u_in is the incident wavefront at n=nx+1; note we need to back propagate half a pixel since the input is specified at n=nx+0.5
+                    u = phi_prime*S(:, n_R, M_in_L+ii);  % u is a ny-by-1 column vector of transverse mode coefficients
+                    % u_in is the incident wavefront at n_R; note we need to back propagate dn pixel from x=L
                     u_in(:) = 0;
                     if use_ind_in
-                        u_in(channels.R.ind_prop(ind_in_R(ii))) = exp(-0.5i*channels.R.kxdx_prop(ind_in_R(ii)))/channels.R.sqrt_mu(ind_in_R(ii));
+                        u_in(channels.R.ind_prop(ind_in_R(ii))) = prefactor(ind_in_R(ii));
                     else
-                        u_in(channels.R.ind_prop) = reshape(exp(-0.5i*channels.R.kxdx_prop)./channels.R.sqrt_mu, N_prop_R, 1).*v_in_R(:,ii);
+                        u_in(channels.R.ind_prop) = prefactor.*v_in_R(:,ii);
                     end
                     u_out = u - u_in;
                     S_R(:, :, M_in_L+ii) = phi*(u_in.*exp_mikx + u_out.*exp_pikx);
@@ -1610,7 +1727,7 @@ else % when opts.return_field_profile = true
                 S = cat(2, S, S_R);
             end
         elseif opts.nx_R > 0 % one-sided
-            % adding nx_R slices of zero on the right
+            % Add nx_R slices of zero on the right
             S = cat(2, S, zeros(ny, opts.nx_R, M_in_L));
         end
 
