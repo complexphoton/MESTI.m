@@ -63,21 +63,20 @@ epsilon_meta_atom = build_epsilon_meta_atom(dx, n_air, n_TiO2, ridge_width, ridg
 n_extra_for_plot = 10; % Extra pixels on side for plotting
 
 % For plotting the space position
-y = [0 ny*dx];
-x = [-n_extra_for_plot*dx (nx+n_extra_for_plot)*dx]; 
+x = (-n_extra_for_plot+0.5:nx+n_extra_for_plot)*dx;
+y = (0.5:ny)*dx;
 
-clf
+figure
 imagesc(x, y, [syst.epsilon_L*ones(ny,n_extra_for_plot), epsilon_meta_atom, 1*syst.epsilon_R*ones(ny,n_extra_for_plot)])
 colormap(flipud(pink));
 xlabel('{\itx} (nm)');
 ylabel('{\ity} (nm)');
 set(gca, 'fontsize', 15, 'FontName','Arial')
 caxis([1 12])
-xlim([x(1), x(2)])
-ylim([y(1), y(2)])
-text(670,130,'air','FontSize',20,'Rotation',90)
-text(240,120,'TiO_2','FontSize',20)
-text(-80,140,'silica','FontSize',20,'Rotation',90)
+text(670,140,'air','FontSize', 15,'Rotation',90)
+text(240,120,'TiO_2','FontSize', 15)
+text(-80,165,'silica','FontSize', 15,'Rotation',90)
+axis image
 title('Meta-atom','FontSize',20)
 ```
 
@@ -187,7 +186,7 @@ end
 
 % Plot the phase of the transmission coefficient relative to the first width
 clf
-imagesc(ridge_width_list,theta_in_list, mod(angle(t_list)-angle(t_list(:,1)), 2*pi))
+imagesc(ridge_width_list, theta_in_list, mod(angle(t_list)-angle(t_list(:,1)), 2*pi))
 caxis([0, 2*pi]);
 xlabel('Pillar width (nm)')
 ylabel('\theta_{in} (degree)')
@@ -204,7 +203,7 @@ hcb=colorbar; hcb.Ticks = [0 pi 2*pi]; hcb.TickLabels = {'0','\pi','2\pi'};
 ```matlab
 % Plot the amplitude of transmission coefficient.
 clf
-imagesc(ridge_width_list,theta_in_list, abs(t_list))
+imagesc(ridge_width_list, theta_in_list, abs(t_list))
 caxis([0, 1]);
 xlabel('Pillar width (nm)')
 ylabel('\theta_{in} (degree)')
