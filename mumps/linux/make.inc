@@ -63,11 +63,13 @@ LIBFORT = /spack/apps/gcc/8.3.0/lib64/libgfortran.so
 #
 # If you still cannot figure out the path of the libraries, you may need to
 # contact the maintenance team of your cluster.
-#
-# The following is the path of the Intel MKL path in USC Discovery cluster:
-MKLROOT=/spack/apps/linux-centos7-x86_64/intel-19.0.4/intel-mkl-2019.5.281-ftihihwas7hnpmex6tt3luvqzuy6fgb7/compilers_and_libraries_2019.5.281/linux/mkl
+
+
 # BLAS library is under the folder of $(MKLROOT)/lib/intel64
 LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64
+
+# Use the following for openblas
+# LIBBLAS = -lblas
 
 # extra options passed via mex command
 # Add -DINTSIZE64 if MUMPS was compiled with 64-bit integers (BLAS

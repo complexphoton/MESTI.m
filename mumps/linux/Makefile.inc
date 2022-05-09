@@ -124,7 +124,9 @@ RANLIB  = ranlib
 # DEFINE HERE YOUR LAPACK LIBRARY
 
 # Make MKLROOT variable point to the path where the Intel MKL is
-# installed. Default install directory for Intel MKL is following:
+# installed. After running the script "mklvar.sh" the environment variable $MKLROOT should be automatically exported. 
+
+# Default install directory for Intel MKL on a local machine is following:
 # MKLROOT=/opt/intel/mkl
 # However, in different Linux clusters, the Intel MKL may be put in different
 # path. If you are using in Lmod module system and Intel MKL are installed,
@@ -139,11 +141,12 @@ RANLIB  = ranlib
 #
 # If you still cannot figure out the path of the libraries, you may need to
 # contact the maintenance team of your cluster.
-#
-# The following is the path of the Intel MKL path in USC Discovery cluster:
-MKLROOT=/spack/apps/linux-centos7-x86_64/intel-19.0.4/intel-mkl-2019.5.281-ftihihwas7hnpmex6tt3luvqzuy6fgb7/compilers_and_libraries_2019.5.281/linux/mkl
+
 # LAPACK library is under the folder of $(MKLROOT)/lib/intel64
 LAPACK = -L$(MKLROOT)/lib/intel64 -lmkl_sequential -lmkl_intel_lp64 -lmkl_core
+
+# Use the following for openblas
+# LAPACK = -llapack
 
 # The next two lines should not be modified. They concern
 # the sequential library provided by MUMPS, to use instead
@@ -154,6 +157,9 @@ LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq
 # DEFINE HERE YOUR BLAS LIBRARY
 # BLAS library is under the folder of $(MKLROOT)/lib/intel64
 LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64
+
+# Use the following for openblas
+# LIBBLAS = -lblas
 
 # DEFINE HERE YOUR PTHREAD LIBRARY
 LIBOTHERS = -lpthread

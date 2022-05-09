@@ -6,7 +6,7 @@ Go to the [MUMPS website](http://mumps.enseeiht.fr/index.php?page=dwnld) and fil
 
 ## Prerequisites
 To compile the sequential version of MUMPS and its MATLAB interface, you need compilation tools like <code>make</code>, <code>ar</code>, and <code>ranlib</code>, C and Fortran compilers, BLAS library, LAPACK library, and a compatible <code>mex</code> compiler. Instructions specific to the operating system are provided below:
-1. [Linux cluster](./linux)
+1. [Linux](./linux)
 2. [macOS](./macOS)
 
 If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). Compile it with <code>make config; make</code>. If you have write access to <code>/usr/local</code>, you can install METIS to there with <code>sudo make install</code>; otherwise you can move the METIS folder to where you want and specify its path when compiling MUMPS. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
