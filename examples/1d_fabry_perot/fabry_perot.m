@@ -1,208 +1,193 @@
 %% Fabry-Pérot etalon
-% Example of a dielectric slab (also called a Fabry-Pérot etalon) 
+% Transmission through a dielectric slab, also called a Fabry-Pérot etalon.
 % 
-% Use MESTI2S() to compute 
-% 1.The field profile of the system and showing the field propagation 
-% 2.The wavelength-dependent reflectance spectrum from Fabry-Pérot etalon and 
-% the conservation of energy (T + R = 1)
-% 3.The convergence of the numerical results with respect to resolution
+% In this example, we use mesti2s() to compute the
+% 1. field profile,
+% 2. transmission spectrum, and
+% 3. convergence of discretization error
+% for a Fabry-Pérot etalon at normal incidence.
+%
+% For a 1D system at normal incidence, the TM and TE polarizations are equivalent, and we will explicit check this equivalence.
 
-%% System parameters
+%% Field profile
 
 clear
 
 % System parameters
-n_bg = 1;         % Refractive index of background material (air)
-n_slab = 1.5;     % Refractive index of the dielectric slab (glass)
-thickness = 500;  % Thickness of the dielectric slab [nm]
+n_bg = 1;         % refractive index of the background material (air)
+n_slab = 1.5;     % refractive index of the dielectric slab (glass)
+thickness = 500;  % thickness of the dielectric slab [nm]
 
-% Here is free-space wavelength.
-lambda_min = 300; % Minimum wavelength [nm]
-lambda_max = 800; % Maximum wavelength [nm]
-delta_lambda = 2; % Increment of wavelength [nm]
-lambda_list = lambda_min:delta_lambda:lambda_max; % Wavelength list to be used
-lambda_0 = lambda_list(round(numel(lambda_list)/2)); % Central wavelength [nm]
-n_lambda = numel(lambda_list); % Total number of wavelength
+syst.polarization = 'TM'; % use TM, which gives the Ez component
+syst.epsilon_L = n_bg^2;  % relative permittivity on the left
+syst.epsilon_R = n_bg^2;  % relative permittivity on the right
+syst.length_unit = 'nm';
+syst.wavelength = 550;    % take lambda = 550 nm for this example
+syst.dx = syst.wavelength/n_slab/20; % grid size; 20 points per wavelength in slab
+syst.yBC = 'periodic';    % 1D system at normal incidence has periodic boundary in y
 
-%% Analytical result
-% Calculate the analytical results for this system. 
+% Build the relative permittivity profile with subpixel smoothing
+syst.epsilon = build_epsilon_fp(syst.dx, n_bg, n_slab, thickness);
 
-% Please refer to the function fp_analytical.
-[r_list_analytical, t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list);
-T_list_analytical = abs(t_list_analytical).^2; % Analytical transmittance
-R_list_analytical = abs(r_list_analytical).^2; % Analytical reflectance
+% Include field profile in air for plotting purpose
+opts.nx_L = round(syst.wavelength/syst.dx); % number of pixels on the left
+opts.nx_R = round(syst.wavelength/syst.dx); % number of pixels on the right
+opts.verbal = false; % suppress output information
 
-%% General setup for mesti2s()
-% Set up general input argument for the mesti2s() for this system.
+% Compute the field profile with incidence from the left
+Ez = mesti2s(syst, {'left'}, [], opts);
 
-% Setup input arguments for mesti2s(). 
-syst.epsilon_L = n_bg^2;  % Relative permittivity on the left hand side
-syst.epsilon_R = n_bg^2;  % Relative permittivity on the right hand side
-syst.yBC = 'periodic';    % Periodic boundary along transverse direction
-syst.length_unit = 'nm';  % Length unit
-
-%% Field profile
-% Calculate field profile of the system for resolution = 30 in wavelength = 
-% 550 nm.
-
-% Setup discrete system for resolution = 30 with respect to central wavelength. 
-% The resolution is chosen based on lambda/dx = lambda_0/(n*dx) = 20 in the 
-% highest refractive index material in this system.
-resolution = 30; % Resolution at the central wavelength \lambda_0 
-dx = lambda_0/resolution; % Grid size [nm]
-syst.dx = dx; % Grid size as an input argument for mesti2s().
-syst.wavelength = lambda_0; % Wavelength as an input argument for mesti2s() [nm]
-nx = ceil((thickness)/dx); % Number of longitudinal pixels for the slab
-ny = 1; % Only 1 pixel needed along transverse direction in 1D system
-
-% Build permittivity for the dielectric slab.
-syst.epsilon = n_slab^2*ones(ny, nx);
-last_pixel_bg_ratio = ceil((thickness)/dx) - thickness/dx; % Ratio of last pixel is background
-last_pixel_slab_ratio = 1-last_pixel_bg_ratio; % Ratio of last pixel is slab
-% Average permittivity in last pixel of slab.
-syst.epsilon(:, nx) = (n_slab^2*last_pixel_slab_ratio+ n_bg^2*last_pixel_bg_ratio); 
-
-in = {'left'}; % Specify input channel on the left.
-opts.nx_L = round(lambda_0/dx); % Pixels of homogeneous space on the left
-opts.nx_R = round(lambda_0/dx); % Pixels of homogeneous space on the right
-opts.verbal = false; % Suppress output information.
-
-% Call mesti2s() to calculate the spatial field profile.
-Ez = mesti2s(syst, in, [], opts);
-
-% For plotting the space position
-x = ((1:(opts.nx_L+nx+opts.nx_R)))*dx - (opts.nx_L+1)*dx; %[nm]
-% For plotting the slab region
-slab_x = [x(opts.nx_L+1) x(opts.nx_L+1) ... 
-          x(opts.nx_L+nx)+last_pixel_slab_ratio*dx ...
-          x(opts.nx_L+nx)+last_pixel_slab_ratio*dx];
-slab_y = [-4 4 4 -4]; 
-
-% Animate the field profile propagation.
-for ii = 1:3
-    for jj = 1:50
-        plot(x, real(Ez*exp(-1i*2*pi*jj/50)),'linewidth',2)
-        patch(slab_x, slab_y, 'r', 'FaceColor', 'black', 'FaceAlpha', 0.1, 'LineStyle','none')
+% Animate the field profile
+nperiod = 2; % number of periods to animate
+nframes_per_period = 50; % number of frames per period
+nx = size(syst.epsilon, 2); % number of grid points of Ez inside the scattering region
+x = (-(opts.nx_L-0.5):(nx+opts.nx_R))*syst.dx;
+y_max = 1 + ceil(max(abs(Ez)));
+figure
+for ii = 1:nperiod
+    for jj = 1:nframes_per_period
+        clf
+        plot(x, real(Ez*exp(-1i*2*pi*jj/nframes_per_period)), 'linewidth', 2)
+        patch([0 0 thickness thickness], y_max*[-1 1 1 -1], 'black', 'FaceAlpha', 0.1, 'EdgeColor', 'none', 'LineStyle', 'none')
         xlim([x(1), x(end)])
-        ylim([-4, 4])        
+        ylim(y_max*[-1, 1])
         xlabel('{\itx} (nm)')
         ylabel('Re({\itE_z})')
-        text(-300,3.5,'air','FontSize',14)
-        text(175,3.5,'glass','FontSize',14)  
-        text(750,3.5,'air','FontSize',14)        
-        set(gca, 'fontsize', 15, 'FontName','Arial')
+        text(-300, 3.5, 'air', 'FontSize', 14)
+        text(175, 3.5, 'glass', 'FontSize', 14)  
+        text(750, 3.5, 'air', 'FontSize', 14)        
+        set(gca, 'fontsize', 15, 'FontName', 'Arial')
         drawnow
         pause(0.05)
     end
 end
 
-%% Reflectance spectrum
-% Calculate reflectance spectrum over visible wavelength for resolution = 30 
-% with respect to central wavelength.
+%% Transmission spectrum
+% Here, we compute the transmission and reflection spectra for both TM and TE polarizations (which are equivalent for a 1D system at normal incidence).
 
-opts = [];
-in = {'left'}; % Specify input channel on the left.
-out = {'left', 'right'}; % Specify output channel on the left and the right.
-opts.verbal = false; % Suppress output information.
+lambda_min = 300; % minimum vacuum wavelength [nm]
+lambda_max = 800; % maximum vacuum wavelength [nm]
+delta_lambda = 2.5; % increment of the wavelength [nm]
 
-R_list = zeros(1,n_lambda); % List of reflectance
-T_list = zeros(1,n_lambda); % List of transmittance
+lambda_list = lambda_min:delta_lambda:lambda_max; % wavelength list
+n_lambda = numel(lambda_list); % number of wavelengths
+lambda_0 = lambda_list(round((n_lambda+1)/2)); % central wavelength [nm]
 
-% Looping over different wavelength to calculate reflectance spectrum
+% For TM polarization, we use the previous syst but with a finer discretization.
+syst_TM = syst; clear syst
+syst_TM.dx = lambda_min/n_slab/20; % grid size; 20 points per shortest wavelength in slab
+syst_TM.epsilon = build_epsilon_fp(syst_TM.dx, n_bg, n_slab, thickness);
+
+% For TE polarization, we need to provide inv_epsilon instead.
+% For a 1D system at normal incidence, syst_TE.inv_epsilon{1} is not necessary because the y derivative vanishes.
+% Here, syst_TE.inv_epsilon{2} is simply 1./syst_TM.epsilon because the interfaces' normal vectors are in x direction. In 2D and 3D, subpixel smoothing would require more care, for example see Opt. Lett. 31, 2972 (2006).
+syst_TE = rmfield(syst_TM, 'epsilon');
+syst_TE.polarization = 'TE';
+syst_TE.inv_epsilon{2} = 1./syst_TM.epsilon;
+
+opts = []; % clear opts from above
+opts.verbal = false; % suppress output information
+
+r_list_TM = zeros(1,n_lambda);
+r_list_TE = zeros(1,n_lambda);
+t_list_TM = zeros(1,n_lambda);
+t_list_TE = zeros(1,n_lambda);
+
+% Loop over wavelengths
 for ii = 1:n_lambda
-    syst.wavelength = lambda_list(ii); % Wavelength [nm]
+    syst_TM.wavelength = lambda_list(ii);
+    syst_TE.wavelength = lambda_list(ii);
        
-    % Call mesti2s() to calculate the scattering matrix.
-    smatrix = mesti2s(syst, in, out, opts);
+    % Compute the scattering matrix with input from the left, output to both sides
+    % This gives smatrix = [r; t]
+    smatrix_TM = mesti2s(syst_TM, {'left'}, {'left', 'right'}, opts);
+    smatrix_TE = mesti2s(syst_TE, {'left'}, {'left', 'right'}, opts);
 
-    % In 1D, in = {'left'} and out = {'left', 'right'},
-    % the smatrix = [r, t], where r is reflection coefficient from left to
-    % left and t is transmission coefficient from left to right.
-
-    r = smatrix(1,1); % Reflection coefficient
-    t = smatrix(2,1); % Transmission coefficient
-
-    R_list(ii) = abs(r).^2; % Numerical reflectance
-    T_list(ii) = abs(t).^2; % Numerical transmittance
+    r_list_TM(ii) = smatrix_TM(1,1);
+    r_list_TE(ii) = smatrix_TE(1,1);
+    t_list_TM(ii) = smatrix_TM(2,1);
+    t_list_TE(ii) = smatrix_TE(2,1);
 end
 
-% Plot and compare numerical and analytical reflectance results
+% Check that TM and TE give the same results.
+% Note that r_TM = -r_TE because the reflection coefficient is defined based on Ez in TM, Hz in TE.
+fprintf(['max(|r_TM + r_TE|) = %6.3g\n', ...
+         'max(|t_TM - t_TE|) = %6.3g\n'], ...
+        max(abs(r_list_TM + r_list_TE)), ...
+        max(abs(t_list_TM - t_list_TE)));
+
+% Check energy conservation
+fprintf('max(|1 - T - R|) = %6.3g\n', max(abs(1-abs(r_list_TM).^2-abs(t_list_TM).^2)));
+
+% Analytic solution
+[r_list_analytical, t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list);
+
+% Plotting
 figure
-plot(lambda_list,R_list,'o','linewidth',1)
+plot(lambda_list, abs(t_list_TM).^2, 'o', 'linewidth', 1)
 hold on
-plot(lambda_list,R_list_analytical,'linewidth',1)
-xlabel('Wavelength (nm)')
-ylabel('Reflectance{\it R}')
-xlim([300,800])
-ylim([0,0.15])
-legend('Numeric', 'Analytic', 'Location','northeast')
-set(gca, 'fontsize', 15, 'FontName','Arial')
-set(gca,'linewidth',1)
+plot(lambda_list, abs(t_list_TE).^2, 'x', 'linewidth', 1)
+plot(lambda_list, abs(t_list_analytical).^2, 'k-', 'linewidth', 1)
+xlabel('Wavelength \lambda (nm)')
+ylabel('Transmission{\it T}')
+xlim([lambda_min, lambda_max])
+ylim([0.8, 1])
+legend('Numeric; TM', 'Numeric; TE', 'Analytic', 'Location', 'southeast')
+set(gca, 'fontsize', 15, 'FontName', 'Arial')
+set(gca, 'linewidth', 1)
 
-% Print out the numerical confirmation of energy conservation
-fprintf(['The energy conservation is checked numerically\n' ...
-'through the max(|1 - T - R|) = %6.3g over the spectrum.\n'] ...
-,max(abs(1-R_list-T_list)))
+%% Discretization error
+% Here we check the scaling of discretization error.
 
-%% Convergence with resolution
-% Over different resolution, compute root-mean-square error (RMSE) of numerical 
-% result with respect to the analytical to show convergence.
+n_resolution = 20; % number of discretization resolutions to consider
+resolution_list = round(10.^(linspace(1, 3, n_resolution))); % resolutions to consider
 
-resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
-n_resolution = numel(resolution_list); % Total number of resolutions to be used
-RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
-RMSE_T = zeros(1,n_resolution); % RMSE for T to be calculated
+% Reduce the wavelength range, so lambda/dx doesn't vary as much
+lambda_min = 500; % minimum vacuum wavelength [nm]
+lambda_max = 600; % maximum vacuum wavelength [nm]
+delta_lambda = 5; % increment of the wavelength [nm]
 
-% Looping over different resolution
+lambda_list = lambda_min:delta_lambda:lambda_max; % wavelength list
+n_lambda = numel(lambda_list); % number of wavelengths
+lambda_0 = lambda_list(round((n_lambda+1)/2)); % central wavelength [nm]
+
+% Analytic solution
+[r_list_analytical, t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list);
+R_list_analytical = abs(r_list_analytical).^2;
+
+RMSE_list = zeros(1,n_resolution);
+R_list = zeros(1,n_lambda);
+
+% Loop over discretization resolutions
 for ii = 1:n_resolution
-    resolution = resolution_list(ii); % Resolution at the central wavelength (550 nm)
-    dx = lambda_0/resolution; % Grid size of system [nm]
-    syst.dx = dx; % Grid size as an input argument for mesti2s().
-    nx = ceil((thickness)/dx); % Number of longitudinal pixels for the slab
-    ny = 1; % Only 1 pixel needed along transverse direction in 1D system
 
-    % Build permittivity for the dielectric slab.
-    syst.epsilon = n_slab^2*ones(ny, nx);
+    % Build the relative permittivity profile with subpixel smoothing
+    syst_TM.dx = lambda_0/resolution_list(ii);
+    syst_TM.epsilon = build_epsilon_fp(syst_TM.dx, n_bg, n_slab, thickness);
 
-    last_pixel_bg_ratio = ceil((thickness)/dx) - thickness/dx; % Ratio of last pixel is background
-    last_pixel_slab_ratio = 1-last_pixel_bg_ratio; % Ratio of last pixel is slab
-    % Average permittivity in last pixel of slab.
-    syst.epsilon(:, nx) = (n_slab^2*last_pixel_slab_ratio+ n_bg^2*last_pixel_bg_ratio); 
-
-    R_list = zeros(1,n_lambda); % List of reflectance
-    T_list = zeros(1,n_lambda); % List of transmittance
-
-    % Looping over different wavelength
+    % Compute reflection on the left for nearby wavelengths
     for jj = 1:n_lambda
-        syst.wavelength = lambda_list(jj); % Wavelength [nm]
-
-        % Call mesti2s() to calculate the scattering matrix.
-        smatrix = mesti2s(syst, in, out, opts);
-
-        R_list(jj) = abs(smatrix(1,1)).^2; % Numerical reflectance
-        T_list(jj) = abs(smatrix(2,1)).^2; % Numerical transmittance
+        syst_TM.wavelength = lambda_list(jj);
+        R_list(jj) = abs(mesti2s(syst_TM, {'left'}, {'left'}, opts))^2;
     end
-    % Compute the RMSE for R and T.
-    RMSE_R(ii) = sqrt(mean((R_list-R_list_analytical).^2));
-    RMSE_T(ii) = sqrt(mean((T_list-T_list_analytical).^2));
+
+    % Root-mean-square error due to discretization
+    RMSE_list(ii) = sqrt(mean((R_list-R_list_analytical).^2));
 end
 
-% Plot RMSE with respect to resolution
+% dx^2 scaling curve
+dx2 = (resolution_list/resolution_list(end)).^(-2)*RMSE_list(end);
+
+% Plotting
 figure
-loglog(resolution_list,RMSE_R,'o','linewidth',1)
+loglog(resolution_list, RMSE_list, 'o', 'linewidth', 1)
 hold on
-loglog(resolution_list,RMSE_T,'x','linewidth',1)
-% Reference asymptotic line
-X = 10.^(1:4);
-Y = 0.7*X.^(-2)*10;
-loglog(X,Y,'-','linewidth',1, 'Color', '#77AC30')
+loglog(resolution_list, dx2, 'k-', 'linewidth', 1)
 grid on
-xticks([1e1 1e2 1e3])
-yticks([1e-5 1e-4 1e-3 1e-2 1e-1 1e0])
+xticks(10.^(1:3))
+yticks(10.^(-6:0))
 xlabel('Resolution \lambda_0/\Delta{\itx}')
-ylabel('Difference with analytic')
-xlim([1e1, 1e3])
-ylim([5e-6, 1e-1])
-legend('{\itR}_{numeric}','{\itT}_{numeric}','O(\Delta{\itx}^2)')
-set(gca, 'fontsize', 15, 'FontName','Arial')
-set(gca,'linewidth',1)
+ylabel('RMS difference from analytic')
+legend('Data', 'O(\Delta{\itx}^2)')
+set(gca, 'fontsize', 15, 'FontName', 'Arial')
+set(gca, 'linewidth', 1)

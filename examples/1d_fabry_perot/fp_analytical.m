@@ -1,5 +1,4 @@
 function [r_list_analytical,t_list_analytical] = fp_analytical(n_bg, n_slab, thickness, lambda_list)
-
 %FP_ANALYTICAL calculate analytical reflection and transmission coefficient in 1D Fabry-Pérot (FP) etalon.
 %
 %   === Input Arguments ===
@@ -10,7 +9,7 @@ function [r_list_analytical,t_list_analytical] = fp_analytical(n_bg, n_slab, thi
 %   thickness (numeric scalar, real):
 %       Thickness of the dielectric slab
 %   lambda_list (numeric row vector):
-%       List of wavelength to be calculated
+%       List of wavelength
 %   === Output Arguments ===
 %   r_list_analytical (numeric row vector):
 %       List of analytical reflection coefficient from left to left
@@ -26,7 +25,7 @@ for ii = 1:n_lambda
     wavelength = lambda_list(ii); % wavelength 
     k0 = 2*pi/wavelength; % wavevector
 
-    % According to the formula 7.1-63 in Fundamental of photonics by Saleh and Teich, for TM polarized wave
+    % According to the formula 7.1-63 in Fundamental of photonics by Saleh and Teich
     Mi = (1/(2*n_slab))*[n_bg+n_slab, n_slab-n_bg; n_slab-n_bg, n_bg+n_slab]; % Transfer matrix of the entrance boundary
     Mo = [exp(1i*n_slab*k0*thickness), 0; 0, exp(-1i*n_slab*k0*thickness)];  % Transfer matrix inside the slab
     Me = (1/(2*n_bg))*[n_slab+n_bg, n_bg-n_slab; n_bg-n_slab, n_slab+n_bg]; % Transfer matrix of the exit boundary

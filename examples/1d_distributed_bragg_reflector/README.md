@@ -1,100 +1,58 @@
 # Distributed Bragg reflector
 
 
-Example of an alternating sequence of layers of two dielectric material (also called a distributed Bragg reflector (DBR))
+In this example, we use mesti2s() to compute the reflectance from an alternating sequence of layers of two dielectric material, also called a distributed Bragg reflector (DBR).
 
 
-Use MESTI2S() to compute 
-
-1.The wavelength-dependent reflectance spectrum from DBR and the conservation of energy (T + R = 1)
-
-
-2.The convergence of the numerical results with respect to resolution
-
-
-# System parameters
+For a 1D system at normal incidence, the TM and TE polarizations are equivalent, and we will explicit check this equivalence.
 
 ```matlab
-clear
+% System parameters
+n_bg = 1;                     % refractive index of background material (air)
+n_1 = 1.5;                    % refractive index of material 1
+n_2 = 3;                      % refractive index for material 2
+lambda_mid_gap = 550;         % mid-gap wavelength for DBR [nm]
+d_1 = lambda_mid_gap/(4*n_1); % thickness of material 1 in a pair [nm]
+d_2 = lambda_mid_gap/(4*n_2); % thickness of material 2 in a pair [nm]
+N_pair = 5;                   % number of pair in DBR
 
-n_bg = 1;                   % Refractive index of background material (air)
-n1 = 1.5;                   % Refractive index of material 1
-n2 = 3;                     % Refractive index for material 2
-lambda_mid_gap = 550;       % Mid-gap wavelength for DBR [nm]
-d1 = lambda_mid_gap/(4*n1); % Thickness of material 1 in a pair [nm]
-d2 = lambda_mid_gap/(4*n2); % Thickness of material 2 in a pair [nm]
-n_pair = 5;                 % Number of pair in DBR
+lambda_min = 300; % minimum vacuum wavelength [nm]
+lambda_max = 800; % maximum vacuum wavelength [nm]
+delta_lambda = 2.5; % increment of the wavelength [nm]
 
-% Here is free-space wavelength.
-lambda_min = 300; % Minimum wavelength [nm]
-lambda_max = 800; % Maximum wavelength [nm]
-delta_lambda = 2; % Increment of wavelength [nm]
-lambda_list = lambda_min:delta_lambda:lambda_max; % Wavelength list to be used
-lambda_0 = lambda_list(round(numel(lambda_list)/2)); % Central wavelength [nm]
-n_lambda = numel(lambda_list); % Total number of wavelength
-```
+lambda_list = lambda_min:delta_lambda:lambda_max; % wavelength list
+n_lambda = numel(lambda_list); % number of wavelengths
+lambda_0 = lambda_list(round((n_lambda+1)/2)); % central wavelength [nm]
 
-# Analytical result
+syst.epsilon_L = n_bg^2;     % relative permittivity on the left
+syst.epsilon_R = n_bg^2;     % relative permittivity on the right
+syst.length_unit = 'nm';
+syst.dx = lambda_min/n_2/20; % grid size; 20 points per wavelength in highest refractive index material in system
+syst.yBC = 'periodic';       % 1D system at normal incidence has periodic boundary in y
 
+opts.verbal = false;         % suppress output information
 
-Calculate the analytical results for this system. 
+% Plot refractive index profile of the DBR
+dx = lambda_0/n_2/20;
+% Build the relative permittivity profile with subpixel smoothing
+epsilon_dbr = build_epsilon_dbr(dx, n_bg, n_1, n_2, d_1, d_2, N_pair);
 
-```matlab
-% Calculate the analytical reflection coefficient and transmission coefficient for this system. 
-% Please refer to the function dbr_analytical.
-[r_list_analytical,t_list_analytical] = dbr_analytical(n_bg, n1, n2, d1, d2, n_pair, lambda_list);
-T_list_analytical = abs(t_list_analytical).^2; % Analytical transmittance
-R_list_analytical = abs(r_list_analytical).^2; % Analytical reflectance
-```
+nx = ceil(N_pair*(d_1+d_2)/dx); % number of pixels in in DBR
+n_extra_for_plot = 10; % number of pixels on side for plotting
+x = (-n_extra_for_plot+0.5:nx+n_extra_for_plot)*dx;
 
-# General setup for mesti2s()
-
-
-Set up general input argument for the mesti2s() for this system.
-
-```matlab
-% Setup input arguments for mesti2s(). 
-syst.epsilon_L = n_bg^2;  % Relative permittivity on the left hand side
-syst.epsilon_R = n_bg^2;  % Relative permittivity on the right hand side
-syst.yBC = 'periodic'; % Periodic boundary along transverse direction
-syst.length_unit = 'nm'; % Length unit.
-opts.verbal = false; % Suppress output information.
-in = {'left'}; % Specify input channel on the left.
-out = {'left', 'right'}; % Specify output channel on the left and the right.
-```
-
-# Reflectance spectrum
-
-
-Calculate reflectance spectrum over visible wavelength for resolution = 60 with respect to central wavelength.
-
-```matlab
-% The resolution is chosen based on lambda/dx = lambda_0/(n*dx) = 20 in the 
-% highest refractive index material in this system.
-resolution = 60; % Resolution at the central wavelength \lambda_0
-dx = lambda_0/resolution; % Grid size [nm]
-syst.dx = dx; % Grid size as an input argument for mesti2s().
-
-% Build permittivity for the dielectric slab. 
-% Please refer to the function build_epsilon_dbr.
-syst.epsilon = build_epsilon_dbr(dx, n_bg, n1, n2, d1, d2, n_pair);
-[ny, nx] = size(syst.epsilon);
-
-% Plot refractive index profile of DBR
-n_extra_for_plot = 10; % Extra pixels on side for plotting
-x = [-n_extra_for_plot*dx (nx+n_extra_for_plot)*dx]; % For plotting the space position
-
+% Plotting
 clf
-imagesc(x, [], [syst.epsilon_L*ones(1,n_extra_for_plot), syst.epsilon, 1*syst.epsilon_R*ones(1,n_extra_for_plot)])
+imagesc(x, [], [syst.epsilon_L*ones(1,n_extra_for_plot), epsilon_dbr, 1*syst.epsilon_R*ones(1,n_extra_for_plot)])
 colormap(flipud(pink));
 xlabel('Position (nm)');
 yticks([])
-text(-50,1,'air','FontSize',15,'Rotation',90)
-text(320,1.1,'material 1','FontSize',15,'Rotation',90)
-text(390,1.1,'material 2','FontSize',15,'color','white','Rotation',90)
-text(730,1,'air','FontSize',15,'Rotation',90)
-title(['Distributed Bragg reflector'],'FontSize',15)
-set(gca, 'fontsize', 15, 'FontName','Arial')
+text(-50, 1, 'air', 'FontSize', 15, 'Rotation', 90)
+text(320, 1.1, 'material 1', 'FontSize', 15, 'Rotation', 90)
+text(390, 1.1, 'material 2', 'FontSize', 15, 'color', 'white', 'Rotation', 90)
+text(730, 1, 'air', 'FontSize', 15, 'Rotation', 90)
+title('Distributed Bragg reflector', 'FontSize', 15)
+set(gca, 'fontsize', 15, 'FontName', 'Arial')
 ```
 
 
@@ -102,116 +60,84 @@ set(gca, 'fontsize', 15, 'FontName','Arial')
 
 
 ```matlab
-R_list = zeros(1,n_lambda); % List of reflectance
-T_list = zeros(1,n_lambda); % List of transmittance
+% For TM polarization, we need to provide epsilon. 
+syst_TM = syst; clear syst
+syst.polarization = 'TM'; % use TM, which gives the Ez component
+syst_TM.epsilon = build_epsilon_dbr(syst_TM.dx, n_bg, n_1, n_2, d_1, d_2, N_pair);
 
-% Looping over different wavelength to calculate reflectance spectrum    
+% For TE polarization, we need to provide inv_epsilon instead.
+% For a 1D system at normal incidence, syst_TE.inv_epsilon{1} is not necessary because the y derivative vanishes.
+% Here, syst_TE.inv_epsilon{2} is simply 1./syst_TM.epsilon because the interfaces' normal vectors are in x direction. In 2D and 3D, subpixel smoothing would require more care, for example see Opt. Lett. 31, 2972 (2006).
+syst_TE = rmfield(syst_TM, 'epsilon');
+syst_TE.polarization = 'TE';
+syst_TE.inv_epsilon{2} = 1./syst_TM.epsilon;
+
+r_list_TM = zeros(1,n_lambda);
+r_list_TE = zeros(1,n_lambda);
+t_list_TM = zeros(1,n_lambda);
+t_list_TE = zeros(1,n_lambda);
+
+% Loop over wavelengths
 for ii = 1:n_lambda
-    syst.wavelength = lambda_list(ii); % Wavelength [nm]
+    syst_TM.wavelength = lambda_list(ii);
+    syst_TE.wavelength = lambda_list(ii);
 
-    % Call mesti2s() to calculate the scattering matrix.
-    smatrix = mesti2s(syst, in, out, opts);
+    % Compute the scattering matrix with input from the left, output to both sides
+    % This gives smatrix = [r; t]
+    smatrix_TM = mesti2s(syst_TM, {'left'}, {'left', 'right'}, opts);
+    smatrix_TE = mesti2s(syst_TE, {'left'}, {'left', 'right'}, opts);
 
-    % In 1D, in = {'left'} and out = {'left', 'right'},
-    % the smatrix = [r, t], where r is reflection coefficient from left to
-    % left and t is transmission coefficient from left to right.
-
-    r = smatrix(1,1); % Reflection coefficient
-    t = smatrix(2,1); % Transmission coefficient
-
-    R_list(ii) = abs(r).^2; % Reflectance
-    T_list(ii) = abs(t).^2; % Transmittance
+    r_list_TM(ii) = smatrix_TM(1,1);
+    r_list_TE(ii) = smatrix_TE(1,1);
+    t_list_TM(ii) = smatrix_TM(2,1);
+    t_list_TE(ii) = smatrix_TE(2,1);
 end
 
-% Plot and compare numerical and analytical reflectance results
+% Check that TM and TE give the same results.
+% Note that r_TM = -r_TE because the reflection coefficient is defined based on Ez in TM, Hz in TE.
+fprintf(['max(|r_TM + r_TE|) = %6.3g\n', ...
+         'max(|t_TM - t_TE|) = %6.3g\n'], ...
+        max(abs(r_list_TM + r_list_TE)), ...
+        max(abs(t_list_TM - t_list_TE)));
+```
+
+
+```
+max(|r_TM + r_TE|) = 5.4e-13
+max(|t_TM - t_TE|) = 5.92e-13
+```
+
+
+```matlab
+% Check energy conservation
+fprintf('max(|1 - T - R|) = %6.3g\n', max(abs(1-abs(r_list_TM).^2-abs(t_list_TM).^2)));
+```
+
+
+```
+max(|1 - T - R|) = 3.89e-15
+```
+
+
+```matlab
+% Analytic solution
+[r_list_analytical, t_list_analytical] = dbr_analytical(n_bg, n_1, n_2, d_1, d_2, N_pair, lambda_list);
+
+% Plotting
 clf
-plot(lambda_list,R_list,'o','linewidth',1)
+plot(lambda_list, abs(r_list_TM).^2, 'o', 'linewidth', 1)
 hold on
-plot(lambda_list,R_list_analytical,'linewidth',1)
-xlabel('Wavelength (nm)');
+plot(lambda_list, abs(r_list_TE).^2, 'x', 'linewidth', 1)
+plot(lambda_list, abs(r_list_analytical).^2, 'k-', 'linewidth', 1)
+xlabel('Wavelength \lambda (nm)')
 ylabel('Reflectance{\it R}');
-xlim([300,800])
-ylim([0,1])
-legend('Numeric', 'Analytic', 'Location','northeast')
-set(gca, 'fontsize', 15, 'FontName','Arial')
-set(gca,'linewidth',1)
+xlim([lambda_min, lambda_max])
+ylim([0, 1])
+legend('Numeric; TM', 'Numeric; TE', 'Analytic', 'Location', 'south')
+set(gca, 'fontsize', 15, 'FontName', 'Arial')
+set(gca, 'linewidth', 1)
 ```
 
 
 ![distributed_bragg_reflector_spectrum.png](distributed_bragg_reflector_spectrum.png)
-
-
-```matlab
-% Print out the numerical confirmation of energy conservation
-fprintf(['The energy conservation is checked numerically\n' ...
-'through the max(|1 - T - R|) = %6.3g over the spectrum.\n'], ...
-max(abs(1-R_list-T_list)));
-```
-```
-The energy conservation is checked numerically through the max(|1 - T - R|) =  4e-15 over the spectrum.
-```
-# Convergence with resolution
-
-
-Over different resolution, compute root-mean-square error (RMSE) of numerical result with respect to the analytical to show convergence.
-
-```matlab
-resolution_list = round(exp(linspace(log(1e1),log(1e3),8))); % Resolution list to be used
-n_resolution = numel(resolution_list); % Total number of resolutions to be used
-RMSE_R = zeros(1,n_resolution); % RMSE for R to be calculated
-RMSE_T = zeros(1,n_resolution); % RMSE for T to be calculated
-
-% Looping over different resolution
-for ii = 1:n_resolution
-    resolution = resolution_list(ii); % Resolution at the central wavelength \lambda_0
-    dx = lambda_0/resolution; % Grid size of system [nm]
-    syst.dx = dx; % Grid size as an input argument for mesti2s().
-    
-    % Build permittivity for the DBR. Please refer to the function build_epsilon_dbr.
-    syst.epsilon = build_epsilon_dbr(dx, n_bg, n1, n2, d1, d2, n_pair);
-    [ny, nx] = size(syst.epsilon);
-
-    last_pixel_bg_ratio = ceil((d2+d1)*n_pair/dx)-(d2+d1)*n_pair/dx; % Ratio of last pixel is background
-
-    R_list = zeros(1,n_lambda); % List of reflectance
-    T_list = zeros(1,n_lambda); % List of transmittance
-
-    % Looping over different wavelength    
-    for jj = 1:n_lambda
-        syst.wavelength = lambda_list(jj); % Wavelength [nm]
-    
-        % Call mesti2s() to calculate the scattering matrix.
-        smatrix = mesti2s(syst, in, out, opts);
-    
-        R_list(jj) = abs(smatrix(1,1)).^2; % Numerical reflectance
-        T_list(jj) = abs(smatrix(2,1)).^2; % Numerical transmittance
-    end
-    % Compute the RMSE for R and T.
-    RMSE_R(ii) = sqrt(mean((R_list-R_list_analytical).^2));
-    RMSE_T(ii) = sqrt(mean((T_list-T_list_analytical).^2));
-end
-
-% Plot RMSE with respect to resolution
-clf
-loglog(resolution_list,RMSE_R,'o','linewidth',1)
-hold on
-loglog(resolution_list,RMSE_T,'x','linewidth',1)
-% Reference asymptotic line
-X = 10.^(1:4);
-Y = 120*X.^(-2);
-loglog(X,Y,'-','linewidth',1, 'Color', '#77AC30')
-grid on
-xticks([1e1 1e2 1e3]);
-yticks([1e-4 1e-3 1e-2 1e-1 1e0 1e1]);
-xlabel('Resolution \lambda_0/\Delta{\itx}');
-ylabel('Difference with analytic')
-xlim([1e1, 1e3])
-ylim([1e-4, 2e0])
-legend('{\itR}_{numeric}','{\itT}_{numeric}','O(\Delta{\itx}^2)')
-set(gca, 'fontsize', 15, 'FontName','Arial')
-set(gca,'linewidth',1)
-```
-
-
-![distributed_bragg_reflector_RMSE.png](distributed_bragg_reflector_RMSE.png)
 
