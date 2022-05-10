@@ -1,6 +1,6 @@
-## Prerequisites for MUMPS installation on a Linux
+## Prerequisites for MUMPS installation on Linux
 
-We need the following tools before compiling MUMPS and its MATLAB interface on the Linux.
+We need the following tools before compiling MUMPS and its MATLAB interface on Linux.
 
 ### MATLAB 
 
