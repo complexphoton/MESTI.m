@@ -10,15 +10,15 @@ If you are not sure whether your Mac runs on an Intel processor or Apple silicon
 
 If your Mac runs on an Intel processor, you can skip this part :)
 
-If your Mac runs on Apple silicon---congratulations! It's faster (we've found an M1 Macbook Pro to be about twice as fast as an Intel Macbook Pro when running MESTI with the APF method), but there's extra work for you. None of the official MATLAB releases to date provide native support for Apple silicon; they run on Apple silicon Macs through Rosetta 2. That means when we compile the MATLAB interface for MUMPS, the <code>mex</code> compiler will try to compile for an Intel architecture, but Apple silicon is an ARM architecture, resulting in an error like [this](https://www.mathworks.com/matlabcentral/answers/1696860-use-gsl-compiled-on-apple-silicon-with-mex-function-on-matlab-2021b).
+If your Mac runs on Apple silicon&mdash;congratulations, it's faster (we've found an M1 Macbook Pro to be about twice as fast as an Intel Macbook Pro when running MESTI with the APF method due to the improved performance of vecLib), but there's extra work for you. None of the official MATLAB releases to date provide native support for Apple silicon; they run on Apple silicon Macs through Rosetta 2. That means when we compile the MATLAB interface for MUMPS, the <code>mex</code> compiler will try to compile for an Intel architecture, but Apple silicon is an ARM architecture, resulting in an error like [this](https://www.mathworks.com/matlabcentral/answers/1696860-use-gsl-compiled-on-apple-silicon-with-mex-function-on-matlab-2021b).
 
 MATLAB recently released a public beta with native Apple silicon support [here](https://www.mathworks.com/support/apple-silicon-r2022a-beta.html). Go to this page (you'll need to log in with a Mathworks account), fill out the required fields and Submit, and follow the instructions there. You'll need to install Azul Zulu OpenJDK 8 with the .dmg option, then download and install the MATLAB R2022a beta.
 
 ### Xcode
 
-We need to install Xcode because it is [required](https://www.mathworks.com/support/requirements/supported-compilers.html) by the MATLAB compiler <code>mex</code>. 
+We need to install [Xcode](https://developer.apple.com/xcode/) because it is [required](https://www.mathworks.com/support/requirements/supported-compilers.html) by the MATLAB compiler <code>mex</code>. 
 
-Supposedly, <code>mex</code> only needs the <code>clang</code> compiler of Xcode, which can be obtained through the Xcode Command Line Tools (CLT)---a much smaller installation compared to the full Xcode. However, if you only install CLT, you'll get errors like what's described in [this thread](https://www.mathworks.com/matlabcentral/answers/307362-mex-on-macosx-without-xcode) when using <code>mex</code>. If you don't have enough disk space for Xcode, you can skip this part and use the workarounds described in that thread when compiling the MATLAB interface for MUMPS.
+Supposedly, <code>mex</code> only needs the <code>clang</code> compiler of Xcode, which can be obtained through the Xcode Command Line Tools (CLT)&mdash;a much smaller installation compared to the full Xcode. However, if you only install CLT, you'll get errors like what's described in [this thread](https://www.mathworks.com/matlabcentral/answers/307362-mex-on-macosx-without-xcode) when using <code>mex</code>. If you don't have enough disk space for Xcode, you can skip this part and use the workarounds described in that thread when compiling the MATLAB interface for MUMPS.
 
 To install Xcode, open the App Store app, search for Xcode, and install it. This is a large download (12.7GB for Xcode 13), and the resulting Xcode.app takes up 33 GB of disk space.
 
@@ -59,15 +59,15 @@ After installing Homebrew, enter
 ```
 brew install gcc
 ```
-in terminal. This will install the GNU compiler collection, which includes the Fortran compiler <code>gfortran</code>.
+in terminal. This will install the [GNU compiler collection](https://gcc.gnu.org/), which includes the Fortran compiler <code>gfortran</code>.
 
 ### (Optional) OpenBLAS
 
-MUMPS uses BLAS extensively, so we need a BLAS library. One option is Apple's vecLib (which is already installed above with Xcode); another is [OpenBLAS](https://www.openblas.net/).
+MUMPS uses BLAS extensively, so we need a BLAS library. One option is Apple's [vecLib](https://developer.apple.com/documentation/accelerate/veclib) (which is already installed above with Xcode and CLT); another is [OpenBLAS](https://www.openblas.net/); another is [MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html).
 
-If you have an Apple silicon Mac, you should use vecLib, which we found to be much faster than OpenBLAS on an M1 Macbook Pro, consistent with [what others have found](https://github.com/danielchalef/openblas-benchmark-m1). (In fact, it is the vecLib improvement that makes an M1 Mac faster than an Intel Mac; when OpenBLAS is used, we found there to be no performance difference between an M1 Macbook Pro and an Intel Mackbook Pro when running MESTI with APF.) So, skip this part.
+If you have an Apple silicon Mac, you should use vecLib, which we found to be much faster than OpenBLAS on an M1 Macbook Pro, consistent with [what others have found](https://github.com/danielchalef/openblas-benchmark-m1). (In fact, it is the vecLib improvement that makes an M1 Mac faster than an Intel Mac; when OpenBLAS is used, we found there to be no performance difference between an M1 Macbook Pro and an Intel Mackbook Pro when running MESTI with APF.) There's no reason to use MKL since MKL is only optimized for Intel machines. So, skip this part.
 
-If you have an Intel Mac, you can consider installing OpenBLAS. It's optional. But we found on an Intel Macbook Pro that MESTI with the APF method is about 30% faster when MUMPS is compiled with OpenBLAS compared to with vecLib.
+If you have an Intel Mac, you can consider installing OpenBLAS or MKL. It's optional, since vecLib is still available with no extra work. But we did find on an Intel Macbook Pro that MESTI with the APF method is about 30% faster when MUMPS is compiled with OpenBLAS compared to with vecLib. Most likely MKL will be even faster than OpenBLAS on an Intel Mac, but we did not test it; you can follow the instructions [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) if you want to use MKL instead (but note the macOS `Makefile.inc` and `make.inc` files we provide only consider vecLib and OpenBLAS.)
 
 To install OpenBLAS, enter
 ```
