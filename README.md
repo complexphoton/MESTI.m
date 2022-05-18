@@ -1,16 +1,16 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetic simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **augmented partial factorization (APF)** method described in [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to perform a single simulation.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for electromagnetic simulations in frequency domain. It obtains full-wave solutions of Maxwell's equations using finite-difference discretization. It implements the **augmented partial factorization (APF)** method described in [arXiv:2205.07887](https://arxiv.org/abs/2205.07887), which can jointly perform thousands of simulations with different input source profiles, using less computing resources than what a typical direct method uses to perform a single simulation.
 
 MESTI.m uses MATLAB and considers 2D systems, with either transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) or transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*). A 3D vectorial version of MESTI written in Julia is under development and will be released in the future.
 
-MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*), arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to APF, MESTI also implements conventional direct methods.
+MESTI is a general-purpose solver written to provide maximal flexibility. The user can specify arbitrary permittivity profiles *ε*(*x*,*y*) including absorption and linear gain, arbitrary lists of input sources (user-specified or automatically built), and arbitrary lists of output projections (or no projection, in which case the complete field profiles are returned). Being in frequency domain, it can naturally handle any material dispersion *ε*(ω). MESTI implements all common boundary conditions, [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) with both imaginary and real coordinate stretching, as well as exact outgoing boundaries in two-sided or one-sided geometries. In addition to APF, MESTI also implements conventional direct methods.
 
 ## Installation
 
 No installation is required for MESTI itself; just download it and add the <code>MESTI.m/src</code> folder to the search path using the <code>addpath</code> command in MATLAB. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the APF method, the user needs to install the MUMPS package and its MATLAB interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the serial version of [MUMPS](http://mumps.enseeiht.fr/) and its MATLAB interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Summary 
 
@@ -63,6 +63,6 @@ Here are some images from the examples above:
 
 For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
 
-- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively multi-channel optics using augmented partial factorization,"  [arXiv:2203.xxxxx](https://arxiv.org/abs/2203.xxxxx) (2022).
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively multi-channel optics using augmented partial factorization,"  [arXiv:2205.07887](https://arxiv.org/abs/2205.07887) (2022).
 
 Please cite this paper when you use MESTI.
