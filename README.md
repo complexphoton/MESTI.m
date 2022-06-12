@@ -1,6 +1,6 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization.
+**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
 MESTI implements the **augmented partial factorization (APF)** method described in [arXiv:2205.07887](https://arxiv.org/abs/2205.07887). APF bypasses the conventional solution of Maxwell's equations and directly computes a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
@@ -24,15 +24,15 @@ However, to use the APF method, the user needs to install the serial version of 
 
 ## Summary 
 
-The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. The user can use <code>syst</code> to specify arbitrary permittivity profiles, any combination of boundary conditions, PML on any or all sides, the wavelength, and discretization grid size. Any list of input source profiles can be specified with <code>B</code>, and any list of output projection profiles can be specified with <code>C</code>; matrix <code>D</code> subtracts the baseline contribution for scattering matrix computations.
+The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with <code>B</code>, and any list of output projection profiles can be specified with <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [arXiv:2205.07887](https://arxiv.org/abs/2205.07887) for details.
 
-The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output channel indices or wavefronts through <code>in</code> and <code>out</code>; <code>mesti2s()</code> builds <code>B</code> and <code>C</code>, and then calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* based on the Green's function in free space, and (2) the recursive Green's function method from the [RGF](https://github.com/chiaweihsu/RGF) repository; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
+The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output channel indices or wavefronts through <code>in</code> and <code>out</code>; <code>mesti2s()</code> builds <code>B</code>, <code>C</code>, and <code>D</code>, and calls <code>mesti()</code> for the computation. <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* based on the Green's function in free space, and (2) the [recursive Green's function method](https://github.com/chiaweihsu/RGF) when TM polarization is used; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
 
 To compute the complete field profiles, simply omit the argument <code>C</code> or  <code>out</code>, or set it to <code>[]</code>.
 
 The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.m) can be used to build the input and/or output matrices when using <code>mesti()</code>, or to determine which channels are of interest when using <code>mesti2s()</code>.
 
-Additional functions for building the input/output matrices and for subpixel smoothing will be added in the future.
+Additional functions that build the input/output matrices for different applications and the anisotropic *ε*(*x*,*y*) from subpixel smoothing will be added in the future.
 
 ## Documentation
 
