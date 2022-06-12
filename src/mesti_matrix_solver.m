@@ -257,6 +257,8 @@ elseif use_transpose_B
         C = transpose(B);
         use_C = true;
     end
+else
+    use_C = true;
 end
 % At this point, there are two possibilities for which use_C=false:
 % (1) C = [], return_X = true, opts.method = 'factorize_and_solve'
@@ -541,7 +543,7 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
             id.ICNTL(20) = 1; % tell MUMPS that the RHS is sparse
             id = zmumps(id,A);  % perform the solve
             if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
-            S = id.SOL; % X = id.XOL
+            S = id.SOL; % X = id.SOL
             % Destroy the MUMPS instance and deallocate memory
             id.JOB = -2;  % what to do: terminate the instance
             [~] = zmumps(id);
@@ -576,7 +578,7 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
                 id.ICNTL(20) = 1; % tell MUMPS that the RHS is sparse
                 id = zmumps(id,A);  % perform the solve
                 if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
-                S(:,in_list) = C*id.SOL; % X = id.XOL
+                S(:,in_list) = C*id.SOL; % X = id.SOL
                 if opts.iterative_refinement  % we must have opts.nrhs = 1 in this case
                     info.itr_ref_nsteps(k) = id.INFOG(15); % number of steps of iterative refinement
                     info.itr_ref_omega_1(k) = id.RINFOG(7); % scaled residual 1; see MUMPS user guide section 3.3.2
