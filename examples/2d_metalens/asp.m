@@ -57,7 +57,7 @@ elseif ny_tot < ny
     error('ny_tot, when given, must be no smaller than size(f0,1) = %d.', ny);
 elseif ny_tot < N_prop
     error('ny_tot, when given, must be no smaller than length(kx_prop) = %d.', N_prop);
-else
+end
 
 % pad zeros symmetrically by default
 if nargin < 5
