@@ -61,10 +61,10 @@ ridge_width_design_list = ridge_width_design_list/1e3; % convert from nm to micr
 ridge_height = L; % Ridge height is the thickness of the metalens
 n_phases = numel(ridge_width_design_list);
 
-% epsilon_libaray(:,:,ii) stores the permittivity profile of the ii-th meta-atom in that list
-epsilon_libaray = zeros(ny_unitcell, nx_unitcell, n_phases);
+% epsilon_library(:,:,ii) stores the permittivity profile of the ii-th meta-atom in that list
+epsilon_library = zeros(ny_unitcell, nx_unitcell, n_phases);
 for ii = 1:n_phases
-    epsilon_libaray(:,:,ii)= build_epsilon_meta_atom(dx, n_air, n_TiO2, ...
+    epsilon_library(:,:,ii)= build_epsilon_meta_atom(dx, n_air, n_TiO2, ...
         ridge_width_design_list(ii), ridge_height, Lambda);
 end
 
@@ -79,7 +79,7 @@ ind_meta_atom = interp1( ...
 epsilon = zeros(ny_metalens, nx_metalens);
 for ii = 1:n_meta_atom
     ind_y = (ii-1)*ny_unitcell+(1:ny_unitcell);
-    epsilon(ind_y,:) = epsilon_libaray(:,:,ind_meta_atom(ii));
+    epsilon(ind_y,:) = epsilon_library(:,:,ind_meta_atom(ii));
 end
 
 % W_out > W, so we will pad extra pixels
@@ -337,87 +337,50 @@ end
 % Here, we map out the transmission efficiency and Strehl ratio for all
 % incident angles.
 
-x_focal_plane = focal_length;
+% We define the Strehl ratio by normalizing against the focal intensity of an ideal lens at normal incidence.
+% Here, we build Ez(x=L,y) for an ideal lens at normal incidence.
+% The overall prefactor does not matter because we will normalize by the transmission.
+y_metalens = ((0.5:ny_metalens) - (ny_metalens/2))*dx;
+ideal_phase = -(2*pi/wavelength)*(sqrt(focal_length^2 + y_metalens.^2)).';
+Ez_ideal = [zeros(ny_R_extra_half,1); exp(1i*ideal_phase); zeros(ny_R_extra_half,1)];
 
-% Calculate the transmission efficiency and Ez field in the focal passing through ideal lens
-% Ideal phase profile in normal incidence angle
+% Project Ez_ideal onto the propagating channels on the right
+temp  = circshift(exp(-1i*2*pi/ny_R*(0:ny_R-1).').*fft(Ez_ideal), floor(channels_R.N_prop/2))/sqrt(ny_R);
+t_ideal = (channels_R.sqrt_mu).'.*temp(1:channels_R.N_prop);
 
-y_L = ((0.5:ny_L) - (ny_L/2))*dx; % Position index for focal point along y direction
-y_focal_normal = 0; % Focal point position in y direction in ideal phase profile in normal incidence angle 
-
-ideal_phase_list = -(2*pi/wavelength)*(sqrt((focal_length)^2 + (y_L - 0).^2)).'; % The transmitted phase for ideal lens at normal incidence
-
-% Note that here we just want to use the ideal phase profile to normalize 
-% our Strehl ratio. We do not normalize the field and transmission
-% efficiency, but the normalization prefactor would be cancel out when we calculate the 
-% Strehl ratio.
-
-% Construct Ez(x=L,y) for normal incidence wave passing the ideal lens.
-ideal_field = [zeros(ny_R_extra_half,1); exp(1i*ideal_phase_list); zeros(ny_R_extra_half,1)];% The transmitted field for ideal lens
-
-% Project the ideal field to propagation channel basis on the right.
-temp  = circshift(exp(-1i*2*pi/ny_R*(0:ny_R-1).').*fft(ideal_field,ny_R), floor(channels_R.N_prop/2))/sqrt(ny_R);
-t_ideal = (channels_R.sqrt_mu).'.*temp(1:channels_R.N_prop); % Transmission matrix (without normalization) of ideal lens in normal incidence
-T_ideal = sum(abs(t_ideal).^2); % Transmission efficiency (without normalization) for ideal lens in normal incidence
-
-% Reconstruct Ez(x=L,y) from transmission matrix.
+% Use ASP to propagate Ez_ideal to the focal plane
 Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t_ideal,ny_R), -1);
-% Sampling fields from high resolution to coarse resolution 
 Ez0_ASP = Ez0(ind_ASP,:); 
-% Use angular spectrum propagation to let the field propagate to the focal plane
-Ez_focal_ideal = asp(Ez0_ASP, x_focal_plane, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
+Ez_focal_ideal = asp(Ez0_ASP, focal_length, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
 
-% Calculate the transmission efficiency and field profile in the focal passing through hyperbolic metalens
+% ideal focal intensity normalized by transmission
+I0_ideal = max(abs(Ez_focal_ideal))^2 / sum(abs(t_ideal).^2);
 
-% Strehl ratio list for the hyperbolic lens to be calculated 
-strehl_ratio = zeros(1, M_L); 
-% Transmission efficiency list for the hyperbolic lens to be calculated
-transmission_efficiency = zeros(1, M_L); 
-
-% Index used to find physical focus positions within [-W/2 W/2]
-ind_y_minus_D = interp1(y_ASP,1:length(y_ASP),-W/2,'nearest');
-ind_y_plus_D = interp1(y_ASP,1:length(y_ASP),W/2,'nearest');  
-ind_y_center = interp1(y_ASP,1:length(y_ASP),0,'nearest');
-
-% Index in transmission matrix where is normal incidence
-ind_normal = find(theta_in_list == 0); 
-
-if numel(find(theta_in_list == 0)) == 0 
-    error(['This transmission matrix does not include normal incidence,' ...
-        'and the Strehl ratio calculation should be considered carefully.']);
-end 
-
-% Divide total number of angles into batch to calculate.
+% Loop over the incident angles, in batches
+SR_list = zeros(1, M_L); % Strehl ratio
+T_list  = zeros(1, M_L); % transmission efficiency
 batch_size = 100;
-batch = 1:batch_size:M_L;
-if batch(end) ~= M_L
-    batch(end+1) = M_L;
-end
+a_end = 0;
+for ii = 1:ceil(M_L/batch_size)
+    a_start = a_end + 1;
+    a_end = min([a_start + batch_size - 1, M_L]);
+    a = a_start:a_end;
 
-for ii = 1:(size(batch,2)-1)
-    % Row indices a in transmission matrix to be calculated in this batch. 
-    if ii == 1
-        a = batch(ii):(batch(ii+1));
-    else
-        a = batch(ii)+1:(batch(ii+1));
-    end
-
-    % Get the transmission efficiency for hyperbolic metalens    
-    transmission_efficiency(a) = sum(abs(t(:,a)).^2); 
+    % transmission efficiency
+    T_list(a) = sum(abs(t(:,a)).^2, 1); 
  
-    % Construct Ez(x=L,y) from transmission matrix.
+    % Use ASP to propagate Ez to the focal plane, same as the intensity profile
     Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a), ny_R), -1);
-    % Sampling fields from high resolution to coarse resolution
     Ez0_ASP = Ez0(ind_ASP,:); 
-    % Use angular spectrum propagation to let the field propagate to the focal plane
-    Ez_focal = asp(Ez0_ASP, x_focal_plane, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
-    
-    % In some large angles, there some artifact peaks on different sides 
-    % of the lens, so we take the value of Strehl ratio from right side of 
-    % the lens.
-    strehl_ratio(a) = ...
-    (a>round(M_L/2)).*max(abs(Ez_focal(ind_y_center:ind_y_plus_D,:))).^2/max(abs(Ez_focal_ideal(:,1)))^2 .* (T_ideal./transmission_efficiency(a)) ... 
-    + (a<=round(M_L/2)).*max(abs(Ez_focal(ind_y_minus_D:ind_y_center,:))).^2/max(abs(Ez_focal_ideal(:,1)))^2 .* (T_ideal./transmission_efficiency(a)); 
+    Ez_focal = asp(Ez0_ASP, focal_length, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
+
+    % At large angles, the focal intensity may become even lower than those on the wrong side, so we restrict to the correct side.
+    Ez_focal_half = zeros(ny_ASP_half, numel(a));
+    Ez_focal_half(:, a<round(M_L/2)) = Ez_focal(1:ny_ASP_half,a<round(M_L/2));
+    Ez_focal_half(:,a>=round(M_L/2)) = Ez_focal((ny_ASP_half+1):ny_ASP,a>=round(M_L/2));
+
+    % Strehl ratio
+    SR_list(a) = (max(abs(Ez_focal_half),[],1).^2./T_list(a)) / I0_ideal;
 end
 
 %% Animate the results
@@ -457,9 +420,9 @@ for ii = 1:n_angles_profiles
     % Plot transmission efficiency and Strehl ratio
     subplot(1,2,2);
     yyaxis left
-    semilogy(theta_in_list(1:M_L), strehl_ratio, 'linewidth', 1.5)
+    semilogy(theta_in_list(1:M_L), SR_list, 'linewidth', 1.5)
     hold on
-    plot(theta_in, strehl_ratio(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
+    plot(theta_in, SR_list(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
     xlabel('Incident angle');
     ylabel('Strehl ratio')
     xlim([-90 90])
@@ -467,9 +430,9 @@ for ii = 1:n_angles_profiles
     xticks(-90:45:90)
     xticklabels({['-90' deg], ['-45' deg], ['0' deg], ['45' deg], ['90' deg]})
     yyaxis right
-    plot(theta_in_list(1:M_L), transmission_efficiency, 'linewidth', 1.5)
+    plot(theta_in_list(1:M_L), T_list, 'linewidth', 1.5)
     hold on
-    plot(theta_in, transmission_efficiency(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
+    plot(theta_in, T_list(a_ii), 'o', 'MarkerSize', 12, 'LineWidth', 2.5)
     ylabel('Transmission efficiency')
     ylim([0 1])
     yticks(0:0.2:1)
