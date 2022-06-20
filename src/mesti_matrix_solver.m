@@ -104,6 +104,12 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
 %         relevant information will be returned in info.itr_ref_nsteps,
 %         info.itr_ref_omega_1, and info.itr_ref_omega_2.
+%      opts.analysis_only (logical scalar; optional, defaults to false):
+%         Whether to obtain the ordering sequence only by returning at the
+%         analysis step; only possible when opts.solver = 'MUMPS' and
+%         opts.store_ordering = true. If opts.analysis_only = true, the
+%         function will return at the analysis step, with the
+%         ordering stored in info.ordering and S = [].
 %
 %   === Output Arguments ===
 %   S (full numeric matrix):
@@ -331,6 +337,14 @@ if strcmpi(opts.solver, 'MUMPS')
             error('opts.nthreads_OMP must be a positive integer scalar, if given.');
         end
     end
+
+    % Whether to skip factorization and the following steps
+    if ~isfield(opts, 'analysis_only') || isempty(opts.analysis_only)
+        opts.analysis_only = false;
+    elseif opts.analysis_only && ~opts.store_ordering
+        error('opts.store_ordering must be true for storing the ordering sequence.');
+    end
+
 else
     if isfield(opts, 'is_symmetric_A') && ~isempty(opts.is_symmetric_A)
         opts = rmfield(opts, 'is_symmetric_A');
@@ -353,6 +367,10 @@ else
     if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
         warning('opts.nthreads_OMP is only used when opts.solver = ''MUMPS''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
+    end
+
+    if isfield(opts, 'analysis_only') && isequal(opts.store_ordering, true)
+        error('opts.analysis_only = true can only be used when opts.solver = ''MUMPS''.');
     end
 end
 
@@ -441,27 +459,33 @@ elseif strcmpi(opts.method, 'APF')
         % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
         % This is typically the most memory-consuming part of the whole simulation
         [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
-
+        
         info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
+        
         t1 = clock;
+        if opts.analysis_only
+            S = [];
+        else
+            % Retrieve C*inv(A)*B = -H = -K/A, stored as a dense matrix
+            S = -(id.SCHUR);
 
-        % Retrieve C*inv(A)*B = -H = -K/A, stored as a dense matrix
-        S = -(id.SCHUR);
-
-        % Remove the padded zeros
-        if ~use_transpose_B
-            if M_tot > M_in
-                S = S(:, 1:M_in);
-            elseif M_tot > M_out
-                S = S(1:M_out, :);
+            % Remove the padded zeros
+            if ~use_transpose_B
+                if M_tot > M_in
+                    S = S(:, 1:M_in);
+                elseif M_tot > M_out
+                    S = S(1:M_out, :);
+                end
             end
         end
-
         % Destroy the MUMPS instance and deallocate memory
         id.JOB = -2;  % what to do: terminate the instance
         [~] = zmumps(id);
 
         t2 = clock;
+
+        % When opts.analysis_only = true, the factorization time could be
+        % non-zero due to the instance termination time.
         info.timing.factorize = info.timing.factorize + etime(t2,t1);
         info.timing.solve = 0;
     else % Compute C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
@@ -532,80 +556,87 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
         end
     end
     info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
-
-    % Solve stage (forward and backward substitutions)
-    if opts.verbal; fprintf('Solving     ... '); end
-    t1 = clock;
-    if return_X % Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
-        if strcmpi(opts.solver, 'MUMPS')
-            id.JOB = 3;  % what to do: solve
-            id.RHS = B;  % no need to loop since we keep everything
-            id.ICNTL(20) = 1; % tell MUMPS that the RHS is sparse
-            id = zmumps(id,A);  % perform the solve
-            if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
-            S = id.SOL; % X = id.SOL
-            % Destroy the MUMPS instance and deallocate memory
-            id.JOB = -2;  % what to do: terminate the instance
-            [~] = zmumps(id);
-        else
-            % Forward and backward substitutions + undo scaling and ordering
-            % X = Q*U\(L\(P*(R\B)))
-            % Do it in two steps so we can clear L to reduce peak memory usage
-            inv_L_B = L\(P*(R\B)); % inv(L)*B
-            if opts.clear_memory
-                clear L P R B
-                if ~isempty(B_name)
-                    evalin('caller', ['clear ', B_name]); % do 'clear B' in caller's workspace
-                end
-            end
-            S = Q*full(U\inv_L_B);
-        end
-    else % Compute S=C*inv(A)*B
-        M_in = size(B, 2);
-        M_out = size(C, 1);
-        S = zeros(M_out, M_in);
-        % Storing the whole X=inv(A)*B wastes memory, so we solve for opts.nrhs columns of X each time and only keep its projection onto C.
-        if strcmpi(opts.solver, 'MUMPS')
-            if opts.iterative_refinement
-                info.itr_ref_nsteps = zeros(M_in,1);
-                info.itr_ref_omega_1 = zeros(M_in,1);
-                info.itr_ref_omega_2 = zeros(M_in,1);
-            end
-            for k = 1:opts.nrhs:M_in
-                in_list = k:min([k+opts.nrhs-1, M_in]);
+    if opts.analysis_only
+        % Skip the solve stage
+        S = [];
+        % Destroy the MUMPS instance and deallocate memory
+        id.JOB = -2;  % what to do: terminate the instance
+        [~] = zmumps(id);
+    else
+        % Solve stage (forward and backward substitutions)
+        if opts.verbal; fprintf('Solving     ... '); end
+        t1 = clock;
+        if return_X % Compute X=inv(A)*B; we call X as S here since S is what mesti_matrix_solver() returns
+            if strcmpi(opts.solver, 'MUMPS')
                 id.JOB = 3;  % what to do: solve
-                id.RHS = B(:,in_list);
+                id.RHS = B;  % no need to loop since we keep everything
                 id.ICNTL(20) = 1; % tell MUMPS that the RHS is sparse
                 id = zmumps(id,A);  % perform the solve
                 if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
-                S(:,in_list) = C*id.SOL; % X = id.SOL
-                if opts.iterative_refinement  % we must have opts.nrhs = 1 in this case
-                    info.itr_ref_nsteps(k) = id.INFOG(15); % number of steps of iterative refinement
-                    info.itr_ref_omega_1(k) = id.RINFOG(7); % scaled residual 1; see MUMPS user guide section 3.3.2
-                    info.itr_ref_omega_2(k) = id.RINFOG(8); % scaled residual 2; see MUMPS user guide section 3.3.2
-                end
-            end
-            % Destroy the MUMPS instance and deallocate memory
-            id.JOB = -2;  % what to do: terminate the instance
-            [~] = zmumps(id);
-        else
-            CQ = C*Q;
-            if opts.clear_memory
-                clear C
-                if ~isempty(C_name)
-                    evalin('caller', ['clear ', C_name]); % do 'clear C' in caller's workspace
-                end
-            end
-            for k = 1:opts.nrhs:M_in
-                in_list = k:min([k+opts.nrhs-1, M_in]);
+                S = id.SOL; % X = id.SOL
+                % Destroy the MUMPS instance and deallocate memory
+                id.JOB = -2;  % what to do: terminate the instance
+                [~] = zmumps(id);
+            else
                 % Forward and backward substitutions + undo scaling and ordering
-                S(:,in_list) = CQ*full(U\(L\(P*(R\B(:,in_list)))));
+                % X = Q*U\(L\(P*(R\B)))
+                % Do it in two steps so we can clear L to reduce peak memory usage
+                inv_L_B = L\(P*(R\B)); % inv(L)*B
+                if opts.clear_memory
+                    clear L P R B
+                    if ~isempty(B_name)
+                        evalin('caller', ['clear ', B_name]); % do 'clear B' in caller's workspace
+                    end
+                end
+                S = Q*full(U\inv_L_B);
+            end
+        else % Compute S=C*inv(A)*B
+            M_in = size(B, 2);
+            M_out = size(C, 1);
+            S = zeros(M_out, M_in);
+            % Storing the whole X=inv(A)*B wastes memory, so we solve for opts.nrhs columns of X each time and only keep its projection onto C.
+            if strcmpi(opts.solver, 'MUMPS')
+                if opts.iterative_refinement
+                    info.itr_ref_nsteps = zeros(M_in,1);
+                    info.itr_ref_omega_1 = zeros(M_in,1);
+                    info.itr_ref_omega_2 = zeros(M_in,1);
+                end
+                for k = 1:opts.nrhs:M_in
+                    in_list = k:min([k+opts.nrhs-1, M_in]);
+                    id.JOB = 3;  % what to do: solve
+                    id.RHS = B(:,in_list);
+                    id.ICNTL(20) = 1; % tell MUMPS that the RHS is sparse
+                    id = zmumps(id,A);  % perform the solve
+                    if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
+                    S(:,in_list) = C*id.SOL; % X = id.SOL
+                    if opts.iterative_refinement  % we must have opts.nrhs = 1 in this case
+                        info.itr_ref_nsteps(k) = id.INFOG(15); % number of steps of iterative refinement
+                        info.itr_ref_omega_1(k) = id.RINFOG(7); % scaled residual 1; see MUMPS user guide section 3.3.2
+                        info.itr_ref_omega_2(k) = id.RINFOG(8); % scaled residual 2; see MUMPS user guide section 3.3.2
+                    end
+                end
+                % Destroy the MUMPS instance and deallocate memory
+                id.JOB = -2;  % what to do: terminate the instance
+                [~] = zmumps(id);
+            else
+                CQ = C*Q;
+                if opts.clear_memory
+                    clear C
+                    if ~isempty(C_name)
+                        evalin('caller', ['clear ', C_name]); % do 'clear C' in caller's workspace
+                    end
+                end
+                for k = 1:opts.nrhs:M_in
+                    in_list = k:min([k+opts.nrhs-1, M_in]);
+                    % Forward and backward substitutions + undo scaling and ordering
+                    S(:,in_list) = CQ*full(U\(L\(P*(R\B(:,in_list)))));
+                end
             end
         end
+        if issparse(S); S = full(S); end
+        t2 = clock; info.timing.solve = etime(t2,t1);
+        if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
     end
-    if issparse(S); S = full(S); end
-    t2 = clock; info.timing.solve = etime(t2,t1);
-    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
 else
     error('opts.method = ''%s'' is not a supported option.', opts.method);
 end
@@ -752,6 +783,12 @@ end
 
 t2 = clock; info.timing.analyze = etime(t2,t1);
 if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing ... ', info.timing.analyze); end
+
+if opts.analysis_only 
+    fprintf('Factorization stage skipped.\n');
+    info.timing.factorize = 0; 
+    return
+end
 
 %% Factorization stage
 t1 = clock;

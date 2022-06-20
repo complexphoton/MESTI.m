@@ -433,6 +433,12 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
 %         relevant information will be returned in info.itr_ref_nsteps,
 %         info.itr_ref_omega_1, and info.itr_ref_omega_2.
+%      opts.analysis_only (logical scalar; optional, defaults to false):
+%         Whether to obtain the ordering sequence only by returning at the
+%         analysis step; only possible when opts.solver = 'MUMPS' and
+%         opts.store_ordering = true. If opts.analysis_only = true, the
+%         function will return at the analysis step, with the
+%         ordering stored in info.ordering and S = [].
 %
 %   === Output Arguments ===
 %   S (full numeric matrix or 3d array):
@@ -779,6 +785,7 @@ end
 %    opts.ordering
 %    opts.nthreads_OMP
 %    opts.iterative_refinement
+%    opts.analysis_only
 
 if opts.verbal
     % print basic system info if the calling function is not mesti2s()
@@ -1144,24 +1151,24 @@ if ~isempty(xPML); info.xPML = xPML; end
 if ~isempty(yPML); info.yPML = yPML; end
 
 t1 = clock;
+if ~isempty(S)
+    % Include the prefactor
+    S = (opts.prefactor)*S;
 
-% Include the prefactor
-S = (opts.prefactor)*S;
+    if opts.return_field_profile
+        % Reshape each of the sz_B_2 field profiles from a vector to a matrix
+        S = reshape(S, [ny, nx, sz_B_2]);
+    end
 
-if opts.return_field_profile
-    % Reshape each of the sz_B_2 field profiles from a vector to a matrix
-    S = reshape(S, [ny, nx, sz_B_2]);
+    % subtract D
+    if ~isempty(D)
+        if opts.return_field_profile; error('Input argument ''D'' must be empty for field-profile computations where C = [].'); end
+        [sz_D_1, sz_D_2] = size(D);
+        if sz_D_1~=sz_C_1; error('size(D,1) must equal size(C,1); size(D,1) = %d, size(C,1) = %d.', sz_D_1, sz_C_1); end
+        if sz_D_2~=sz_B_2; error('size(D,2) must equal size(B,2); size(D,2) = %d, size(B,2) = %d.', sz_D_2, sz_B_2); end
+        S = S - D;
+    end
 end
-
-% subtract D
-if ~isempty(D)
-    if opts.return_field_profile; error('Input argument ''D'' must be empty for field-profile computations where C = [].'); end
-    [sz_D_1, sz_D_2] = size(D);
-    if sz_D_1~=sz_C_1; error('size(D,1) must equal size(C,1); size(D,1) = %d, size(C,1) = %d.', sz_D_1, sz_C_1); end
-    if sz_D_2~=sz_B_2; error('size(D,2) must equal size(B,2); size(D,2) = %d, size(B,2) = %d.', sz_D_2, sz_B_2); end
-    S = S - D;
-end
-
 t2 = clock; info.timing.solve = info.timing.solve + etime(t2,t1); % Add the little bit of post-processing time
 
 info.timing.total = etime(t2,t0);
