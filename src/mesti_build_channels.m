@@ -18,15 +18,16 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %
 %   === Input Arguments ===
 %   ny (positive integer scalar; required):
-%      Number of grid points in the transverse (y) direction.
+%      Number of sites in the transverse (y) direction; ny = ny_Ez for TM
+%      polarization, ny = ny_Hz for TE polarization.
 %   polarization (character vector; required):
 %      Polarization. Possible choices are:
-%         'TM' - Ez component of transverse-magnetic waves, (Hx, Hy, Ez)
-%         'TE' - Hz component of transverse-electric waves, (Ex, Ey, Hz)
+%         'TM' - Ez component of transverse-magnetic field (Hx, Hy, Ez)
+%         'TE' - Hz component of transverse-electric field (Ex, Ey, Hz)
 %   yBC (character vector or scalar number; required):
 %      Boundary condition (BC) at the two ends in y direction, effectively
 %      specifying Ez(m,n) or Hz(m,n) at m=0 and m=ny+1 which are one pixel
-%      beyond our computation domain. For character inputs, the options are:
+%      beyond the computation domain. For character inputs, the options are:
 %         'periodic'         - f(m+ny,n) = f(m,n)
 %         'Dirichlet'        - f(0,n) = f(ny+1,n) = 0
 %         'Neumann'          - f(0,n) = f(1,n); f(ny+1,n) = f(ny,n)
@@ -40,9 +41,10 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %      which Hz = 0 at the boundary, and PEC is equivalent to Neumann for which
 %      dHz/dx or dHz/dy = 0 at the boundary.
 %         When yBC is a numeric scalar, the Bloch periodic boundary condition is
-%      used with f(m+ny,n) = f(m,n)*exp(1i*yBC); in other words, yBC =
-%      ky_B*ny*dx = ky_B*p where ky_B is the Bloch wave number and p = ny*dx is
-%      the periodicity in y.
+%      used with
+%                              f(m+ny,n) = f(m,n)*exp(1i*yBC)
+%      In other words, yBC = ky_B*p where ky_B is the Bloch wave number, and p =
+%      ny*dx is the periodicity in y.
 %   k0dx (numeric scalar, real or complex; required):
 %      Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx.
 %   epsilon_L (numeric scalar, real or complex; required):
@@ -123,8 +125,8 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %         channels is the same as the set of input channels and they have the
 %         same order, the reflection matrix r is not symmetric because the
 %         output projection involves a complex conjugation. But
-%         r(channels.L.ind_prop_conj,:) is symmetric
-%            For Bloch periodic boundary with non-zero ky_B, complex conjugation
+%         r(channels.L.ind_prop_conj,:) is symmetric.
+%            For Bloch periodic boundary with nonzero ky_B, complex conjugation
 %         maps ky to -ky where ky_B is flipped, so such permutation does not
 %         exist, and ind_prop_conj is not given.
 %      channels.R (scalar structure; optional):
@@ -138,32 +140,30 @@ if nargin == 1
     syst = ny;
     if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
 
-    % TM polarization uses syst.epsilon
-    % TE polarization uses syst.inv_epsilon
-    if isfield(syst, 'epsilon')
-        if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
-            error('syst.epsilon must be a numeric matrix, if given.');
-        elseif isfield(syst, 'inv_epsilon') && ~isempty(syst.inv_epsilon)
-            error('syst.epsilon and syst.inv_epsilon cannot both be given.');
-        elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TM')
-            error('syst.polarization, if given, must be ''TM'' when syst.epsilon is given.');
+    % Assign polarization
+    % We don't check syst.epsilon and syst.inv_epsilon since those are checked in mesti() or mesti2s().
+    if isfield(syst, 'polarization')
+        polarization = syst.polarization;
+        if strcmpi(polarization, 'TM')
+            ny = size(syst.epsilon, 1); % ny_Ez
+        elseif strcmpi(polarization, 'TE')
+            ny = size(syst.inv_epsilon{2}, 1); % ny_Hz
+        else
+            error('syst.polarization must be either ''TM'' or ''TE''.');
         end
-        polarization = 'TM';
-        ny = size(syst.epsilon, 1);
-    elseif isfield(syst, 'inv_epsilon')
-        if numel(syst.inv_epsilon) ~= 2
-            error('syst.inv_epsilon must be a two-element cell array, if given.');
-        elseif ~(ismatrix(syst.inv_epsilon{1}) && isnumeric(syst.inv_epsilon{1}))
-            error('syst.inv_epsilon{1} must be a numeric matrix.');
-        elseif ~(ismatrix(syst.inv_epsilon{2}) && isnumeric(syst.inv_epsilon{2}))
-            error('syst.inv_epsilon{2} must be a numeric matrix.');
-        elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TE')
-            error('syst.polarization, if given, must be ''TE'' when syst.inv_epsilon is given.');
-        end
-        polarization = 'TE';
-        ny = size(syst.inv_epsilon{2}, 1); % inv_epsilon_yy
     else
-        error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+        % When syst.polarization is not given, we automatically pick based on whether syst.epsilon or syst.inv_epsilon is given.
+        if isfield(syst, 'epsilon') && ~isfield(syst, 'inv_epsilon')
+            polarization = 'TM';
+            ny = size(syst.epsilon, 1); % ny_Ez
+        elseif ~isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
+            polarization = 'TE';
+            ny = size(syst.inv_epsilon{2}, 1); % ny_Hz
+        elseif isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
+            error('syst.polarization must be given when syst.epsilon and syst.inv_epsilon both exist.');
+        else % neither syst.epsilon nor syst.inv_epsilon exists
+            error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+        end
     end
 
     if ~isfield(syst, 'epsilon_L'); error('Input argument ''syst'' must have field ''epsilon_L''.'); end
@@ -188,7 +188,7 @@ if nargin == 1
             error('Input argument ''syst'' must have non-empty field ''yBC'' when syst.ky_B is not given.');
         elseif ~((ischar(syst.yBC) && isrow(syst.yBC)) || (isstring(syst.yBC) && isscalar(syst.yBC)))
             error('syst.yBC must be a character vector or string, if given.');
-        elseif ~ismember(lower(syst.yBC), {'bloch', 'periodic', 'dirichlet', 'pec', 'neumann', 'pmc', 'dirichletneumann', 'pecpmc', 'neumanndirichlet', 'pmcpec'})
+        elseif ~ismember(lower(syst.yBC), lower({'Bloch', 'periodic', 'PEC', 'PMC', 'PECPMC', 'PMCPEC'}))
             error('syst.yBC = ''%s'' is not a supported option; type ''help mesti2s'' for supported options.', syst.yBC);
         elseif strcmpi(syst.yBC, 'Bloch')
             error('syst.yBC = ''Bloch'' but syst.ky_B is not given.');
@@ -230,7 +230,7 @@ end
 if ~(isreal(ny) && isscalar(ny) && round(ny)==ny && ny>0)
     error('Input argument ny must be a positive integer scalar.');
 elseif ~(strcmpi(polarization, 'TM') || strcmpi(polarization, 'TE'))
-    error('Input argument polarization or syst.polarization must be either ''TM'' or ''TE''.');
+    error('Input argument polarization must be either ''TM'' or ''TE''.');
 elseif ~((ischar(yBC) && isrow(yBC)) || ((isstring(yBC) || isnumeric(yBC)) && isscalar(yBC)))
     error('Input argument yBC must be a character vector or string, or numeric scalar (for Bloch periodic boundary).');
 elseif ~(isscalar(k0dx) && isnumeric(k0dx))
@@ -259,7 +259,7 @@ use_TM = strcmpi(polarization, 'TM');
 
 % Convert PEC/PMC to Dirichlet/Neumann based on whether TE or TM polarization is used
 if use_TM
-    % For TM waves, we consider Ez(x,y), so PEC => Dirichlet, PMC => Neumann
+    % For TM field, we consider Ez(x,y), so PEC => Dirichlet, PMC => Neumann
     if strcmpi(yBC, 'PEC')
         yBC = 'Dirichlet';
     elseif strcmpi(yBC, 'PMC')
@@ -270,7 +270,7 @@ if use_TM
         yBC = 'NeumannDirichlet';
     end
 else
-    % For TE waves, we consider Hz(x,y), so PMC => Dirichlet, PEC => Neumann
+    % For TE field, we consider Hz(x,y), so PMC => Dirichlet, PEC => Neumann
     if strcmpi(yBC, 'PMC')
         yBC = 'Dirichlet';
     elseif strcmpi(yBC, 'PEC')
@@ -422,8 +422,8 @@ side.kxdx_prop = side.kxdx_all(side.ind_prop);
 side.kydx_prop = kydx_all(side.ind_prop);
     
 % Square root of the normalized longitudinal group velocity, for the propagating channels
-%  TM waves: sqrt_mu = sqrt(sin(kxdx))
-%  TE waves: sqrt_mu = sqrt(sin(kxdx)/epsilon_bg)
+%  TM: sqrt_mu = sqrt(sin(kxdx))
+%  TE: sqrt_mu = sqrt(sin(kxdx)/epsilon_bg)
 % When k0dx2_epsilon is real, sqrt_mu is also real. When k0dx2_epsilon is complex, sqrt_mu is also complex.
 if use_TM
     side.sqrt_mu = sqrt(sin(side.kxdx_prop));

@@ -2,12 +2,14 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %MESTI2S Solves frequency-domain scattering problems in a two-sided geometry.
 %   [field_profiles, channels, info] = MESTI2S(syst, in) returns the spatial
 %   field profiles of Ez(x,y) for scattering problems of 2D transverse-magnetic
-%   (TM) waves satisfying
+%   (TM) fields satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = 0,
-%   or of Hz(x,y) for 2D transverse-electric (TE) waves satisfying
+%   or of Hz(x,y) for 2D transverse-electric (TE) fields satisfying
 %      [- (d/dx)*(1/epsilon(x,y))_yy*(d/dx) - (d/dy)*(1/epsilon(x,y))_xx*(d/dy)
-%          - (omega/c)^2] Hz(x,y) = 0.
-%   The polarization (TM or TE), relative permittivity profile epsilon(x,y),
+%       + (d/dy)*(1/epsilon(x,y))_xy*(d/dx) + (d/dx)*(1/epsilon(x,y))_yx*(d/dy)
+%       - (omega/c)^2] Hz(x,y) = 0,
+%   where Ez or Hz is each a superposition of incident and scattered waves.
+%      The polarization (TM or TE), relative permittivity profile epsilon(x,y),
 %   frequency omega, and boundary conditions are specified by structure 'syst';
 %   epsilon(x,y) must have homogeneous spaces on the left (-x) and right (+x)
 %   sides, with an outgoing boundary in x for the scattered waves and a closed
@@ -15,10 +17,11 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      The incident wavefronts from left and/or right are specified by variable
 %   'in'.
 %      The returned 'field_profiles' is a 3D array, with field_profiles(:,:,i)
-%   being the field profile given the i-th input wavefront. The returned
-%   'channels' is a structure containing properties of the propagating and
-%   evanescent channels in the homogeneous spaces on the left and right. The
-%   information of the computation is returned in structure 'info'.
+%   being the total (incident + scattered) field profile of Ez or Hz given the
+%   i-th incident wavefront. The returned 'channels' is a structure containing
+%   properties of the propagating and evanescent channels in the homogeneous
+%   spaces on the left and right. The information of the computation is returned
+%   in structure 'info'.
 %
 %   [S, channels, info] = MESTI2S(syst, in, out) returns the scattering matrix
 %   S, where 'in' and 'out' specify either the list of input/output channels or
@@ -29,8 +32,6 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   [field_profiles, channels, info] = MESTI2S(syst, in, [], opts) and
 %   [S, channels, info] = MESTI2S(syst, in, out, opts) allow detailed options to
 %   be specified with structure 'opts'.
-%
-%   Both TM and TE waves are discretized on the Yee lattice.
 %
 %   In mesti2s(), the boundary condition in y must be closed (e.g., periodic or
 %   PEC). Given the closed boundary, the set of transverse modes forms a
@@ -45,6 +46,15 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   function mesti() and will need to specify the input and output matrices B
 %   and C.
 %
+%   MESTI considers nonmagnetic materials with isotropic (i.e., scalar)
+%   permittivity. Even though epsilon(x,y) is originally a scalar in the
+%   continuous system, subpixel smoothing (which is needed to ensure smooth
+%   variation with respect to parameters and to reach second-order accuracy for
+%   TE polarization) creates anisotropy where epsilon(x,y) becomes a symmetric
+%   tensor. TM polarization uses the zz component of epsilon(x,y). TE
+%   polarization uses the xx, yy, and xy (equals yx) components of epsilon(x,y).
+%   The other components of epsilon(x,y) are zero.
+%
 %   This file builds the input and output channels using mesti_build_channels(),
 %   builds the matrices B and C, and then calls mesti() to solve the scattering
 %   problems. For scattering-matrix computations in TM polarization, mesti2s()
@@ -57,71 +67,95 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      It contains the following fields:
 %      syst.polarization (character vector; optional):
 %         Polarization. Possible choices are:
-%            'TM' - Ez component of transverse-magnetic waves, (Hx, Hy, Ez)
-%            'TE' - Hz component of transverse-electric waves, (Ex, Ey, Hz)
-%         If syst.polarization is not given, it will be automatically picked
-%         based on whether syst.epsilon or syst.inv_epsilon is given.
+%            'TM' - Transverse-magnetic field (Hx, Hy, Ez)
+%            'TE' - Transverse-electric field (Ex, Ey, Hz)
+%         TM field uses syst.epsilon, and TE field uses syst.inv_epsilon. If
+%         only one of syst.epsilon and syst.inv_epsilon is given,
+%         syst.polarization is optional and will be automatically picked based
+%         on which one is given. If syst.epsilon and syst.inv_epsilon are both
+%         given, then syst.polarization must be specified.
 %      syst.epsilon (numeric matrix, real or complex; required for TM):
-%         Discretized relative permittivity profile of the scattering region
-%         (0 < x < L) used for TM polarization, with
-%            syst.epsilon: ny-by-nx matrix discretizing epsilon(x,y).
-%         Specifically, syst.epsilon(m,n) is the relative permittivity
-%         epsilon(x,y) averaged over a square with area (syst.dx)^2 centered at
-%         x = x_n = (n-0.5)*syst.dx, y = y_m = (m-0.5)*syst.dx. This (x_n,y_m)
-%         is also the point where Ez(x,y) is evaluated on the Yee lattice.
-%         The -0.5 offset is included so that the corner of the scattering
-%         region at x=0, y=0 coincides with the corner of a pixel.
-%            Outside the scattering region (with x < 0 and x > L = nx*syst.dx),
-%         epsilon(x,y) is given by scalars syst.epsilon_L and syst.epsilon_R for
-%         the homogeneous spaces on the two sides. So, nx=0 is allowed and
-%         corresponds to having no scattering region (only homogeneous spaces).
+%         An ny_Ez-by-nx_Ez matrix discretizing the relative permittivity
+%         profile epsilon(x,y) of the scattering region. Specifically,
+%         syst.epsilon(m,n) is the scalar epsilon(x,y) averaged over a square
+%         with area (syst.dx)^2 centered at the point (x_n, y_m) where Ez(x,y)
+%         is located on the Yee lattice. It is the zz component of the
+%         discretized epsilon(x,y) tensor from subpixel smoothing, used by TM
+%         fields. We choose
+%            (x_n, y_m) = (n-0.5, m-0.5)*syst.dx,
+%            with n = 1, ..., nx_Ez, m = 1, ..., ny_Ez.
+%         such that the lower corner of the first pixel syst.epsilon(m=1,n=1) is
+%         at (x,y) = (0,0), and the back side of the last slice
+%         syst.epsilon(m,n=nx_Ez) is at the edge of the scattering region, x = L
+%         = nx_Ez*syst.dx;
+%            Outside the scattering region (with x < 0 and x > L), epsilon(x,y)
+%         is given by scalars syst.epsilon_L and syst.epsilon_R for the
+%         homogeneous spaces on the two sides. Note that nx_Ez = 0 corresponds
+%         to L = 0 (ie, no scattering region) and is allowed.
 %            Note that y corresponds to the first index m, and x corresponds to
 %         the second index n.
 %            The positive imaginary part of syst.epsilon describes absorption,
 %         and the negative imaginary part describes linear gain.
-%            One can use syst.epsilon with ny=1 and with a periodic or Bloch
-%         periodic boundary in y to simulate 1D systems where the relative
+%            One can use syst.epsilon with ny_Ez = 1 and with a periodic or
+%         Bloch periodic boundary in y to simulate 1D systems where the relative
 %         permittivity profile is translationally invariant in y.
-%      syst.inv_epsilon (two-element cell array; required for TE):
-%         Discretized inverse relative permittivity profile of the scattering
-%         region (0 < x < L) used for TE polarization, with
-%            inv_epsilon{1}: ny_d-by-(nx+1) matrix discretizing (1/epsilon(x,y))_xx
-%            inv_epsilon{2}: ny-by-nx matrix discretizing (1/epsilon(x,y))_yy
-%         where we assume inv(epsilon(x,y)) to be a diagonal tensor. This is
-%         more complicated than the TM case because on the Yee lattice, Hz(x,y),
-%         (1/epsilon(x,y))_xx, and (1/epsilon(x,y))_yy are all located on
-%         different points. Here:
-%            Hz(x,y) is evaluated at (x_{n-0.5}, y_{m-0.5}) where (x_n, y_m) is
-%         the point of Ez mentioned above.
-%            inv_epsilon{1}(m,n) is the effective (1/epsilon(x,y))_xx averaged
-%         with subpixel smoothing over a square with area (syst.dx)^2 centered
-%         at (x_{n-0.5}, y_m), which is also the point where Ex ~ dHz/dy is
-%         evaluated on the Yee lattice.
-%            inv_epsilon{2}(m,n) is the effective (1/epsilon(x,y))_yy averaged
-%         with subpixel smoothing over a square with area (syst.dx)^2 centered
-%         at (x_n, y_{m-0.5}), which is also the point where Ey ~ dHz/dx is
-%         evaluated on the Yee lattice.
-%            inv_epsilon{1} has one more pixel in x than inv_epsilon{2} because
-%         its first pixel at n=1 extends to x = -dx/2 which is half a pixel into
-%         the homogeneous space on the left, and its last pixel at n=nx+1
-%         extends to x = L + 0.5*dx which is half a pixel into the homogeneous
-%         space on the right. Here, ny_d is the number of grid points of Ex in
-%         y; it depends on the boundary condition in y: ny_d = ny for periodic,
-%         Bloch periodic, DirichletNeumann, and NeumannDirichlet boundary
-%         conditions; ny_d = ny + 1 for Dirichlet boundary condition, and ny_d =
-%         ny - 1 for Neumann boundary condition.
-%            The above assumes a two-sided geometry. For a one-sided geometry
-%         (where syst.epsilon_R is not given), inv_epsilon{1} only needs nx
-%         pixels in x since Hz=0 at x=L.
-%            For a 1D problem with ny = 1 and periodic boundary condition in y,
-%         the y derivative vanishes, so inv_epsilon{1} is not used in such case.
+%      syst.inv_epsilon (cell array; required for TE):
+%         The xx, yy, and xy components of the discretized inverse relative
+%         permittivity 1/epsilon(x,y) tensor of the scattering region from
+%         subpixel smoothing, used by TE fields. It has three elements
+%            inv_epsilon{1}: (1/epsilon(x,y))_xx, size [ny_Ez, nx_Hz]
+%            inv_epsilon{2}: (1/epsilon(x,y))_yy, size [ny_Hz, nx_Ez]
+%            inv_epsilon{3}: (1/epsilon(x,y))_xy, size [ny_Ez, nx_Ez]
+%         The third element, inv_epsilon{3}, is optional and is treated as zero
+%         when syst.inv_epsilon only has two elements. The yx component is not
+%         specified since we only consider symmetric 1/epsilon tensors where
+%         (1/epsilon)_yx = (1/epsilon)_xy.
+%            The different components are located at different points:
+%            - Hz(x,y) at (x_{n-0.5}, y_{m-0.5}); size [ny_Hz, nx_Hz].
+%            - (1/epsilon(x,y))_xx and Dx ~ dHz/dy at (x_{n+0.5}, y_m).
+%            - (1/epsilon(x,y))_yy and Dy ~ dHz/dx at (x_n, y_{m+0.5}).
+%            - (1/epsilon(x,y))_xy at (x_n, y_m), same as Ez.
+%         Here, (x_n, y_m) is the location of Ez and syst.epsilon above.
+%            inv_epsilon{1}, inv_epsilon{2}, and inv_epsilon{3} should each be
+%         (1/epsilon(x,y))_xx, (1/epsilon(x,y))_yy, and (1/epsilon(x,y))_xy from
+%         subpixel smoothing, averaged over a square with area (syst.dx)^2
+%         centered at the points where each of them is located. The
+%         1/epsilon(x,y) tensor from subpixel smoothing is given by Eq. (1) of
+%         Farjadpour et al, Optics Letters 31, 2972 (2006).
+%            In x direction for a two-sided geometry, nx_Hz = nx_Ez + 1 =
+%         L/syst.dx + 1, and the sites on x_{n+0.5} start from x = 0 (i.e., half
+%         a pixel before the first site of x_n) and end on x = L (i.e., half a
+%         pixel after the last site of x_n). That means the first and last
+%         slices of Hz sit exactly on the front and back surfaces of the
+%         scattering region, and the first and last slices of inv_epsilon{1}
+%         extend half a pixel outside the scattering region. For a one-sided
+%         geometry (where syst.epsilon_R is not given), nx_Hz = nx_Ez =
+%         L/syst.dx, and the last slice of Hz sits on x = L - syst.dx (since Hz
+%         = 0 at x = L).
+%            In y direction, where these points start and end depend on the
+%         boundary condition.
+%            For periodic, Bloch periodic, and PMCPEC boundary conditions in y,
+%         ny_Hz = ny_Ez, and all of the sites on y_{n+0.5} are half a pixel
+%         after the corresponding sites on y_n.
+%            For PEC boundary condition in y, ny_Hz = ny_Ez + 1, and the sites
+%         on y_{n+0.5} start from half a pixel before the first site of y_n and
+%         end on half a pixel after the last site of y_n.
+%            For PMC boundary condition in y, ny_Hz = ny_Ez - 1, and the sites
+%         on y_{n+0.5} start from half a pixel after the first site of y_n and
+%         end on half a pixel before the last site of y_n.
+%            For PECPMC boundary condition in y, ny_Hz = ny_Ez, and all of the
+%         sites on y_{n+0.5} are half a pixel before the corresponding sites on
+%         y_n.
+%            For a 1D problem with ny_Hz = 1 and periodic boundary condition in
+%         y, the y derivative vanishes, so inv_epsilon{1} is not used and does
+%         not need to be specified.
 %      syst.epsilon_L (real scalar; required):
 %         Relative permittivity of the homogeneous space on the left.
 %      syst.epsilon_R (real scalar or []; optional):
 %         Relative permittivity of the homogeneous space on the right. If
 %         syst.epsilon_R is not given or is empty, the system will be one-sided,
-%         terminated with a Dirichlet boundary on the right with Ez = 0 at x =
-%         L + 0.5*dx or Hz = 0 at x = L.
+%         terminated on the right with a PEC boundary with Ez = 0 at x = L +
+%         0.5*syst.dx, or wth a PMC boundary with Hz = 0 at x = L.
 %      syst.length_unit (anything; optional):
 %         Length unit, such as micron, nm, or some reference wavelength. This
 %         code only uses dimensionless quantities, so syst.length_unit is never
@@ -133,21 +167,22 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         Discretization grid size, in units of syst.length_unit.
 %      syst.yBC (character vector; required unless syst.ky_B is specified):
 %         Boundary condition (BC) at the two ends in y direction, effectively
-%         specifying Ez(m,n) or Hz(m,n) at m=0 and m=ny+1 which are one pixel
-%         beyond our computation domain. Available choices (case-insensitive):
-%           'Bloch'            - f(m+ny,n) = f(m,n)*exp(1i*syst.ky_B*ny*syst.dx)
-%           'periodic'         - f(m+ny,n) = f(m,n)
-%           'Dirichlet'        - f(0,n) = f(ny+1,n) = 0
-%           'Neumann'          - f(0,n) = f(1,n); f(ny+1,n) = f(ny,n)
-%           'DirichletNeumann' - f(0,n) = 0; f(ny+1,n) = f(ny,n)
-%           'NeumannDirichlet' - f(0,n) = f(1,n); f(ny+1,n) = 0
-%         where f = Ez or Hz depending on the polarization.
-%            One can also specify 'PEC', 'PMC', 'PECPMC', or 'PMCPEC'. For TM
-%         polarization, PEC is equivalent to Dirichlet for which Ez = 0 at the
-%         boundary, and PMC is equivalent to Neumann for which dEz/dx or dEz/dy
-%         = 0 at the boundary. For TE polarization, PMC is equivalent to
-%         Dirichlet for which Hz = 0 at the boundary, and PEC is equivalent to
-%         Neumann for which dHz/dx or dHz/dy = 0 at the boundary.
+%         specifying Ez(m,n) or Hz(m,n) at m=0 and m=ny_Ez+1 or ny_Hz+1, one
+%         pixel beyond the computation domain. Available choices are:
+%           'Bloch'    - Ez(m+ny_Ez,n) = Ez(m,n)*exp(1i*syst.ky_B*ny_Ez*syst.dx)
+%                        Hz(m+ny_Hz,n) = Hz(m,n)*exp(1i*syst.ky_B*ny_Hz*syst.dx)
+%           'periodic' - equivalent to 'Bloch' with syst.ky_B = 0
+%           'PEC'      - Ez(0,n) = Ez(ny_Ez+1,n) = 0
+%                        Hz(0,n) = Hz(1,n); Hz(ny_Hz+1,n) = Hz(ny_Hz,n)
+%           'PMC'      - Ez(0,n) = Ez(1,n); Ez(ny_Ez+1,n) = Ez(ny_Ez,n)
+%                        Hz(0,n) = Hz(ny_Hz+1,n) = 0
+%           'PECPMC'   - Ez(0,n) = 0; Ez(ny_Ez+1,n) = Ez(ny_Ez,n)
+%                        Hz(0,n) = Hz(1,n); Hz(ny_Hz+1,n) = 0
+%           'PMCPEC'   - Ez(0,n) = Ez(1,n); Ez(ny_Ez+1,n) = 0
+%                        Hz(0,n) = 0; Hz(ny_Hz+1,n) = Hz(ny_Hz,n)
+%         where PEC stands for perfect electric conductor (for which Ez = 0 and
+%         Ex ~ dHz/dy = 0 at the boundary) and PMC stands for perfect magnetic
+%         conductor (for which Hz = 0 and Hx ~ dEz/dy = 0 at the boundary).
 %            Note that this yBC also defines a complete and orthonormal set of
 %         transverse modes, upon which the input and output channels in input
 %         arguments 'in' and 'out' are defined; mesti2s() does not support PML
@@ -168,9 +203,13 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         in which case self-energy based on the retarded Green's function of a
 %         semi-infinite discrete homogeneous space is used to enforce an exact
 %         outgoing boundary for all propagating and evanescent waves on both
-%         sides. Doing so doesn't increase the simulation domain; only a single-
-%         pixel slice of syst.epsilon_L and syst.epsilon_R is added on the left
-%         and on the right to place the input and output.
+%         sides. Doing so doesn't increase the simulation domain; For TM, only a
+%         single-pixel slice of syst.epsilon_L and a single-pixel slice of
+%         syst.epsilon_R are added on the left and on the right to place the
+%         self-energy and the input and output, with a total simulation domain
+%         size of [ny_Ez, nx_Ez+2]. For TE, the self-energy and input/output are
+%         directly placed on the surface where the first and last pixels of Hz
+%         are, so the total simulation domain size remains [ny_Hz, nx_Hz].
 %            A drawback of self-energy is that it introduces coupling between
 %         every pair of pixels in y direction on that slice, making matrix A
 %         less sparse. When the system is wide (roughly when ny > 800), it is
@@ -241,7 +280,8 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         numbers (i.e., angles) involved; more PML pixels gives lower
 %         reflectivity. Typically 10-40 pixels are sufficient.
 %            PML is a layer, not technically a boundary condition. In mesti2s(),
-%         the boundary condition behind the PML is Dirichlet.
+%         the boundary condition behind the PML is always set to Dirichlet (ie,
+%         PEC for TM, PMC for TE).
 %            Note that PML cannot be used when opts.method = 'RGF'.
 %      syst.use_continuous_dispersion (logical scalar; optional):
 %         Whether to use the dispersion equation of the continuous wave equation
@@ -250,7 +290,8 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      syst.m0 (real numeric scalar; optional, defaults to 0):
 %         Center of the transverse mode profile with periodic or Bloch periodic
 %         boundary condition, phi_{m,a} = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
-%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx).
+%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx) and ny = ny_Ez for TM,
+%         ny_Hz for TE.
 %   in (cell array or scalar structure; required):
 %      The set of input channels or input wavefronts.
 %         To specify all propagating channels on one side or on both sides, use
@@ -445,14 +486,13 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   field_profiles (3D array):
 %      For field-profile computations (i.e., when 'out' is not given), the
 %      returned field_profiles is a 3D array containing the field profiles, such
-%      that field_profiles(:,:,a) is the total field of Ez or Hz corresponding
-%      to the a-th input wavefront. Its size depends on the polarization:
-%         TM: size(field_profiles, 2) = opts.nx_L + nx + opts.nx_R
-%         TE: size(field_profiles, 2) = opts.nx_L + nx + 1 + opts.nx_R
-%      because the surfaces of the scattering region (x=0 and x=L) fall on the
-%      edges of the Ez pixels in TM but fall on the centers of the Hz pixels in
-%      TE. In both cases, size(field_profiles, 1) = ny, namely the profiles
-%      across the full system width is returned.
+%      that field_profiles(:,:,a) is the total (incident + scattered) field of
+%      Ez or Hz corresponding to the a-th input wavefront, with
+%         size(field_profiles, 1) = ny
+%         size(field_profiles, 2) = opts.nx_L + nx + opts.nx_R
+%      where [ny, nx] = [ny_Ez, nx_Ez] for TM, [ny_Hz, nx_Hz] for TE. Recall
+%      that nx_Hz = nx_Ez + 1 = L/syst.dx + 1 for a two-sided geometry; nx_Hz =
+%      nx_Ez = L/syst.dx for a one-sided geometry.
 %         By default, opts.nx_L = opts.nx_R = 0, and field_profiles only contain
 %      Ez or Hz in the scattering region. When opts.nx_L and opts.nx_R are
 %      specified, field_profiles will also contain opts.nx_L pixels of Ez or Hz
@@ -483,13 +523,8 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      considered.
 %         The phases of the elements of the scattering matrix depend on the
 %      reference plane. For channels on the left, the reference plane is at
-%      x = 0, corresponding to n = 0.5 (recall that x_n = (n-0.5)*syst.dx),
-%      which is midway between n = 0 (the last pixel of syst.epsilon_L) and
-%      n = 1 (the first pixel of syst.epsilon or syst.inv_epsilon{2}). For
-%      channels on the right, the reference plane is at x = L = nx*syst.dx,
-%      corresponding to n = nx + 0.5, which is midway between n = nx (the last
-%      pixel of syst.epsilon or syst.inv_epsilon{2}) and n = nx + 1 (the first
-%      pixel of syst.epsilon_R).
+%      x = 0. For channels on the right, the reference plane is at x = L =
+%      nx_Ez*syst.dx.
 %         When a subset of the propagating channels are requested, with
 %      in.ind_L, in.ind_R, out.ind_L, and/or out.ind_R, matrix S includes such
 %      subset of the propagating channels. For example, if r_full is the full
@@ -545,44 +580,51 @@ if ~(isreal(syst.epsilon_L)     && isscalar(syst.epsilon_L));  error('syst.epsil
 if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
 if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0);     error('syst.dx must be a positive scalar.'); end
 
-% syst.epsilon_R is an optional argument; determines whether the system is one-sided
-if ~isfield(syst, 'epsilon_R') || isempty(syst.epsilon_R)
-    two_sided = false;
-    syst.epsilon_R = [];
-elseif ~(isreal(syst.epsilon_R) && isscalar(syst.epsilon_R))
-    error('syst.epsilon_R must be a real scalar, if given.');
+% Pick the polarization to use; assign use_TM
+if isfield(syst, 'polarization')
+    if strcmpi(syst.polarization, 'TM')
+        use_TM = true;
+    elseif strcmpi(syst.polarization, 'TE')
+        use_TM = false;
+    else
+        error('syst.polarization, if given, must be ''TM'' or ''TE''.');
+    end
 else
-    two_sided = true;
+    % When syst.polarization is not given, we automatically pick based on whether syst.epsilon or syst.inv_epsilon is given.
+    if isfield(syst, 'epsilon') && ~isfield(syst, 'inv_epsilon')
+        use_TM = true;
+    elseif ~isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
+        use_TM = false;
+    elseif isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
+        error('syst.polarization must be given when syst.epsilon and syst.inv_epsilon both exist.');
+    else % neither syst.epsilon nor syst.inv_epsilon exists
+        error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+    end
 end
 
-% TM polarization uses syst.epsilon
-% TE polarization uses syst.inv_epsilon
-if isfield(syst, 'epsilon')
-    use_TM = true;
-    if ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
+% Check syst.epsilon (for TM) and syst.inv_epsilon (for TE)
+if use_TM
+    if ~isfield(syst, 'epsilon')
+        error('syst.epsilon must be given when syst.polarization = ''TM''.');
+    elseif ~(isnumeric(syst.epsilon) && ismatrix(syst.epsilon))
         error('syst.epsilon must be a numeric matrix, if given.');
-    elseif isfield(syst, 'inv_epsilon') && ~isempty(syst.inv_epsilon)
-        error('syst.epsilon and syst.inv_epsilon cannot both be given.');
-    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TM')
-        error('syst.polarization, if given, must be ''TM'' when syst.epsilon is given.');
     end
     syst.polarization = 'TM';
     str_pol = 'Ez'; % for printing system info
-elseif isfield(syst, 'inv_epsilon')
-    use_TM = false;
-    if numel(syst.inv_epsilon) ~= 2
-        error('syst.inv_epsilon must be a two-element cell array, if given.');
+else
+    if ~isfield(syst, 'inv_epsilon')
+        error('syst.inv_epsilon must be given when syst.polarization = ''TE''.');
+    elseif ~iscell(syst.inv_epsilon) || (numel(syst.inv_epsilon) ~= 2 && numel(syst.inv_epsilon) ~= 3)
+        error('syst.inv_epsilon must be a two-element or three-element cell array, if given.');
     elseif ~(ismatrix(syst.inv_epsilon{1}) && isnumeric(syst.inv_epsilon{1}))
         error('syst.inv_epsilon{1} must be a numeric matrix.');
     elseif ~(ismatrix(syst.inv_epsilon{2}) && isnumeric(syst.inv_epsilon{2}))
         error('syst.inv_epsilon{2} must be a numeric matrix.');
-    elseif isfield(syst, 'polarization') && ~strcmpi(syst.polarization, 'TE')
-        error('syst.polarization, if given, must be ''TE'' when syst.inv_epsilon is given.');
+    elseif numel(syst.inv_epsilon) == 3 && ~(ismatrix(syst.inv_epsilon{3}) && isnumeric(syst.inv_epsilon{3}))
+        error('syst.inv_epsilon{3} must be a numeric matrix, if given.');
     end
     syst.polarization = 'TE';
     str_pol = 'Hz'; % for printing system info
-else
-    error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
 end
 
 % Check that the user did not accidentally use options only in mesti()
@@ -597,17 +639,43 @@ elseif isfield(syst, 'PML_type') && ~isempty(syst.PML_type)
     syst = rmfield(syst, 'PML_type');
 end
 
-% Number of grid points in y and x
-if use_TM
-    [ny, nx] = size(syst.epsilon);
-    if ny==0; error('ny = size(syst.epsilon,1) cannot be zero.'); end
-    nx_s = nx;    % number of pixels of Ez in the scattering region
-    dn = 0.5;     % the source/detection is half a pixel away from x=0 and x=L
+% syst.epsilon_R is an optional argument; determines whether the system is one-sided
+if ~isfield(syst, 'epsilon_R') || isempty(syst.epsilon_R)
+    two_sided = false;
+    syst.epsilon_R = [];
+elseif ~(isreal(syst.epsilon_R) && isscalar(syst.epsilon_R))
+    error('syst.epsilon_R must be a real scalar, if given.');
 else
-    [ny, nx] = size(syst.inv_epsilon{2}); % (1/epsilon)_yy
-    if ny==0; error('ny = size(syst.inv_epsilon{2},1) cannot be zero.'); end
-    nx_s = nx - 1; % number of pixels of Hz in the scattering region, excluding the two surfaces
+    two_sided = true;
+end
+
+% Number of sites in y and x
+if use_TM
+    [ny_Ez, nx_Ez] = size(syst.epsilon);
+    if ny_Ez==0; error('ny_Ez = size(syst.epsilon,1) cannot be zero.'); end
+
+    nx_s = nx_Ez;    % number of pixels of Ez in the scattering region
+    dn = 0.5;     % the source/detection is half a pixel away from x=0 and x=L
+
+    nx = nx_Ez;
+    ny = ny_Ez;
+else
+    [ny_Hz, nx_Ez] = size(syst.inv_epsilon{2}); % (1/epsilon)_yy
+    if ny_Hz==0; error('ny_Hz = size(syst.inv_epsilon{2},1) cannot be zero.'); end
+
+    if two_sided
+        % nx_Hz = nx_Ez + 1 = L/syst.dx + 1 for a two-sided geometry
+        nx_Hz = nx_Ez + 1;
+    else
+        % nx_Hz = nx_Ez = L/syst.dx for a one-sided geometry
+        nx_Hz = nx_Ez;
+    end
+
+    nx_s = nx_Ez - 1; % number of pixels of Hz in the scattering region, excluding the two surfaces
     dn = 0;        % the source/detection is already at x=0 and x=L
+
+    nx = nx_Hz;
+    ny = ny_Hz;
 end
 
 % Check boundary condition in y
@@ -625,7 +693,7 @@ else
         error('Input argument ''syst'' must have non-empty field ''yBC'' when syst.ky_B is not given.');
     elseif ~((ischar(syst.yBC) && isrow(syst.yBC)) || (isstring(syst.yBC) && isscalar(syst.yBC)))
         error('syst.yBC must be a character vector or string, if given.');
-    elseif ~ismember(lower(syst.yBC), {'bloch', 'periodic', 'dirichlet', 'pec', 'neumann', 'pmc', 'dirichletneumann', 'pecpmc', 'neumanndirichlet', 'pmcpec'})
+    elseif ~ismember(lower(syst.yBC), lower({'Bloch', 'periodic', 'PEC', 'PMC', 'PECPMC', 'PMCPEC'}))
         error('syst.yBC = ''%s'' is not a supported option; type ''help mesti2s'' for supported options.', syst.yBC);
     elseif strcmpi(syst.yBC, 'Bloch')
         error('syst.yBC = ''Bloch'' but syst.ky_B is not given.');
@@ -634,36 +702,37 @@ else
 end
 
 if ~use_TM
-    % For a two-sided geometry, syst.inv_epsilon{1} = (1/epsilon)_xx requires one extra pixel because its last pixel extends to x = L + 0.5*dx.
-    % For a one-sided geometry, no extra pixel is needed.
-    if two_sided
-        nx_inv_eps_x = nx + 1;
+    if strcmpi(syst.yBC, 'PMC')
+        ny_Ez = ny_Hz + 1;
+    elseif strcmpi(syst.yBC, 'PEC')
+        ny_Ez = ny_Hz - 1;
     else
-        nx_inv_eps_x = nx;
+        ny_Ez = ny_Hz;
     end
-    % Set ny_d and check that size(syst.inv_epsilon{1}) = [ny_d, nx_inv_eps_x]
-    if ny == 1 && (strcmpi(syst.yBC, 'periodic') || isequal(yBC, 0))
-        ny_d = ny;
-        syst.inv_epsilon{1} = sparse(ny_d, nx_inv_eps_x); % (1/epsilon)_xx is not used when d/dy = 0
+
+    % Check that size(syst.inv_epsilon{1}) = [ny_Ez, nx_Hz] since we will append to it later
+    if ny_Hz == 1 && (strcmpi(syst.yBC, 'periodic') || isequal(yBC, 0))
+        syst.inv_epsilon{1} = sparse(ny_Ez, nx_Hz); % (1/epsilon)_xx is not used when d/dy = 0
     else
-        if isequal(size(syst.inv_epsilon{1}), [0, 0]) && ~(nx==0 && ~two_sided && ny==1 && (strcmpi(syst.yBC, 'Neumann') || strcmpi(syst.yBC, 'PEC')))
-            error('syst.inv_epsilon{1} must be given (unless ny = 1 and yBC = ''periodic'').');
-        elseif size(syst.inv_epsilon{1}, 2) ~= nx_inv_eps_x
+        if isequal(size(syst.inv_epsilon{1}), [0, 0]) && ~(ny_Ez==0 && nx_Hz==0)
+            error('syst.inv_epsilon{1} must be given (unless ny_Hz = 1 and yBC = ''periodic'').');
+        elseif size(syst.inv_epsilon{1}, 1) ~= ny_Ez
+            error('size(syst.inv_epsilon{1}, 1) must equal ny_Ez = %d.', ny_Ez);
+        elseif size(syst.inv_epsilon{1}, 2) ~= nx_Hz
             if two_sided
-                error('size(syst.inv_epsilon{1}, 2) must equal nx + 1 = size(syst.inv_epsilon{2}, 2) + 1 for a two-sided geometry.');
+                error('size(syst.inv_epsilon{1}, 2) must equal nx_Hz = size(syst.inv_epsilon{2}, 2) + 1 = %d for a two-sided geometry.', nx_Hz);
             else
-                error('size(syst.inv_epsilon{1}, 2) must equal nx = size(syst.inv_epsilon{2}, 2) for a one-sided geometry.');
+                error('size(syst.inv_epsilon{1}, 2) must equal nx_Hz = size(syst.inv_epsilon{2}, 2) = %d for a one-sided geometry.', nx_Hz);
             end
         end
-        if strcmpi(syst.yBC, 'Dirichlet') || strcmpi(syst.yBC, 'PMC')
-            ny_d = ny + 1;
-        elseif strcmpi(syst.yBC, 'Neumann') || strcmpi(syst.yBC, 'PEC')
-            ny_d = ny - 1;
-        else
-            ny_d = ny;
-        end
-        if size(syst.inv_epsilon{1}, 1) ~= ny_d
-            error('size(syst.inv_epsilon{1}, 1) must equal ny_d = %d.', ny_d);
+    end
+
+    % Check that size(syst.inv_epsilon{3}) = [ny_Ez, nx_Ez] since we will append to it later
+    if numel(syst.inv_epsilon) == 3
+        if size(syst.inv_epsilon{3}, 1) ~= ny_Ez
+            error('size(syst.inv_epsilon{3}, 1) must equal ny_Ez = %d, if given.', ny_Ez);
+        elseif size(syst.inv_epsilon{3}, 2) ~= nx_Ez
+            error('size(syst.inv_epsilon{3}, 2) must equal nx_Ez = size(syst.inv_epsilon{2}, 2) = %d, if given.', nx_Ez);
         end
     end
 end
@@ -679,7 +748,7 @@ end
 if ~(iscell(syst.xBC) && numel(syst.xBC)==2)
     syst.xBC = {syst.xBC, syst.xBC};
 elseif ~two_sided
-    error('For a one-sided geometry, boundary condition on the right is Dirichlet; syst.xBC only specifies boundary condition on the left and must be ''outgoing'' or a scalar structure, if given.');
+    error('For a one-sided geometry, boundary condition on the right is PEC for TM, PMC for TE; syst.xBC only specifies boundary condition on the left and must be ''outgoing'' or a scalar structure, if given.');
 end
 
 % Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on all sides
@@ -689,14 +758,19 @@ if two_sided
     n_sides = 2;
     nx_extra = [1, 1];
     use_self_energy = [true, true];
+    str_xBS = {'outgoing', 'outgoing'}; % to be used for printing later
 else
     n_sides = 1;
     nx_extra = [1, 0];
     use_self_energy = [true, false];
+    if use_TM
+        str_xBS = {'outgoing', 'PEC'};
+    else
+        str_xBS = {'outgoing', 'PMC'};
+    end
 end
 syst.PML = {}; % to be used in mesti()
 n_PML = 0; % number of PML layers
-str_xBS = {'outgoing', 'outgoing'}; % to be used for printing later
 
 % Loop over syst.xBC and handle PML parameters, if specified
 str_sides = {'low', 'high'};
@@ -959,11 +1033,11 @@ if opts.verbal
     % print basic system info
     fprintf('System size: ny = %d, nx = %d => %d', ny, nx, nx_tot);
     if two_sided
-        fprintf('; N_prop= {%d, %d}\nxBC = {%s, %s}', N_prop_L, N_prop_R, str_xBS{1}, str_xBS{2});
+        fprintf('; N_prop= {%d, %d}\n', N_prop_L, N_prop_R);
     else
-        fprintf('; one-sided; N_prop_L = %d\nxBC = {%s, Dirichlet}', N_prop_L, str_xBS{1});
+        fprintf('; one-sided; N_prop_L = %d\n', N_prop_L);
     end
-    fprintf('; yBC = %s', syst.yBC);
+    fprintf('xBC = {%s, %s}; yBC = %s', str_xBS{1}, str_xBS{2}, syst.yBC);
     if strcmpi(syst.yBC, 'Bloch'); fprintf(' (ky_B = %.4f)', syst.ky_B); end
     fprintf('; %s polarization\n', str_pol);
 end
@@ -1265,8 +1339,9 @@ end
 % First, we symmetrize the set of input channels and output channels, if possible
 
 % Bloch periodic boundary condition with ky_B*periodicity != 0 or pi breaks the symmetry of A
-% mesti_build_channels() currently does not return channels.L.ind_prop_conj when yBC == pi (even though such permutation does exist), so we cannot symmetrize K when yBC == pi
-if isnumeric(yBC) && yBC ~= 0 % && yBC ~= pi
+% mesti_build_channels() currently does not return channels.L.ind_prop_conj when yBC == pi (even though such permutation does exist), so we cannot symmetrize K when yBC == pi.
+% When ny == 1, even though matrix A is symmetric, there is still no permutation that flips the sign of ky, so we still set is_symmetric_A to false.
+if isnumeric(yBC) && yBC ~= 0 % && yBC ~= pi && ny > 1
     is_symmetric_A = false;
 else
     is_symmetric_A = true;
@@ -1304,8 +1379,8 @@ end
 % (1) the blocks of input matrix B on the left and right surfaces: B_L and B_R
 % (2) the blocks of output matrix C on the left and right surfaces: C_L and C_R
 % B_L, C_L, B_R, C_R are all dense matrices with size(..., 1) = ny. They are inputs/outputs on Ez for TM, Hz for TE.
-% For TM polarization, these inputs/outputs are placed at one pixel outside syst.epsilon (at n=0 and n=nx+1), which is at x=-0.5*dx and x=L+0.5*dx.
-% For TE polarization, these inputs/outputs are placed at the first and last pixels of syst.inv_epsilon{1} (at n=0.5 and n=nx+0.5), which is at x=0 and x=L.
+% For TM polarization, these inputs/outputs are placed at one pixel outside syst.epsilon (at n=0 and n=nx_Ez+1), which is at x=-0.5*dx and x=L+0.5*dx.
+% For TE polarization, these inputs/outputs are placed at the first and last pixels of syst.inv_epsilon{1} (at n=0.5 and n=nx_Ez+0.5), which is at x=0 and x=L.
 % We want the reference plane to be at x=0 and x=L. For TM, we need to shift the phase by back propagating half a pixel (dn = 0.5). For TE, dn = 0.
 % A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx) for TM polarization, mu = sin(kxdx)/epsilon_bg for TE polarization.
 % Including the back propagation, we want B_L(m,a) = -2i*sqrt(mu(a))*exp(-i*kxdx(a)*dn)*phi(m,a); we will multiple the -2i prefactor at the end.
@@ -1425,7 +1500,7 @@ if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build_BC); end
 
 if use_RGF
     if ~two_sided
-        % A Dirichlet boundary condition at n = nx+1 corresponds to G0_R = 0
+        % A Dirichlet boundary condition at n = nx_Ez+1 corresponds to G0_R = 0
         G0_R = sparse(ny, ny);
         B_R = sparse(ny, 0);
         C_R = sparse(ny, 0);
@@ -1443,14 +1518,26 @@ else
             syst.epsilon = [syst.epsilon_L*ones(ny,nx_extra(1)), syst.epsilon];
         end
     else
-        % We pad one less pixel per side to syst.inv_epsilon{1} since it already extends half a pixel beyond the scattering region.
-        % In mesti(), syst.inv_epsilon{2} should have one more pixel in x than syst.inv_epsilon{1} given a Dirichlet BC in x.
+        % Recall:
+        %   size(inv_epsilon{1}) = [ny_Ez, nx_Hz]
+        %   size(inv_epsilon{2}) = [ny_Hz, nx_Ez]
+        %   size(inv_epsilon{3}) = [ny_Ez, nx_Ez]
+        % In syst.inv_epsilon, nx_Hz extends half a pixel beyond the scattering region, with
+        %   two-sided: nx_Hz = nx_Ez + 1
+        %   one_sided: nx_Hz = nx_Ez
+        % But in mesti(), we use xBC = PMC, so nx_Hz = nx_Ez - 1. So, here we pad one less pixel per side to syst.inv_epsilon{1}.
         if two_sided
-            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)-1), syst.inv_epsilon{1}, (1/syst.epsilon_R)*ones(ny_d,nx_extra(2)-1)];
-            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny,  nx_extra(1)  ), syst.inv_epsilon{2}, (1/syst.epsilon_R)*ones(ny,  nx_extra(2)  )];
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_Ez,nx_extra(1)-1), syst.inv_epsilon{1}, (1/syst.epsilon_R)*ones(ny_Ez,nx_extra(2)-1)];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny_Hz,nx_extra(1)  ), syst.inv_epsilon{2}, (1/syst.epsilon_R)*ones(ny_Hz,nx_extra(2)  )];
+            if numel(syst.inv_epsilon) == 3
+                syst.inv_epsilon{3} = [zeros(ny_Ez,nx_extra(1)), syst.inv_epsilon{3}, zeros(ny_Ez,nx_extra(2))];
+            end
         else
-            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_d,nx_extra(1)-1), syst.inv_epsilon{1}];
-            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny,  nx_extra(1)  ), syst.inv_epsilon{2}];
+            syst.inv_epsilon{1} = [(1/syst.epsilon_L)*ones(ny_Ez,nx_extra(1)-1), syst.inv_epsilon{1}];
+            syst.inv_epsilon{2} = [(1/syst.epsilon_L)*ones(ny_Hz,nx_extra(1)  ), syst.inv_epsilon{2}];
+            if numel(syst.inv_epsilon) == 3
+                syst.inv_epsilon{3} = [zeros(ny_Ez,nx_extra(1)), syst.inv_epsilon{3}];
+            end
         end
     end
     syst.epsilon_L = []; % mesti() will throw warning if syst.epsilon_L is given
@@ -1464,13 +1551,17 @@ else
         end
     end
 
-    % Whether we use self-energy or PML or have a one-sided geometry, the BC in x direction will be Dirichlet when building matrix A
-    syst.xBC = 'Dirichlet'; % to be used in mesti()
+    % Whether we use self-energy or PML or have a one-sided geometry, the BC in x direction will be Dirichlet when building matrix A in mesti()
+    if use_TM
+        syst.xBC = 'PEC';
+    else
+        syst.xBC = 'PMC';
+    end
 
     % location of inputs/outputs on the left surface (n=0 for TM; n=0.5 for TE)
     n_L = nx_extra(1);
 
-    % location of inputs/outputs on the right surface (n=nx+1 for TM; n=nx+0.5 for TE)
+    % location of inputs/outputs on the right surface (n=nx_Ez+1 for TM; n=nx_Ez+0.5 for TE)
     n_R = nx_extra(1) + nx_s + 1;
 
     % Specify inputs
@@ -1622,24 +1713,20 @@ else % when opts.return_field_profile = true
         ind_n = (1+nx_remove_L):(nx_tot-nx_remove_R);
         S = S(:, ind_n, :);
     end
-    if ~use_TM && ~two_sided
-        % Add the Hz(x=L,y)=0 slice at the end
-        S = cat(2, S, zeros(ny, 1, M_in_L));
-    end
     % At this point, S has this number of pixels in x:
-    % TM, two-sided: 1+nx+1
-    % TM, one-sided: 1+nx
-    % TE, two-sided: nx+1
-    % TE, one-sided: nx+1
+    % TM, two-sided: 1+nx_Ez+1
+    % TM, one-sided: 1+nx_Ez
+    % TE, two-sided: nx_Hz = nx_Ez+1
+    % TE, one-sided: nx_Hz = nx_Ez
 
     if use_TM && opts.nx_L <= 1 && (~two_sided || opts.nx_R <= 1) % nothing to add (except possibly zeros)
         if ~(opts.nx_L == 1 && ((two_sided && opts.nx_R == 1) || (~two_sided && opts.nx_R == 0)))
             % Remove pixels such that we have nx_L pixels of syst.epsilon_L and nx_R pixels of syst.epsilon_R
             if two_sided
-                ind_n = (2-opts.nx_L):(1+nx+opts.nx_R);
+                ind_n = (2-opts.nx_L):(1+nx_Ez+opts.nx_R);
                 S = S(:, ind_n, :);
             else
-                ind_n = (2-opts.nx_L):(1+nx);
+                ind_n = (2-opts.nx_L):(1+nx_Ez);
                 S = S(:, ind_n, :);
                 if opts.nx_R > 0
                     % Add nx_R slices of zero on the right
@@ -1774,11 +1861,11 @@ function [S, info] = rgf(syst, G0_L, G0_R, B_L, B_R, C_L, C_R, opts)
 
 t1 = clock;
 
-% Number of grid points in y and x
+% Number of sites in y and x
 [ny, nx] = size(syst.epsilon);
 
 % Finite-difference wave operator for one slice, without the (k0dx)^2*epsilon term
-A0 = mesti_build_fdfd_matrix(zeros(ny,1), 0, 'Dirichlet', syst.yBC);
+A0 = mesti_build_fdfd_matrix(zeros(ny,1), 0, 'PEC', syst.yBC);
 k0dx2 = ((2*pi/syst.wavelength)*(syst.dx))^2;
 
 t2 = clock; info.timing.build = etime(t2,t1);  % the build time for B, C will be added in addition to this
