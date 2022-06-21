@@ -1,5 +1,5 @@
 function [S, info] = mesti(syst, B, C, D, opts)
-%MESTI Frequency-domain electromagnetic simulations.
+%MESTI Multi-source frequency-domain electromagnetic simulations.
 %   [field_profiles, info] = MESTI(syst, B) returns the spatial field profiles
 %   of Ez(x,y) for 2D transverse-magnetic (TM) waves satisfying
 %      [- (d/dx)^2 - (d/dy)^2 - (omega/c)^2*epsilon(x,y)] Ez(x,y) = source(x,y),
@@ -35,13 +35,13 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %
 %   [field_profiles, info] = MESTI(syst, B, [], [], opts),
 %   [S, info] = MESTI(syst, B, C, [], opts), and
-%   [S, info] = MESTI(syst, B, C, D, opts) allow detailed options to be specified
-%   with structure 'opts'.
+%   [S, info] = MESTI(syst, B, C, D, opts) allow detailed options to be
+%   specified with structure 'opts'.
 %
 %   Both TM and TE waves are discretized on the Yee lattice.
 %
 %   This file checks and parses the parameters, and it can build matrices B and
-%   C from its non-zero elements specified by the user (see details below). It
+%   C from its nonzero elements specified by the user (see details below). It
 %   calls function mesti_build_fdfd_matrix() to build matrix A and function
 %   mesti_matrix_solver() to compute C*inv(A)*B or inv(A)*B, where most of the
 %   computation is done.
@@ -231,10 +231,10 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      used, and size(B,1) must equal ny*nx; different columns of B correspond
 %      to different inputs.
 %         Instead of specifying matrix B directly, one can specify only its
-%      non-zero parts, from which mesti() will build the sparse matrix B. To do
+%      nonzero parts, from which mesti() will build the sparse matrix B. To do
 %      so, B in the input argument should be set as a structure array; here we
 %      refer to such structure array as B_struct to distinguish it from the
-%      resulting matrix B. If for every column of matrix B, all of its non-zero
+%      resulting matrix B. If for every column of matrix B, all of its nonzero
 %      elements are spatially located within a rectangle (e.g., line sources or
 %      block sources), one can use the following fields:
 %         B_struct.pos (four-element integer vector): B_struct.pos =
@@ -244,7 +244,7 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %            of f(m1, n1) where f = Ez or Hz; (h, w) is the height and width of
 %            the rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index
 %            of the higher-index corner of the rectangle.
-%         B_struct.data (2D or 3D numeric array): non-zero elements of matrix B
+%         B_struct.data (2D or 3D numeric array): nonzero elements of matrix B
 %            within the rectangle specified by B_struct.pos.
 %               When it is a 3D array, B_struct.data(m',n',a) is the a-th input
 %            source at the location of f(m=m1+m'-1, n=n1+n'-1), which becomes
@@ -265,14 +265,14 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      the left]; these inputs are treated separately, and the total number of
 %      inputs is size(B_struct(1).data, 3) + size(B_struct(2).data, 3) + ... +
 %      size(B_struct(end).data, 3).
-%         If the non-zero elements of matrix B do not have rectangular shapes in
+%         If the nonzero elements of matrix B do not have rectangular shapes in
 %      space [e.g., for total-field/scattered-field (TF/SF) simulations], one
 %      can use a structure array with the following fields:
 %         B_struct.ind (integer vector): linear indices of the spatial
-%            locations of the non-zero elements of matrix B, such that
+%            locations of the nonzero elements of matrix B, such that
 %            f(B_struct.ind) are the points where the source is placed. Such
 %            linear indices can be constructed from sub2ind().
-%         B_struct.data (2D numeric matrix): non-zero elements of matrix B at
+%         B_struct.data (2D numeric matrix): nonzero elements of matrix B at
 %            the locations specified by B_struct.ind. Specifically,
 %            B_struct.data(i,a) is the a-th input source at the location of
 %            f(B_struct.ind(i)), which becomes B(B_struct.ind(i), a). So,
@@ -298,13 +298,13 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      symmetric when computing its Schur complement to lower computing time and
 %      memory usage.
 %         For field-profile computations, the user can simply omit C from the
-%      input argument, as in mesti(syst, B), if there is no need to change the
+%      input arguments, as in mesti(syst, B), if there is no need to change the
 %      default opts. If opts is needed, the user can use
 %      mesti(syst, B, [], [], opts), namely setting C = [] and D = [].
-%         Similar to B, here one can specify only the non-zero parts of the
+%         Similar to B, here one can specify only the nonzero parts of the
 %      output matrix C, from which mesti() will build the sparse matrix C. The
 %      syntax is the same as for B, summarized below. If for every row of matrix
-%      C, all of its non-zero elements are spatially located withing a rectangle
+%      C, all of its nonzero elements are spatially located withing a rectangle
 %      (e.g., projection of fields on a line), one can set the input argument C
 %      to be a structure array (referred to as C_struct below) with the
 %      following fields:
@@ -315,7 +315,7 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %            of f(m1, n1) where f = Ez or Hz; (h, w) is the height and width of
 %            the rectangle, such that (m2, n2) = (m1+h-1, n1+w-1) is the index
 %            of the higher-index corner of the rectangle.
-%         C_struct.data (2D or 3D numeric array): non-zero elements of matrix C
+%         C_struct.data (2D or 3D numeric array): nonzero elements of matrix C
 %            within the rectangle specified by C_struct.pos.
 %               When it is a 3D array, C_struct.data(m',n',b) is the b-th output
 %            projection at the location of f(m=m1+m'-1, n=n1+n'-1), which
@@ -328,14 +328,14 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %            size(C_struct.data, 2) is the number of outputs; in this case,
 %            C_struct.data can be a sparse matrix, and its sparsity will be
 %            preserved when building matrix C.
-%         If the non-zero elements of matrix C do not have rectangular shapes in
+%         If the nonzero elements of matrix C do not have rectangular shapes in
 %      space [e.g., for near-field-to-far-field transformations], one can set C
 %      to a structure array with the following fields:
 %         C_struct.ind (integer vector): linear indices of the spatial
-%            locations of the non-zero elements of matrix C, such that
+%            locations of the nonzero elements of matrix C, such that
 %            f(C_struct.ind) are the points where the projection is placed. Such
 %            linear indices can be constructed from sub2ind().
-%         C_struct.data (2D numeric matrix): non-zero elements of matrix C at
+%         C_struct.data (2D numeric matrix): nonzero elements of matrix C at
 %            the locations specified by C_struct.ind. Specifically,
 %            C_struct.data(i,b) is the b-th projection at the location of
 %            f(C_struct.ind(i)), which becomes C(b, C_struct.ind(i)). So,
@@ -347,7 +347,7 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      Matrix specifying the background in the absence of scatterers for
 %      scattering matrix computations in the form of C*inv(A)*B - D; size(D,1)
 %      must equal size(C,1), and size(D,2) must equal size(B,2).
-%         When D = [], it will not be subtracted from C*inv(A)*B. For field
+%         When D = [], it will not be subtracted from C*inv(A)*B. For field-
 %      profile computations where C = [], the user must also set D = [].
 %   opts (scalar structure; optional, defaults to an empty struct):
 %      A structure that specifies the options of computation; defaults to an
@@ -423,6 +423,11 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
 %         computation can speed up the analysis stage, but the matrix size must
 %         be the same.
+%      opts.analysis_only (logical scalar; optional, defaults to false):
+%         When opts.analysis_only = true, the factorization and solution steps
+%         will be skipped, and S = [] will be returned. The user can use
+%         opts.analysis_only = true with opts.store_ordering = true to return
+%         the ordering for A or K; only possible when opts.solver = 'MUMPS'.
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
@@ -433,15 +438,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
 %         relevant information will be returned in info.itr_ref_nsteps,
 %         info.itr_ref_omega_1, and info.itr_ref_omega_2.
-%      opts.analysis_only (logical scalar; optional, defaults to false):
-%         Whether to obtain the ordering sequence only by returning at the
-%         analysis step; only possible when opts.solver = 'MUMPS' and
-%         opts.store_ordering = true. If opts.analysis_only = true, the
-%         function will return at the analysis step, with the
-%         ordering stored in info.ordering and S = [].
 %
 %   === Output Arguments ===
-%   S (full numeric matrix or 3d array):
+%   S (full numeric matrix or 3D array):
 %      C*inv(A)*B or reshape(inv(A)*B, ny, nx, []).
 %   info (scalar structure):
 %      A structure that contains the following fields:
@@ -775,7 +774,7 @@ elseif ~(islogical(opts.clear_memory) && isscalar(opts.clear_memory))
     error('opts.clear_memory must be a logical scalar, if given.');
 end
 
-% The following fields of opts are not used in mesti() and will be checked/initialized in mesti_matrix_solver():
+% The following fields of opts will be checked/initialized in mesti_matrix_solver():
 %    opts.solver
 %    opts.method
 %    opts.verbal_solver
@@ -783,9 +782,9 @@ end
 %    opts.nrhs
 %    opts.store_ordering
 %    opts.ordering
+%    opts.analysis_only
 %    opts.nthreads_OMP
 %    opts.iterative_refinement
-%    opts.analysis_only
 
 if opts.verbal
     % print basic system info if the calling function is not mesti2s()
@@ -820,7 +819,7 @@ t1 = clock; timing_init = etime(t1,t0); % Initialization time
 
 %% Part 2.1: Build matrices B and C
 
-% Build the input matrix B from its non-zero elements specified by user
+% Build the input matrix B from its nonzero elements specified by user
 if isstruct(B)
     B_struct = B;
     if ~isfield(B_struct, 'data')
@@ -858,7 +857,7 @@ if isstruct(B)
 
     if use_iv_pairs
         % Construct matrix B from the complete set of index-value pairs
-        N_tot = 0; % total number of non-zero elements in B
+        N_tot = 0; % total number of nonzero elements in B
         for ii = 1:numel(B_struct)
             N_tot = N_tot + numel(B_struct(ii).data);
         end
@@ -924,12 +923,12 @@ if isstruct(B)
 
         if use_iv_pairs
             % Build index-value pairs: (ind_list, a_list, v_list)
-            N_ii = nxy_data*M_ii; % number of non-zero elements in the ii-th part of matrix B
+            N_ii = nxy_data*M_ii; % number of nonzero elements in the ii-th part of matrix B
             ind_temp = N + (1:N_ii);
             ind_list(ind_temp) = repmat(ind, M_ii, 1); % spatial index
             a_list(ind_temp) = reshape(repmat(M+(1:M_ii), nxy_data, 1), N_ii, 1); % input index
             v_list(ind_temp) = reshape(data, N_ii, 1);
-            N = N + N_ii; % number of non-zero elements in matrix B up to the ii-th part
+            N = N + N_ii; % number of nonzero elements in matrix B up to the ii-th part
             M = M + M_ii; % number of columns in matrix B up to the ii-th part
         else
             % If the rectangle of B_struct.pos is a single vertical slice or if it spans the full height of ny, we can stack reshaped B_struct(ii).data with zeros to avoid the overhead of building B with index-value pairs. But then B must be built incrementally, which is slow when numel(B_struct) is large.
@@ -952,7 +951,7 @@ if opts.clear_BC
     end
 end
 
-% Build the output matrix C from its non-zero elements specified by user
+% Build the output matrix C from its nonzero elements specified by user
 if isstruct(C)
     C_struct = C;
     if ~isfield(C_struct, 'data')
@@ -990,7 +989,7 @@ if isstruct(C)
 
     if use_iv_pairs
         % Construct matrix C from the complete set of index-value pairs
-        N_tot = 0; % total number of non-zero elements in C
+        N_tot = 0; % total number of nonzero elements in C
         for ii = 1:numel(C_struct)
             N_tot = N_tot + numel(C_struct(ii).data);
         end
@@ -1056,12 +1055,12 @@ if isstruct(C)
 
         if use_iv_pairs
             % Build index-value pairs: (a_list, ind_list, v_list)
-            N_ii = nxy_data*M_ii; % number of non-zero elements in the ii-th part of matrix C
+            N_ii = nxy_data*M_ii; % number of nonzero elements in the ii-th part of matrix C
             ind_temp = N + (1:N_ii);
             ind_list(ind_temp) = repmat(ind, M_ii, 1); % spatial index
             a_list(ind_temp) = reshape(repmat(M+(1:M_ii), nxy_data, 1), N_ii, 1); % input index
             v_list(ind_temp) = reshape(data, N_ii, 1);
-            N = N + N_ii; % number of non-zero elements in matrix C up to the ii-th part
+            N = N + N_ii; % number of nonzero elements in matrix C up to the ii-th part
             M = M + M_ii; % number of rows in matrix C up to the ii-th part
         else
             % If the rectangle of C_struct.pos is a single vertical slice or if it spans the full height of ny, we can stack reshaped C_struct(ii).data with zeros to avoid the overhead of building C with index-value pairs. But then C must be built incrementally, which is slow when numel(C_struct) is large.
@@ -1151,7 +1150,8 @@ if ~isempty(xPML); info.xPML = xPML; end
 if ~isempty(yPML); info.yPML = yPML; end
 
 t1 = clock;
-if ~isempty(S)
+
+if ~info.opts.analysis_only
     % Include the prefactor
     S = (opts.prefactor)*S;
 
@@ -1169,6 +1169,7 @@ if ~isempty(S)
         S = S - D;
     end
 end
+
 t2 = clock; info.timing.solve = info.timing.solve + etime(t2,t1); % Add the little bit of post-processing time
 
 info.timing.total = etime(t2,t0);

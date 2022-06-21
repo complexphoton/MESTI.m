@@ -94,6 +94,11 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
 %         computation can speed up the analysis stage, but the matrix size must
 %         be the same.
+%      opts.analysis_only (logical scalar; optional, defaults to false):
+%         When opts.analysis_only = true, the factorization and solution steps
+%         will be skipped, and S = [] will be returned. The user can use
+%         opts.analysis_only = true with opts.store_ordering = true to return
+%         the ordering for A or K; only possible when opts.solver = 'MUMPS'.
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
@@ -104,12 +109,6 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %         case opts.nrhs must equal 1. When iterative refinement is used, the
 %         relevant information will be returned in info.itr_ref_nsteps,
 %         info.itr_ref_omega_1, and info.itr_ref_omega_2.
-%      opts.analysis_only (logical scalar; optional, defaults to false):
-%         Whether to obtain the ordering sequence only by returning at the
-%         analysis step; only possible when opts.solver = 'MUMPS' and
-%         opts.store_ordering = true. If opts.analysis_only = true, the
-%         function will return at the analysis step, with the
-%         ordering stored in info.ordering and S = [].
 %
 %   === Output Arguments ===
 %   S (full numeric matrix):
@@ -331,20 +330,21 @@ if strcmpi(opts.solver, 'MUMPS')
         end
     end
 
+    % Whether to skip the factorization and solution steps
+    if ~isfield(opts, 'analysis_only') || isempty(opts.analysis_only)
+        opts.analysis_only = false;
+    elseif ~(islogical(opts.analysis_only) && isscalar(opts.analysis_only))
+        error('opts.analysis_only must be a logical scalar, if given.');
+    elseif opts.analysis_only && ~opts.store_ordering
+        error('When opts.analysis_only = true, opts.store_ordering must also be true.');
+    end
+
     % Number of openMP threads in MUMPS; leave empty if not specified
     if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
         if ~(isreal(opts.nthreads_OMP) && isscalar(opts.nthreads_OMP) && round(opts.nthreads_OMP)==opts.nthreads_OMP && opts.nthreads_OMP>0)
             error('opts.nthreads_OMP must be a positive integer scalar, if given.');
         end
     end
-
-    % Whether to skip factorization and the following steps
-    if ~isfield(opts, 'analysis_only') || isempty(opts.analysis_only)
-        opts.analysis_only = false;
-    elseif opts.analysis_only && ~opts.store_ordering
-        error('opts.store_ordering must be true for storing the ordering sequence.');
-    end
-
 else
     if isfield(opts, 'is_symmetric_A') && ~isempty(opts.is_symmetric_A)
         opts = rmfield(opts, 'is_symmetric_A');
@@ -364,13 +364,14 @@ else
         opts = rmfield(opts, 'ordering');
     end
 
+    if isfield(opts, 'analysis_only') && isequal(opts.analysis_only, true)
+        error('opts.analysis_only = true can only be used when opts.solver = ''MUMPS''.');
+    end
+    opts.analysis_only = false;
+
     if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
         warning('opts.nthreads_OMP is only used when opts.solver = ''MUMPS''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
-    end
-
-    if isfield(opts, 'analysis_only') && isequal(opts.store_ordering, true)
-        error('opts.analysis_only = true can only be used when opts.solver = ''MUMPS''.');
     end
 end
 
@@ -459,7 +460,7 @@ elseif strcmpi(opts.method, 'APF')
         % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
         % This is typically the most memory-consuming part of the whole simulation
         [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
-        
+
         info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
         
         t1 = clock;
@@ -481,11 +482,10 @@ elseif strcmpi(opts.method, 'APF')
         % Destroy the MUMPS instance and deallocate memory
         id.JOB = -2;  % what to do: terminate the instance
         [~] = zmumps(id);
-
         t2 = clock;
 
         % When opts.analysis_only = true, the factorization time could be
-        % non-zero due to the instance termination time.
+        % nonzero due to the instance termination time.
         info.timing.factorize = info.timing.factorize + etime(t2,t1);
         info.timing.solve = 0;
     else % Compute C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
@@ -556,9 +556,11 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
         end
     end
     info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
+
     if opts.analysis_only
         % Skip the solve stage
         S = [];
+        info.timing.solve = 0;
         % Destroy the MUMPS instance and deallocate memory
         id.JOB = -2;  % what to do: terminate the instance
         [~] = zmumps(id);
@@ -782,15 +784,15 @@ if opts.store_ordering
 end
 
 t2 = clock; info.timing.analyze = etime(t2,t1);
-if opts.verbal; fprintf('elapsed time: %7.3f secs\nFactorizing ... ', info.timing.analyze); end
+if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.analyze); end
 
 if opts.analysis_only 
-    fprintf('Factorization stage skipped.\n');
     info.timing.factorize = 0; 
     return
 end
 
 %% Factorization stage
+if opts.verbal; fprintf('Factorizing ... '); end
 t1 = clock;
 id.JOB = 2;  % what to do: factorize
 id = zmumps(id,A);  % run the factorization

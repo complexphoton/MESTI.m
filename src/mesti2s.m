@@ -425,6 +425,11 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
 %         computation can speed up the analysis stage, but the matrix size must
 %         be the same.
+%      opts.analysis_only (logical scalar; optional, defaults to false):
+%         When opts.analysis_only = true, the factorization and solution steps
+%         will be skipped, and S = [] will be returned. The user can use
+%         opts.analysis_only = true with opts.store_ordering = true to return
+%         the ordering for A or K; only possible when opts.solver = 'MUMPS'.
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
@@ -437,9 +442,9 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         info.itr_ref_nsteps, info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
-%   field_profiles (3d array):
+%   field_profiles (3D array):
 %      For field-profile computations (i.e., when 'out' is not given), the
-%      returned field_profiles is a 3d array containing the field profiles, such
+%      returned field_profiles is a 3D array containing the field profiles, such
 %      that field_profiles(:,:,a) is the total field of Ez or Hz corresponding
 %      to the a-th input wavefront. Its size depends on the polarization:
 %         TM: size(field_profiles, 2) = opts.nx_L + nx + opts.nx_R
@@ -476,7 +481,7 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      channels.R.N_prop elements being channels on the right (if requested);
 %      the ordering of elements within the cell arrays 'in' and/or 'out' is not
 %      considered.
-%         The phases of the elements of the scattering matrix depends on the
+%         The phases of the elements of the scattering matrix depend on the
 %      reference plane. For channels on the left, the reference plane is at
 %      x = 0, corresponding to n = 0.5 (recall that x_n = (n-0.5)*syst.dx),
 %      which is midway between n = 0 (the last pixel of syst.epsilon_L) and
@@ -856,7 +861,9 @@ if ~isfield(opts, 'method') || isempty(opts.method)
         opts.method = 'factorize_and_solve';
     elseif n_PML > 0 || ~use_TM
         opts.method = 'APF';
-    elseif strcmpi(opts.solver, 'MUMPS') && isfield(opts, 'store_ordering') && isequal(opts.store_ordering, true)
+    elseif isfield(opts, 'store_ordering') && isequal(opts.store_ordering, true)
+        opts.method = 'APF';
+    elseif isfield(opts, 'analysis_only') && isequal(opts.analysis_only, true)
         opts.method = 'APF';
     else
         % APF is more efficient when ny is large. RGF is more efficient when ny is small.
@@ -910,6 +917,10 @@ if strcmpi(opts.method, 'RGF')
         warning('opts.ordering is not used when opts.method = ''RGF''; will be ignored.');
         opts = rmfield(opts, 'ordering');
     end
+    if isfield(opts, 'analysis_only') && isequal(opts.analysis_only, true)
+        error('opts.analysis_only = true cannot be used when opts.method = ''RGF''.');
+    end
+    opts.analysis_only = false;
     if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
         warning('opts.nthreads_OMP is not used when opts.method = ''RGF''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
@@ -921,12 +932,13 @@ end
 
 % opts.symmetrize_K will be checked/initialized later
 
-% The following fields of opts are not used in mesti2s() and will be checked/initialized in mesti_matrix_solver():
+% The following fields of opts will be checked/initialized in mesti_matrix_solver():
 %    opts.verbal_solver
 %    opts.use_METIS
 %    opts.nrhs
 %    opts.store_ordering
 %    opts.ordering
+%    opts.analysis_only
 %    opts.nthreads_OMP
 %    opts.iterative_refinement
 
@@ -1505,6 +1517,16 @@ else
     [S, info] = mesti(syst, B, C, D, opts);
 end
 
+info.timing.init  = info.timing.init  + timing_init;
+info.timing.build = info.timing.build + timing_build_G0 + timing_build_BC; % combine with build time for A and K
+
+if info.opts.analysis_only
+    t3 = clock;
+    info.timing.total = etime(t3,t0);
+    if opts.verbal; fprintf('          Total elapsed time: %7.3f secs\n', info.timing.total); end
+    return
+end
+
 t1 = clock;
 
 % Include the -2i prefactor that should have been in the input matrix B
@@ -1737,8 +1759,6 @@ else % when opts.return_field_profile = true
 end
 
 t3 = clock;
-info.timing.init  = info.timing.init  + timing_init;
-info.timing.build = info.timing.build + timing_build_G0 + timing_build_BC; % combine with build time for A and K
 info.timing.solve = info.timing.solve + etime(t3,t1); % Add the post-processing time
 info.timing.total = etime(t3,t0);
 
