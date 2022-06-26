@@ -758,15 +758,15 @@ if two_sided
     n_sides = 2;
     nx_extra = [1, 1];
     use_self_energy = [true, true];
-    str_xBS = {'outgoing', 'outgoing'}; % to be used for printing later
+    str_xBC = {'outgoing', 'outgoing'}; % to be used for printing later
 else
     n_sides = 1;
     nx_extra = [1, 0];
     use_self_energy = [true, false];
     if use_TM
-        str_xBS = {'outgoing', 'PEC'};
+        str_xBC = {'outgoing', 'PEC'};
     else
-        str_xBS = {'outgoing', 'PMC'};
+        str_xBC = {'outgoing', 'PMC'};
     end
 end
 syst.PML = {}; % to be used in mesti()
@@ -778,7 +778,7 @@ for ii = 1:n_sides
     if ~strcmpi(syst.xBC{ii}, 'outgoing')
         use_self_energy(ii) = false;
         n_PML = n_PML + 1;
-        str_xBS{ii} = 'PML';
+        str_xBC{ii} = 'PML';
         PML_ii = syst.xBC{ii};
         if ~(isstruct(PML_ii) && isscalar(PML_ii))
             error('syst.xBC{%d} must be ''outgoing'' or a scalar structure.', ii)
@@ -1037,7 +1037,7 @@ if opts.verbal
     else
         fprintf('; one-sided; N_prop_L = %d\n', N_prop_L);
     end
-    fprintf('xBC = {%s, %s}; yBC = %s', str_xBS{1}, str_xBS{2}, syst.yBC);
+    fprintf('xBC = {%s, %s}; yBC = %s', str_xBC{1}, str_xBC{2}, syst.yBC);
     if strcmpi(syst.yBC, 'Bloch'); fprintf(' (ky_B = %.4f)', syst.ky_B); end
     fprintf('; %s polarization\n', str_pol);
 end

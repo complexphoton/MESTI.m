@@ -299,7 +299,7 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      sources on the right), B_struct can be a structure array with multiple
 %      elements [e.g., B_struct(1).pos and B_struct(1).data specify line sources
 %      on the left; B_struct(2).pos and B_struct(2).data specify line sources on
-%      the left]; these inputs are treated separately, and the total number of
+%      the right]; these inputs are treated separately, and the total number of
 %      inputs is size(B_struct(1).data, 3) + size(B_struct(2).data, 3) + ... +
 %      size(B_struct(end).data, 3).
 %         If the nonzero elements of matrix B do not have rectangular shapes in
