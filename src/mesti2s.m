@@ -308,13 +308,13 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %               propagating channels incident on the right side.
 %      One can provide only in.ind_L or only in.ind_R or both of them.
 %         The above generates flux-normalized single-channel inputs of the form
-%            f_a^L(x,y) = 1/sqrt(mu_L(a))*phi_a(y)*exp(i*kx_L(a)*x)
+%            f_a^L(x,y) = 1/sqrt(nu_L(a))*phi_a(y)*exp(i*kx_L(a)*x)
 %      for input channel 'a' from the left, and/or
-%            f_a^R(x,y) = 1/sqrt(mu_R(a))*phi_a(y)*exp(-i*kx_R(a)*(x-L))
-%      for input channel 'a' from the right, where mu normalizes flux in the x
+%            f_a^R(x,y) = 1/sqrt(nu_R(a))*phi_a(y)*exp(-i*kx_R(a)*(x-L))
+%      for input channel 'a' from the right, where nu normalizes flux in the x
 %      direction, kx is the longitudinal wave number, and phi_a(y) is the
-%      transverse profile of the a-th propagating channel; mu = sin(kx(a)*dx)
-%      for TM polarization, mu = sin(kx(a)*dx)/epsilon_bg for TE polarization.
+%      transverse profile of the a-th propagating channel; nu = sin(kx(a)*dx)
+%      for TM polarization, nu = sin(kx(a)*dx)/epsilon_bg for TE polarization.
 %         The user can first use mesti_build_channels() to get the indices, wave
 %      numbers, and transverse profiles of the propagating channels; based on
 %      that, the user can specify the list of channels of interest through
@@ -770,7 +770,7 @@ else
     end
 end
 syst.PML = {}; % to be used in mesti()
-n_PML = 0; % number of PML layers
+n_PML = 0; % number of sides where PML is used
 
 % Loop over syst.xBC and handle PML parameters, if specified
 str_sides = {'low', 'high'};
@@ -1382,17 +1382,17 @@ end
 % For TM polarization, these inputs/outputs are placed at one pixel outside syst.epsilon (at n=0 and n=nx_Ez+1), which is at x=-0.5*dx and x=L+0.5*dx.
 % For TE polarization, these inputs/outputs are placed at the first and last pixels of syst.inv_epsilon{1} (at n=0.5 and n=nx_Ez+0.5), which is at x=0 and x=L.
 % We want the reference plane to be at x=0 and x=L. For TM, we need to shift the phase by back propagating half a pixel (dn = 0.5). For TE, dn = 0.
-% A line source of -2i*sqrt(mu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(mu), where mu = sin(kxdx) for TM polarization, mu = sin(kxdx)/epsilon_bg for TE polarization.
-% Including the back propagation, we want B_L(m,a) = -2i*sqrt(mu(a))*exp(-i*kxdx(a)*dn)*phi(m,a); we will multiple the -2i prefactor at the end.
-% The flux-normalized output projection is sqrt(mu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). We also need to shift the phase by back propagating dn pixel.
-% Therefore, we want C_L(m,b) = sqrt(mu(b))*exp(-i*kxdx(b)*dn)*conj(phi(m,b)).
-% Note that the complex conjugation only applies to phi; the sqrt(mu) prefactor is not conjugated. (At real-valued frequency, mu is real-valued, so this doesn't matter. But at complex-valued frequency, mu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
-% When the input/output channels are specified by channel indices, we will multiply the sqrt(mu(a))*exp(-i*kxdx(a)*dn) and sqrt(mu(b))*exp(-i*kxdx(b)*dn) prefactors at the end, after C*inv(A)*B is computed.
-% When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_R, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(mu)*exp(-i*kxdx*dn) prefactors included.
+% A line source of -2i*sqrt(nu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(nu), where nu = sin(kxdx) for TM polarization, nu = sin(kxdx)/epsilon_bg for TE polarization.
+% Including the back propagation, we want B_L(m,a) = -2i*sqrt(nu(a))*exp(-i*kxdx(a)*dn)*phi(m,a); we will multiple the -2i prefactor at the end.
+% The flux-normalized output projection is sqrt(nu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). We also need to shift the phase by back propagating dn pixel.
+% Therefore, we want C_L(m,b) = sqrt(nu(b))*exp(-i*kxdx(b)*dn)*conj(phi(m,b)).
+% Note that the complex conjugation only applies to phi; the sqrt(nu) prefactor is not conjugated. (At real-valued frequency, nu is real-valued, so this doesn't matter. But at complex-valued frequency, nu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
+% When the input/output channels are specified by channel indices, we will multiply the sqrt(nu(a))*exp(-i*kxdx(a)*dn) and sqrt(nu(b))*exp(-i*kxdx(b)*dn) prefactors at the end, after C*inv(A)*B is computed.
+% When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_L, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(nu)*exp(-i*kxdx*dn) prefactors included.
 if use_transpose_B % when opts.symmetrize_K = true
     % Here, we pad channels and/or permutate them such that C = transpose(B); this makes matrix K = [A,B;C,0] symmetric.
-    % To have C=transpose(B), the complex conjugate of the transverse field profiles of the list of output channels must equal the transverse field profiles of the list of input channels, and the list of input channels and the list of output channels must have the same prefactor mu.
-    % So, we expand the list of input channels (ind_in_L) to include the conjugate pairs of the output channels (channels.L.ind_prop_conj(ind_out_L)). The conjugate pairs correspond to flipping the sign of ky, and they share the same mu (which only depends on ky^2).
+    % To have C=transpose(B), the complex conjugate of the transverse field profiles of the list of output channels must equal the transverse field profiles of the list of input channels, and the list of input channels and the list of output channels must have the same prefactor nu.
+    % So, we expand the list of input channels (ind_in_L) to include the conjugate pairs of the output channels (channels.L.ind_prop_conj(ind_out_L)). The conjugate pairs correspond to flipping the sign of ky, and they share the same nu (which only depends on ky^2).
     % We only build B_L and B_R here, from which matrix B will be built in mesti(). C_L and C_R are not needed since matrix C will not be used until in mesti_matrix_solver().
 
     % We only need to keep the unique channel indices, since ind_in_L and channels.L.ind_prop_conj(ind_out_L) are likely to contain the same indices.
@@ -1428,23 +1428,23 @@ else % without opts.symmetrize_K
         end
     else % input wavefronts specified by v_in_L and v_in_R
         if has_phi_prop_L % must be so when nnz(v_in_L) >= N_prop_L
-            B_L = phi_prop_L*(reshape(channels.L.sqrt_mu.*exp((-1i*dn)*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
+            B_L = phi_prop_L*(reshape(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
         else
             % build B_L using only the channels used
             B_L = zeros(ny, M_in_L);
             for ii = 1:M_in_L
                 ind = find(v_in_L(:,ii));
-                B_L(:,ii) = channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_mu(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
+                B_L(:,ii) = channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
             end
         end
         if two_sided
             if has_phi_prop_R % must be so when nnz(v_in_R) >= N_prop_R
-                B_R = phi_prop_R*(reshape(channels.R.sqrt_mu.*exp((-1i*dn)*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
+                B_R = phi_prop_R*(reshape(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
             else
                 B_R = zeros(ny, M_in_R);
                 for ii = 1:M_in_R
                     ind = find(v_in_R(:,ii));
-                    B_R(:,ii) = channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_mu(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
+                    B_R(:,ii) = channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
                 end
             end
         end
@@ -1467,23 +1467,23 @@ else % without opts.symmetrize_K
             end
         else % output wavefronts specified by v_out_L and v_out_R
             if has_phi_prop_L % must be so when nnz(v_out_L) >= N_prop_L
-                C_L = conj(phi_prop_L*(reshape(conj(channels.L.sqrt_mu.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
+                C_L = conj(phi_prop_L*(reshape(conj(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
             else
                 % build C_L using only the channels used
                 C_L = zeros(ny, M_out_L);
                 for ii = 1:M_out_L
                     ind = find(v_out_L(:,ii));
-                    C_L(:,ii) = conj(channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_mu(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
+                    C_L(:,ii) = conj(channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
                 end
             end
             if two_sided
                 if has_phi_prop_R % must be so when nnz(v_out_R) >= N_prop_R
-                    C_R = conj(phi_prop_R*(reshape(conj(channels.R.sqrt_mu.*exp((-1i*dn)*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
+                    C_R = conj(phi_prop_R*(reshape(conj(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
                 else
                     C_R = zeros(ny, M_out_R);
                     for ii = 1:M_out_R
                         ind = find(v_out_R(:,ii));
-                        C_R(:,ii) = conj(channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_mu(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
+                        C_R(:,ii) = conj(channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
                     end
                 end
             end
@@ -1643,11 +1643,11 @@ if use_transpose_B % when opts.symmetrize_K = true
     S = S(ind_out, ind_in);
 end
 
-% Include the sqrt(mu(a))*exp(-i*kxdx*dn) prefactors that should have been in the input matrix B
+% Include the sqrt(nu(a))*exp(-i*kxdx*dn) prefactors that should have been in the input matrix B
 if use_ind_in % input channels specified by ind_in_L and ind_in_R
-    prefactor = channels.L.sqrt_mu(ind_in_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_in_L));
+    prefactor = channels.L.sqrt_nu_prop(ind_in_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_in_L));
     if two_sided
-        prefactor = [prefactor, channels.R.sqrt_mu(ind_in_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_in_R))];
+        prefactor = [prefactor, channels.R.sqrt_nu_prop(ind_in_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_in_R))];
     end
     if opts.return_field_profile
         S = S.*reshape(prefactor, 1, 1, []); % use implicit expansion
@@ -1658,11 +1658,11 @@ end
 
 if ~opts.return_field_profile
 
-    % Include the sqrt(mu(b))*exp(-i*kxdx*dn) prefactors that should have been in the output matrix C
+    % Include the sqrt(nu(b))*exp(-i*kxdx*dn) prefactors that should have been in the output matrix C
     if use_ind_out % output channels specified by ind_out_L and ind_out_R
-        prefactor = channels.L.sqrt_mu(ind_out_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_out_L));
+        prefactor = channels.L.sqrt_nu_prop(ind_out_L).*exp((-1i*dn)*channels.L.kxdx_prop(ind_out_L));
         if two_sided
-            prefactor = [prefactor, channels.R.sqrt_mu(ind_out_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_out_R))];
+            prefactor = [prefactor, channels.R.sqrt_nu_prop(ind_out_R).*exp((-1i*dn)*channels.R.kxdx_prop(ind_out_R))];
         end
         S = reshape(prefactor, [], 1).*S; % use implicit expansion
     end
@@ -1769,7 +1769,7 @@ else % when opts.return_field_profile = true
             u_in = zeros(ny, 1);
             n_L = 1; % index for the inputs/outputs on the left surface
             if M_in_L > 0
-                prefactor = reshape(exp((-1i*dn)*channels.L.kxdx_prop)./channels.L.sqrt_mu, N_prop_L, 1);
+                prefactor = reshape(exp((-1i*dn)*channels.L.kxdx_prop)./channels.L.sqrt_nu_prop, N_prop_L, 1);
             end
             for ii = 1:M_in_L % input from left
                 u = phi_prime*S(:, n_L, ii);  % u is a ny-by-1 column vector of transverse mode coefficients
@@ -1819,7 +1819,7 @@ else % when opts.return_field_profile = true
                     S_R(:, :, ii) = phi*(u_out.*exp_pikx);
                 end
                 if M_in_R > 0
-                    prefactor = reshape(exp((-1i*dn)*channels.R.kxdx_prop)./channels.R.sqrt_mu, N_prop_R, 1);
+                    prefactor = reshape(exp((-1i*dn)*channels.R.kxdx_prop)./channels.R.sqrt_nu_prop, N_prop_R, 1);
                 end
                 for ii = 1:M_in_R % input from right
                     u = phi_prime*S(:, n_R, M_in_L+ii);  % u is a ny-by-1 column vector of transverse mode coefficients

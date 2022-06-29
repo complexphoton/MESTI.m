@@ -112,12 +112,12 @@ E_s_prop = exp(1i*kx*(x_source-x_f)).*E_f_prop; % size(E_s_prop) = [N_prop, M_in
 
 % Step 4: Determine the line sources.
 % In a closed geometry with no PML in y, a line source of
-% -2i*mu(a)*phi(:,a) generates outgoing waves with transverse profile
+% -2i*nu(a)*phi(:,a) generates outgoing waves with transverse profile
 % phi(:,a). With PML in y, this is not strictly true but is sufficiently
 % accurate since E^in(x=x_source,y) decays exponentially in y.
 % Note we use implicit expansion here.
-mu = reshape(channels.sqrt_mu, [], 1).^2; % mu = sin(kx*dx)
-B_L = phi*(mu.*E_s_prop); % size(B_L) = [ny, M_in]
+nu = reshape(channels.sqrt_nu_prop, [], 1).^2; % nu = sin(kx*dx)
+B_L = phi*(nu.*E_s_prop); % size(B_L) = [ny, M_in]
 
 % We take the -2i prefactor out, to be multiplied at the end. The reason
 % will be clear when we handle C below.
@@ -192,10 +192,10 @@ C_L = exp(-1i*kx*(x_f-x_source)).*C_L; % size(C_L) = [N_prop, ny]
 % E_f_prop = phi'*E_f; % size(E_f_prop) = [N_prop, M_in]
 
 % Step 4: Take the inner product between the two.
-% The longitudinal flux of a propagating channels is proportional to mu, so
-% we weight the inner product with mu to account for flux dependence.
+% The longitudinal flux of a propagating channels is proportional to nu, so
+% we weight the inner product with nu to account for flux dependence.
 % Note we use implicit expansion here.
-C_L = (E_f_prop') * (mu.*C_L); % size(C_L) = [M_in, ny]
+C_L = (E_f_prop') * (nu.*C_L); % size(C_L) = [M_in, ny]
 
 % Normally, the next step would be
 % C_struct.data = C_L.';

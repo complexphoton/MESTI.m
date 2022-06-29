@@ -106,12 +106,12 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %      channels.L.kydx_prop (1-by-N_prop real row vector):
 %         Dimensionless transverse wave number ky*dx for the N_prop propagating
 %         channels, equal to channels.kydx_all(channels.L.ind_prop).
-%      channels.L.sqrt_mu (1-by-N_prop row vector):
+%      channels.L.sqrt_nu_prop (1-by-N_prop row vector):
 %         Normalization factor for the longitudinal flux of the propagating
-%         transverse modes: sqrt_mu = sqrt(sin(kxdx)) for TM polarization,
-%         sqrt_mu = sqrt(sin(kxdx)/epsilon_L) for TE polarization, such that
-%         the x component of the Poynting vector a transverse mode integrated
-%         over y is proportional to sqrt_mu^2. The longitudinal group velocity
+%         transverse modes: sqrt_nu = sqrt(sin(kxdx)) for TM polarization,
+%         sqrt_nu = sqrt(sin(kxdx)/epsilon_L) for TE polarization, such that
+%         the x component of the Poynting vector of a transverse mode integrated
+%         over y is proportional to sqrt_nu^2. The longitudinal group velocity
 %         is v_g = (sin(kxdx)/k0dx)*(c/epsilon_L).
 %      channels.L.ind_prop_conj (1-by-N_prop integer row vector; optional):
 %         A permutation vector that switches one propagating channel with one
@@ -344,7 +344,7 @@ else
     error('Input argument yBC = ''%s'' is not a supported option.', yBC);
 end
 
-% Properties for the homogeneous space on the left (kxdx, sqrt_mu, number of propagating channels, etc; depends on epsilon_L/R)
+% Properties for the homogeneous space on the left (kxdx, sqrt_nu_prop, number of propagating channels, etc; depends on epsilon_L/R)
 side = setup_longitudinal(k0dx, epsilon_L, channels.kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion);
 
 if two_sided
@@ -422,13 +422,13 @@ side.kxdx_prop = side.kxdx_all(side.ind_prop);
 side.kydx_prop = kydx_all(side.ind_prop);
     
 % Square root of the normalized longitudinal group velocity, for the propagating channels
-%  TM: sqrt_mu = sqrt(sin(kxdx))
-%  TE: sqrt_mu = sqrt(sin(kxdx)/epsilon_bg)
-% When k0dx2_epsilon is real, sqrt_mu is also real. When k0dx2_epsilon is complex, sqrt_mu is also complex.
+%  TM: nu = sin(kxdx)
+%  TE: nu = sin(kxdx)/epsilon_bg
+% When k0dx2_epsilon is real, sqrt_nu_prop is also real. When k0dx2_epsilon is complex, sqrt_nu_prop is also complex.
 if use_TM
-    side.sqrt_mu = sqrt(sin(side.kxdx_prop));
+    side.sqrt_nu_prop = sqrt(sin(side.kxdx_prop));
 else
-    side.sqrt_mu = sqrt(sin(side.kxdx_prop)/epsilon_bg);
+    side.sqrt_nu_prop = sqrt(sin(side.kxdx_prop)/epsilon_bg);
 end
 
 % Permutation that switches one propagating channel with one having a complex-conjugated transverse profile.

@@ -142,7 +142,7 @@ B_L = build_compressed_B(ny_L, N_L, ny_window_L, use_Hann_window);
 B_R = build_compressed_B(ny_R, N_R, ny_window_R, use_Hann_window);
 
 % We take out the -2i prefactor of B so C will equal transpose(B).
-% The sqrt(mu) prefactor will be added later.
+% The sqrt(nu) prefactor will be added later.
 opts.prefactor = -2i;
 
 % Preallocate the 2-element structure array B_struct
@@ -210,12 +210,12 @@ if use_Hann_window
     t = q_inv_R.*t.*q_inv_L; % use implicit expansion
 end
 
-% Multiply the sqrt(mu) prefactor.
+% Multiply the sqrt(nu) prefactor.
 % Note that M_R includes all propagating channels on the right, but M_L
 % only includes propagating channels on the left that can propagate in air.
-sqrt_mu_L = channels_L.sqrt_mu(ind_in_L); % row vector
-sqrt_mu_R = channels_R.sqrt_mu.';         % column vector
-t = sqrt_mu_R.*t.*sqrt_mu_L; % use implicit expansion
+sqrt_nu_L = channels_L.sqrt_nu_prop(ind_in_L); % row vector
+sqrt_nu_R = channels_R.sqrt_nu_prop.';         % column vector
+t = sqrt_nu_R.*t.*sqrt_nu_L; % use implicit expansion
 
 % Time spent to decompress
 time2 = clock; timing_decompress = etime(time2,time1);
@@ -319,7 +319,7 @@ for ii = 1:n_angles_profiles
     % to the propagating components, per Eq. (S7) of the APF paper:
     %    Ez^(a)(x=L,y) = sum_b t_ba*phi_b(y)/sqrt(kx_b)
     % The summation over plane waves b can be evaluated with ifft as follows:
-    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a_list(ii)), ny_R), -1);
+    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_nu_R).*t(:,a_list(ii)), ny_R), -1);
 
     % Down-sample the field profile prior to ASP.
     % We could have done so directly inside the ifft above to save time,
@@ -346,10 +346,10 @@ Ez_ideal = [zeros(ny_R_extra_half,1); exp(1i*ideal_phase); zeros(ny_R_extra_half
 
 % Project Ez_ideal onto the propagating channels on the right
 temp  = circshift(exp(-1i*2*pi/ny_R*(0:ny_R-1).').*fft(Ez_ideal), floor(channels_R.N_prop/2))/sqrt(ny_R);
-t_ideal = (channels_R.sqrt_mu).'.*temp(1:channels_R.N_prop);
+t_ideal = (channels_R.sqrt_nu_prop).'.*temp(1:channels_R.N_prop);
 
 % Use ASP to propagate Ez_ideal to the focal plane
-Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t_ideal,ny_R), -1);
+Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_nu_R).*t_ideal,ny_R), -1);
 Ez0_ASP = Ez0(ind_ASP,:); 
 Ez_focal_ideal = asp(Ez0_ASP, focal_length, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
 
@@ -370,7 +370,7 @@ for ii = 1:ceil(M_L/batch_size)
     T_list(a) = sum(abs(t(:,a)).^2, 1); 
  
     % Use ASP to propagate Ez to the focal plane, same as the intensity profile
-    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_mu_R).*t(:,a), ny_R), -1);
+    Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_nu_R).*t(:,a), ny_R), -1);
     Ez0_ASP = Ez0(ind_ASP,:); 
     Ez_focal = asp(Ez0_ASP, focal_length, kx_ASP_prop, ny_ASP, ny_ASP_pad_low);
 
