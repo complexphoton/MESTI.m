@@ -459,8 +459,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      opts.ordering (positive integer vector; optional):
 %         A user-specified ordering sequence for matrix A or matrix K, used only
 %         when opts.solver = 'MUMPS'. Using the ordering from a previous
-%         computation can speed up the analysis stage, but the matrix size must
-%         be the same.
+%         computation can speed up (but does not eliminate) the analysis stage.
+%         The matrix size must be the same, and the sparsity structure should be
+%         similar among the previous and the current computation.
 %      opts.analysis_only (logical scalar; optional, defaults to false):
 %         When opts.analysis_only = true, the factorization and solution steps
 %         will be skipped, and S = [] will be returned. The user can use
