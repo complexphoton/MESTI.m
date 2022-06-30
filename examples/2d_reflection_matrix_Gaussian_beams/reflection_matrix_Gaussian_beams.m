@@ -96,12 +96,12 @@ E_f = exp(-(y.' - y_f).^2/(w_0^2)); % size(E_f) = [ny, M_in]
 % the simulation domain.
 channels = mesti_build_channels(ny,'TM','PEC',(2*pi/syst.wavelength)*syst.dx,n_bg^2); 
 
-% Transverse profiles of the propagating channels. Each column of phi is
+% Transverse profiles of the propagating channels. Each column of u is
 % one transverse profile. Different columns are orthonormal.
-phi = channels.fun_phi(channels.kydx_prop); % size(phi) = [ny, N_prop]
+u = channels.fun_u(channels.kydx_prop); % size(u) = [ny, N_prop]
 
 % Step 2: Project E^in(x_f, y) onto the propagating channels.
-E_f_prop = phi'*E_f; % size(E_f_prop) = [N_prop, M_in]
+E_f_prop = u'*E_f; % size(E_f_prop) = [N_prop, M_in]
 
 % Step 3: Back propagate from x = x_f to x = x_source.
 % This step assumes a PEC boundary in y, so it is not exact with PML in y,
@@ -112,12 +112,12 @@ E_s_prop = exp(1i*kx*(x_source-x_f)).*E_f_prop; % size(E_s_prop) = [N_prop, M_in
 
 % Step 4: Determine the line sources.
 % In a closed geometry with no PML in y, a line source of
-% -2i*nu(a)*phi(:,a) generates outgoing waves with transverse profile
-% phi(:,a). With PML in y, this is not strictly true but is sufficiently
+% -2i*nu(a)*u(:,a) generates outgoing waves with transverse profile
+% u(:,a). With PML in y, this is not strictly true but is sufficiently
 % accurate since E^in(x=x_source,y) decays exponentially in y.
 % Note we use implicit expansion here.
 nu = reshape(channels.sqrt_nu_prop, [], 1).^2; % nu = sin(kx*dx)
-B_L = phi*(nu.*E_s_prop); % size(B_L) = [ny, M_in]
+B_L = u*(nu.*E_s_prop); % size(B_L) = [ny, M_in]
 
 % We take the -2i prefactor out, to be multiplied at the end. The reason
 % will be clear when we handle C below.
@@ -182,14 +182,14 @@ C_struct.pos = B_struct.pos;
 
 % Step 1: Project E(x_source, y) onto the propagating channels.
 % The projection will be C_L*E(:,n_source).
-C_L = phi'; % size(C_L) = [N_prop, ny]
+C_L = u'; % size(C_L) = [N_prop, ny]
 
 % Step 2: Back propagate from x = x_source to x = x_f.
 C_L = exp(-1i*kx*(x_f-x_source)).*C_L; % size(C_L) = [N_prop, ny]
 
 % Step 3: Project Gaussian beams at the focal plane onto the propagating
 % channels. No need to repeat since this was already done earlier.
-% E_f_prop = phi'*E_f; % size(E_f_prop) = [N_prop, M_in]
+% E_f_prop = u'*E_f; % size(E_f_prop) = [N_prop, M_in]
 
 % Step 4: Take the inner product between the two.
 % The longitudinal flux of a propagating channels is proportional to nu, so

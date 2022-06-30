@@ -256,12 +256,12 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %               default (alpha_max_over_omega = 0) since we are in frequency
 %               domain.
 %         We use the following PML coordinate-stretching factor:
-%            s(u) = kappa(u) + sigma(u)./(alpha(u) - i*omega)
+%            s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
 %         with
-%            sigma(u)/omega = sigma_max_over_omega*(u.^power_sigma),
-%            kappa(u) = 1 + (kappa_max-1)*(u.^power_kappa),
-%            alpha(u)/omega = alpha_max_over_omega*((1-u).^power_alpha),
-%         where omega is frequency, and u goes linearly from 0 at the beginning
+%            sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+%            kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+%            alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+%         where omega is frequency, and p goes linearly from 0 at the beginning
 %         of the PML to 1 at the end of the PML. 
 %            The syntax above (setting syst.xBC to 'outgoing' or a scalar
 %         structure) uses the same parameters on the two sides. For a two-sided
@@ -289,7 +289,7 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         case the finite-difference dispersion is used.
 %      syst.m0 (real numeric scalar; optional, defaults to 0):
 %         Center of the transverse mode profile with periodic or Bloch periodic
-%         boundary condition, phi_{m,a} = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
+%         boundary condition, u(m,a) = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
 %         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx) and ny = ny_Ez for TM,
 %         ny_Hz for TE.
 %   in (cell array or scalar structure; required):
@@ -308,11 +308,11 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %               propagating channels incident on the right side.
 %      One can provide only in.ind_L or only in.ind_R or both of them.
 %         The above generates flux-normalized single-channel inputs of the form
-%            f_a^L(x,y) = 1/sqrt(nu_L(a))*phi_a(y)*exp(i*kx_L(a)*x)
+%            f_a^L(x,y) = 1/sqrt(nu_L(a))*u_a(y)*exp(i*kx_L(a)*x)
 %      for input channel 'a' from the left, and/or
-%            f_a^R(x,y) = 1/sqrt(nu_R(a))*phi_a(y)*exp(-i*kx_R(a)*(x-L))
+%            f_a^R(x,y) = 1/sqrt(nu_R(a))*u_a(y)*exp(-i*kx_R(a)*(x-L))
 %      for input channel 'a' from the right, where nu normalizes flux in the x
-%      direction, kx is the longitudinal wave number, and phi_a(y) is the
+%      direction, kx is the longitudinal wave number, and u_a(y) is the
 %      transverse profile of the a-th propagating channel; nu = sin(kx(a)*dx)
 %      for TM polarization, nu = sin(kx(a)*dx)/epsilon_bg for TE polarization.
 %         The user can first use mesti_build_channels() to get the indices, wave
@@ -511,7 +511,7 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      channels.R.N_prop on the right, with transverse wave numbers given by
 %      vectors channels.L.kydx_prop and channels.R.kydx_prop, longitudinal wave
 %      numbers given by vectors channels.L.kxdx_prop and channels.R.kxdx_prop.
-%      The transverse profiles of these channels are channels.fun_phi(kydx).
+%      The transverse profiles of these channels are channels.fun_u(kydx).
 %      Matrix S is then one block of S_full = [[r_L; t_L], [t_R; r_R]] depending
 %      on which side(s) are specified for the input and output, with r_L and r_R
 %      being reflection matrices on the left and right sides, t_L and t_R being
@@ -1053,10 +1053,10 @@ if use_self_energy(1) || use_self_energy(2)
     end
     if opts.verbal; fprintf('Building G0 ... '); end
 
-    % Build ny-by-ny unitary matrix phi where the a-th column is the a-th transverse mode
+    % Build ny-by-ny unitary matrix u where the a-th column is the a-th transverse mode
     % This includes all the propagating and evanescent channels
-    % With periodic boundary condition, phi is the shifted DFT matrix
-    phi = channels.fun_phi(channels.kydx_all);
+    % With periodic boundary condition, u is the shifted DFT matrix
+    u = channels.fun_u(channels.kydx_all);
 
     % Retarded Green's function G0 of a semi-infinite homogeneous space, evaluated at the surface (just before the space is terminated)
     % A few notes about TE polarization:
@@ -1066,33 +1066,33 @@ if use_self_energy(1) || use_self_energy(2)
     % Here, we absorb the additional (1/epsilon_bg)^2 prefactor into G0_TE. So, for TE polarization, the G0_L and G0_R below is actually G0_L/syst.epsilon_L^2 and G0_R/syst.epsilon_R^2. This is fine since we won't use G0 anywhere else; RGF is currently not supported for TE.
     if use_self_energy(1)
         if use_TM
-            G0_L = (phi.*exp(1i*channels.L.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+            G0_L = (u.*exp(1i*channels.L.kxdx_all))*(u'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
         else
-            G0_L = (phi.*(exp(1i*channels.L.kxdx_all)/syst.epsilon_L))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+            G0_L = (u.*(exp(1i*channels.L.kxdx_all)/syst.epsilon_L))*(u'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
         end
     end
     if all(use_self_energy) && syst.epsilon_R == syst.epsilon_L
         G0_R = G0_L;
     elseif use_self_energy(2)
         if use_TM
-            G0_R = (phi.*exp(1i*channels.R.kxdx_all))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+            G0_R = (u.*exp(1i*channels.R.kxdx_all))*(u'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
         else
-            G0_R = (phi.*(exp(1i*channels.R.kxdx_all)/syst.epsilon_R))*(phi'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
+            G0_R = (u.*(exp(1i*channels.R.kxdx_all)/syst.epsilon_R))*(u'); % use implicit expansion; note that channels.L.kxdx_all is a 1-by-ny row vector
         end
     end
 
-    % phi_prop_L and phi_prop_R will be used later for building B and/or C
-    phi_prop_L = phi(:, channels.L.ind_prop);
-    has_phi_prop_L = true;
+    % u_prop_L and u_prop_R will be used later for building B and/or C
+    u_prop_L = u(:, channels.L.ind_prop);
+    has_u_prop_L = true;
     if two_sided
         if syst.epsilon_R == syst.epsilon_L
-            phi_prop_R = phi_prop_L;
+            u_prop_R = u_prop_L;
         else
-            phi_prop_R = phi(:, channels.R.ind_prop);
+            u_prop_R = u(:, channels.R.ind_prop);
         end
-        has_phi_prop_R = true;
+        has_u_prop_R = true;
     end
-    if opts.clear_memory; clear phi; end
+    if opts.clear_memory; clear u; end
 
     % self-energy can be used instead of PML to implement exact outgoing boundary condition.
     % self-energy is the retarded Green's function of the surrounding space (with a Dirichlet boundary surrounding the scattering region) evaluated on the surface.
@@ -1113,8 +1113,8 @@ if use_self_energy(1) || use_self_energy(2)
     t2 = clock; timing_build_G0 = etime(t2,t1);
     if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build_G0); end
 else
-    has_phi_prop_L = false;
-    has_phi_prop_R = false;
+    has_u_prop_L = false;
+    has_u_prop_R = false;
     t2 = t1;
     timing_build_G0 = 0;
 end
@@ -1208,21 +1208,21 @@ if use_ind_in
     end
 else
     M_in_L = size(v_in_L, 2);
-    % if nnz(v_in_L) is large, we will need phi_prop_L when we build B_L later
-    if (nnz(v_in_L) >= N_prop_L) && ~has_phi_prop_L
-        phi_prop_L = channels.fun_phi(channels.L.kydx_prop);
-        has_phi_prop_L = true;
+    % if nnz(v_in_L) is large, we will need u_prop_L when we build B_L later
+    if (nnz(v_in_L) >= N_prop_L) && ~has_u_prop_L
+        u_prop_L = channels.fun_u(channels.L.kydx_prop);
+        has_u_prop_L = true;
     end
     if two_sided
         M_in_R = size(v_in_R, 2);
-        % if nnz(v_in_R) is large, we will need phi_prop_R when we build B_R later
-        if (nnz(v_in_R) >= N_prop_R) && ~has_phi_prop_R
-            if (syst.epsilon_R == syst.epsilon_L) && has_phi_prop_L
-                phi_prop_R = phi_prop_L;
+        % if nnz(v_in_R) is large, we will need u_prop_R when we build B_R later
+        if (nnz(v_in_R) >= N_prop_R) && ~has_u_prop_R
+            if (syst.epsilon_R == syst.epsilon_L) && has_u_prop_L
+                u_prop_R = u_prop_L;
             else
-                phi_prop_R = channels.fun_phi(channels.R.kydx_prop);
+                u_prop_R = channels.fun_u(channels.R.kydx_prop);
             end
-            has_phi_prop_R = true;
+            has_u_prop_R = true;
         end
     end
 end
@@ -1315,21 +1315,21 @@ if ~isempty(out)
         end
     else
         M_out_L = size(v_out_L, 2);
-        % if nnz(v_out_L) is large, we will need phi_prop_L when we build C_L later
-        if (nnz(v_out_L) >= N_prop_L) && ~has_phi_prop_L
-            phi_prop_L = channels.fun_phi(channels.L.kydx_prop);
-            has_phi_prop_L = true;
+        % if nnz(v_out_L) is large, we will need u_prop_L when we build C_L later
+        if (nnz(v_out_L) >= N_prop_L) && ~has_u_prop_L
+            u_prop_L = channels.fun_u(channels.L.kydx_prop);
+            has_u_prop_L = true;
         end
         if two_sided
             M_out_R = size(v_out_R, 2);
-            % if nnz(v_out_R) is large, we will need phi_prop_R when we build C_R later
-            if (nnz(v_out_R) >= N_prop_R) && ~has_phi_prop_R
-                if (syst.epsilon_R == syst.epsilon_L) && has_phi_prop_L
-                    phi_prop_R = phi_prop_L;
+            % if nnz(v_out_R) is large, we will need u_prop_R when we build C_R later
+            if (nnz(v_out_R) >= N_prop_R) && ~has_u_prop_R
+                if (syst.epsilon_R == syst.epsilon_L) && has_u_prop_L
+                    u_prop_R = u_prop_L;
                 else
-                    phi_prop_R = channels.fun_phi(channels.R.kydx_prop);
+                    u_prop_R = channels.fun_u(channels.R.kydx_prop);
                 end
-                has_phi_prop_R = true;
+                has_u_prop_R = true;
             end
         end
     end
@@ -1383,11 +1383,11 @@ end
 % For TM polarization, these inputs/outputs are placed at one pixel outside syst.epsilon (at n=0 and n=nx_Ez+1), which is at x=-0.5*dx and x=L+0.5*dx.
 % For TE polarization, these inputs/outputs are placed at the first and last pixels of syst.inv_epsilon{1} (at n=0.5 and n=nx_Ez+0.5), which is at x=0 and x=L.
 % We want the reference plane to be at x=0 and x=L. For TM, we need to shift the phase by back propagating half a pixel (dn = 0.5). For TE, dn = 0.
-% A line source of -2i*sqrt(nu)*phi(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*phi(m)/sqrt(nu), where nu = sin(kxdx) for TM polarization, nu = sin(kxdx)/epsilon_bg for TE polarization.
-% Including the back propagation, we want B_L(m,a) = -2i*sqrt(nu(a))*exp(-i*kxdx(a)*dn)*phi(m,a); we will multiple the -2i prefactor at the end.
-% The flux-normalized output projection is sqrt(nu(b))*conj(phi(:,b)); it will be transposed in mesti() or before rgf(). We also need to shift the phase by back propagating dn pixel.
-% Therefore, we want C_L(m,b) = sqrt(nu(b))*exp(-i*kxdx(b)*dn)*conj(phi(m,b)).
-% Note that the complex conjugation only applies to phi; the sqrt(nu) prefactor is not conjugated. (At real-valued frequency, nu is real-valued, so this doesn't matter. But at complex-valued frequency, nu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
+% A line source of -2i*sqrt(nu)*u(m) at n=0 will generate an x-flux-normalized incident field of exp(i*kxdx*|n|)*u(m)/sqrt(nu), where nu = sin(kxdx) for TM polarization, nu = sin(kxdx)/epsilon_bg for TE polarization.
+% Including the back propagation, we want B_L(m,a) = -2i*sqrt(nu(a))*exp(-i*kxdx(a)*dn)*u(m,a); we will multiple the -2i prefactor at the end.
+% The flux-normalized output projection is sqrt(nu(b))*conj(u(:,b)); it will be transposed in mesti() or before rgf(). We also need to shift the phase by back propagating dn pixel.
+% Therefore, we want C_L(m,b) = sqrt(nu(b))*exp(-i*kxdx(b)*dn)*conj(u(m,b)).
+% Note that the complex conjugation only applies to u; the sqrt(nu) prefactor is not conjugated. (At real-valued frequency, nu is real-valued, so this doesn't matter. But at complex-valued frequency, nu is complex-valued, and we should not conjugate it. Note that the transverse basis is complete and orthonormal even when the frequency is complex, so the output projection doesn't need to be modified when the frequency is complex.)
 % When the input/output channels are specified by channel indices, we will multiply the sqrt(nu(a))*exp(-i*kxdx(a)*dn) and sqrt(nu(b))*exp(-i*kxdx(b)*dn) prefactors at the end, after C*inv(A)*B is computed.
 % When the input/output wavefronts are specified by in.v_L, in.v_R, out.v_L, out.v_R, we take superpositions of the channels using the v coefficients, with the sqrt(nu)*exp(-i*kxdx*dn) prefactors included.
 if use_transpose_B % when opts.symmetrize_K = true
@@ -1399,53 +1399,53 @@ if use_transpose_B % when opts.symmetrize_K = true
     % We only need to keep the unique channel indices, since ind_in_L and channels.L.ind_prop_conj(ind_out_L) are likely to contain the same indices.
     % ind_in_out_L satisfies ind_L(ind_in_out_L) = [ind_in_L, channels.L.ind_prop_conj(ind_out_L)]. The computations will be done in ind_L, so later we can use ind_in_out_L to retrieve the original lists of input channels (with the first half of ind_in_out_L) and the original list of output channels (with the second half of ind_in_out_L).
     [ind_L, ~, ind_in_out_L] = unique([ind_in_L, channels.L.ind_prop_conj(ind_out_L)]);
-    if has_phi_prop_L
-        B_L = phi_prop_L(:,ind_L);
+    if has_u_prop_L
+        B_L = u_prop_L(:,ind_L);
     else
-        B_L = channels.fun_phi(channels.L.kydx_prop(ind_L));
+        B_L = channels.fun_u(channels.L.kydx_prop(ind_L));
     end
     if two_sided
         [ind_R, ~, ind_in_out_R] = unique([ind_in_R, channels.R.ind_prop_conj(ind_out_R)]);
-        if has_phi_prop_R
-            B_R = phi_prop_R(:,ind_R);
+        if has_u_prop_R
+            B_R = u_prop_R(:,ind_R);
         else
-            B_R = channels.fun_phi(channels.R.kydx_prop(ind_R));
+            B_R = channels.fun_u(channels.R.kydx_prop(ind_R));
         end
     end
 else % without opts.symmetrize_K
     % Build input matrices B_L and B_R
     if use_ind_in % input channels specified by ind_in_L and ind_in_R
-        if has_phi_prop_L
-            B_L = phi_prop_L(:,ind_in_L);
+        if has_u_prop_L
+            B_L = u_prop_L(:,ind_in_L);
         else
-            B_L = channels.fun_phi(channels.L.kydx_prop(ind_in_L));
+            B_L = channels.fun_u(channels.L.kydx_prop(ind_in_L));
         end
         if two_sided
-            if has_phi_prop_R
-                B_R = phi_prop_R(:,ind_in_R);
+            if has_u_prop_R
+                B_R = u_prop_R(:,ind_in_R);
             else
-                B_R = channels.fun_phi(channels.R.kydx_prop(ind_in_R));
+                B_R = channels.fun_u(channels.R.kydx_prop(ind_in_R));
             end
         end
     else % input wavefronts specified by v_in_L and v_in_R
-        if has_phi_prop_L % must be so when nnz(v_in_L) >= N_prop_L
-            B_L = phi_prop_L*(reshape(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
+        if has_u_prop_L % must be so when nnz(v_in_L) >= N_prop_L
+            B_L = u_prop_L*(reshape(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop), N_prop_L, 1).*v_in_L); % use implicit expansion
         else
             % build B_L using only the channels used
             B_L = zeros(ny, M_in_L);
             for ii = 1:M_in_L
                 ind = find(v_in_L(:,ii));
-                B_L(:,ii) = channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
+                B_L(:,ii) = channels.fun_u(channels.L.kydx_prop(ind))*(reshape(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*v_in_L(ind,ii));
             end
         end
         if two_sided
-            if has_phi_prop_R % must be so when nnz(v_in_R) >= N_prop_R
-                B_R = phi_prop_R*(reshape(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
+            if has_u_prop_R % must be so when nnz(v_in_R) >= N_prop_R
+                B_R = u_prop_R*(reshape(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop), N_prop_R, 1).*v_in_R); % use implicit expansion
             else
                 B_R = zeros(ny, M_in_R);
                 for ii = 1:M_in_R
                     ind = find(v_in_R(:,ii));
-                    B_R(:,ii) = channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
+                    B_R(:,ii) = channels.fun_u(channels.R.kydx_prop(ind))*(reshape(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*v_in_R(ind,ii));
                 end
             end
         end
@@ -1454,37 +1454,37 @@ else % without opts.symmetrize_K
     % Build output matrices C_L and C_R
     if build_C
         if use_ind_out % output channels specified by ind_out_L and ind_out_R
-            if has_phi_prop_L
-                C_L = conj(phi_prop_L(:,ind_out_L));
+            if has_u_prop_L
+                C_L = conj(u_prop_L(:,ind_out_L));
             else
-                C_L = conj(channels.fun_phi(channels.L.kydx_prop(ind_out_L)));
+                C_L = conj(channels.fun_u(channels.L.kydx_prop(ind_out_L)));
             end
             if two_sided
-                if has_phi_prop_R
-                    C_R = conj(phi_prop_R(:,ind_out_R));
+                if has_u_prop_R
+                    C_R = conj(u_prop_R(:,ind_out_R));
                 else
-                    C_R = conj(channels.fun_phi(channels.R.kydx_prop(ind_out_R)));
+                    C_R = conj(channels.fun_u(channels.R.kydx_prop(ind_out_R)));
                 end
             end
         else % output wavefronts specified by v_out_L and v_out_R
-            if has_phi_prop_L % must be so when nnz(v_out_L) >= N_prop_L
-                C_L = conj(phi_prop_L*(reshape(conj(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
+            if has_u_prop_L % must be so when nnz(v_out_L) >= N_prop_L
+                C_L = conj(u_prop_L*(reshape(conj(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
             else
                 % build C_L using only the channels used
                 C_L = zeros(ny, M_out_L);
                 for ii = 1:M_out_L
                     ind = find(v_out_L(:,ii));
-                    C_L(:,ii) = conj(channels.fun_phi(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
+                    C_L(:,ii) = conj(channels.fun_u(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
                 end
             end
             if two_sided
-                if has_phi_prop_R % must be so when nnz(v_out_R) >= N_prop_R
-                    C_R = conj(phi_prop_R*(reshape(conj(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
+                if has_u_prop_R % must be so when nnz(v_out_R) >= N_prop_R
+                    C_R = conj(u_prop_R*(reshape(conj(channels.R.sqrt_nu_prop.*exp((-1i*dn)*channels.R.kxdx_prop)), N_prop_R, 1).*v_out_R)); % use implicit expansion
                 else
                     C_R = zeros(ny, M_out_R);
                     for ii = 1:M_out_R
                         ind = find(v_out_R(:,ii));
-                        C_R(:,ii) = conj(channels.fun_phi(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
+                        C_R(:,ii) = conj(channels.fun_u(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
                     end
                 end
             end
@@ -1492,7 +1492,7 @@ else % without opts.symmetrize_K
     end
 end
 
-if opts.clear_memory && (has_phi_prop_L || has_phi_prop_R); clear phi_prop_L phi_prop_R; end
+if opts.clear_memory && (has_u_prop_L || has_u_prop_R); clear u_prop_L u_prop_R; end
 
 t3 = clock; timing_build_BC = etime(t3,t2);
 if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build_BC); end
@@ -1743,11 +1743,14 @@ else % when opts.return_field_profile = true
     else
         if opts.verbal; fprintf('            ... '); end
 
-        % phi is a ny-by-ny unitary matrix where the a-th column is the a-th transverse mode; it includes all the propagating and evanescent channels
-        phi = channels.fun_phi(channels.kydx_all);
+        % u is a ny-by-ny unitary matrix where the a-th column is the a-th transverse mode; it includes all the propagating and evanescent channels.
+        % If self-energy is used and opts.clear_memory = false, matrix u already exists so we don't need to build it again.
+        if opts.clear_memory || ~(use_self_energy(1) || use_self_energy(2))
+            u = channels.fun_u(channels.kydx_all);
+        end
 
-        % We use phi' to project the field on the left or right surface onto the complete and orthonormal set of transverse modes.
-        phi_prime = phi';
+        % We use u' to project the field on the left or right surface onto the complete and orthonormal set of transverse modes.
+        u_prime = u';
 
         % Ez already includes one extra pixel on the left
         if use_TM
@@ -1767,27 +1770,27 @@ else % when opts.return_field_profile = true
             kx_x = reshape(channels.L.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_L_extra matrix through implicit expansion
             exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
             exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
-            u_in = zeros(ny, 1);
+            c_in = zeros(ny, 1);
             n_L = 1; % index for the inputs/outputs on the left surface
             if M_in_L > 0
                 prefactor = reshape(exp((-1i*dn)*channels.L.kxdx_prop)./channels.L.sqrt_nu_prop, N_prop_L, 1);
             end
             for ii = 1:M_in_L % input from left
-                u = phi_prime*S(:, n_L, ii);  % u is a ny-by-1 column vector of transverse mode coefficients
-                % u_in is the incident wavefront at n_L; note we need to back propagate dn pixel from x=0
-                u_in(:) = 0;
+                c = u_prime*S(:, n_L, ii);  % c is a ny-by-1 column vector of transverse mode coefficients
+                % c_in is the incident wavefront at n_L; note we need to back propagate dn pixel from x=0
+                c_in(:) = 0;
                 if use_ind_in
-                    u_in(channels.L.ind_prop(ind_in_L(ii))) = prefactor(ind_in_L(ii));
+                    c_in(channels.L.ind_prop(ind_in_L(ii))) = prefactor(ind_in_L(ii));
                 else
-                    u_in(channels.L.ind_prop) = prefactor.*v_in_L(:,ii);
+                    c_in(channels.L.ind_prop) = prefactor.*v_in_L(:,ii);
                 end
-                u_out = u - u_in;
-                S_L(:, :, ii) = phi*(u_in.*exp_pikx + u_out.*exp_mikx);
+                c_out = c - c_in;
+                S_L(:, :, ii) = u*(c_in.*exp_pikx + c_out.*exp_mikx);
             end
             if two_sided
                 for ii = 1:M_in_R % input from right
-                    u_out = phi_prime*S(:, n_L, M_in_L+ii); % u_out = u because there is no input on the left side
-                    S_L(:, :, M_in_L+ii) = phi*(u_out.*exp_mikx);
+                    c_out = u_prime*S(:, n_L, M_in_L+ii); % c_out = c because there is no input on the left side
+                    S_L(:, :, M_in_L+ii) = u*(c_out.*exp_mikx);
                 end
             end
             S = cat(2, S_L, S);
@@ -1813,26 +1816,26 @@ else % when opts.return_field_profile = true
                 kx_x = reshape(channels.R.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_R_extra matrix through implicit expansion
                 exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
                 exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
-                u_in = zeros(ny, 1);
+                c_in = zeros(ny, 1);
                 n_R = size(S, 2); % index for the inputs/outputs on the right surface
                 for ii = 1:M_in_L % input from left
-                    u_out = phi_prime*S(:, n_R, ii); % u_out = u because there is no input on the right side
-                    S_R(:, :, ii) = phi*(u_out.*exp_pikx);
+                    c_out = u_prime*S(:, n_R, ii); % c_out = c because there is no input on the right side
+                    S_R(:, :, ii) = u*(c_out.*exp_pikx);
                 end
                 if M_in_R > 0
                     prefactor = reshape(exp((-1i*dn)*channels.R.kxdx_prop)./channels.R.sqrt_nu_prop, N_prop_R, 1);
                 end
                 for ii = 1:M_in_R % input from right
-                    u = phi_prime*S(:, n_R, M_in_L+ii);  % u is a ny-by-1 column vector of transverse mode coefficients
-                    % u_in is the incident wavefront at n_R; note we need to back propagate dn pixel from x=L
-                    u_in(:) = 0;
+                    c = u_prime*S(:, n_R, M_in_L+ii);  % c is a ny-by-1 column vector of transverse mode coefficients
+                    % c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from x=L
+                    c_in(:) = 0;
                     if use_ind_in
-                        u_in(channels.R.ind_prop(ind_in_R(ii))) = prefactor(ind_in_R(ii));
+                        c_in(channels.R.ind_prop(ind_in_R(ii))) = prefactor(ind_in_R(ii));
                     else
-                        u_in(channels.R.ind_prop) = prefactor.*v_in_R(:,ii);
+                        c_in(channels.R.ind_prop) = prefactor.*v_in_R(:,ii);
                     end
-                    u_out = u - u_in;
-                    S_R(:, :, M_in_L+ii) = phi*(u_in.*exp_mikx + u_out.*exp_pikx);
+                    c_out = c - c_in;
+                    S_R(:, :, M_in_L+ii) = u*(c_in.*exp_mikx + c_out.*exp_pikx);
                 end
                 S = cat(2, S, S_R);
             end

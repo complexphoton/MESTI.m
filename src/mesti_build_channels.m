@@ -43,8 +43,8 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %         When yBC is a numeric scalar, the Bloch periodic boundary condition is
 %      used with
 %                              f(m+ny,n) = f(m,n)*exp(1i*yBC)
-%      In other words, yBC = ky_B*p where ky_B is the Bloch wave number, and p =
-%      ny*dx is the periodicity in y.
+%      In other words, yBC = ky_B*Lambda where ky_B is the Bloch wave number,
+%      and Lambda = ny*dx is the periodicity in y.
 %   k0dx (numeric scalar, real or complex; required):
 %      Dimensionless frequency, k0*dx = (2*pi/vacuum_wavelength)*dx.
 %   epsilon_L (numeric scalar, real or complex; required):
@@ -58,7 +58,7 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %      the finite-difference dispersion is used.
 %   m0 (real numeric scalar; optional, defaults to 0):
 %      Center of the transverse mode profile with periodic or Bloch periodic
-%      boundary condition, phi_{m,a} = exp(i*ky(a)*dx*(m-m0))/sqrt(ny), where
+%      boundary condition, u(m,a) = exp(i*ky(a)*dx*(m-m0))/sqrt(ny), where
 %      ky(a) = ky_B + a*(2*pi/ny*dx).
 %
 %   === Output Arguments ===
@@ -67,13 +67,13 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %         Dimensionless transverse wave number ky*dx for all ny channels,
 %         including both propagating and evanescent ones. They are real-valued
 %         and are ordered from small to large.
-%      channels.fun_phi (function_handle):
+%      channels.fun_u (function_handle):
 %         A function that, given one element of kydx_all as the input, returns
 %         its normalized transverse field profile as an ny-by-1 column vector;
 %         when the input is a row vector, it returns a matrix where each column
 %         is the respective transverse profile. The transverse modes form a
 %         complete and orthonormal set, so the ny-by-ny matrix
-%         channels.fun_phi(channels.kydx_all) is unitary.
+%         channels.fun_u(channels.kydx_all) is unitary.
 %      channels.L (scalar structure):
 %         When epsilon_L and epsilon_R are both given (i.e., epsilon_R is given
 %         and is not []), the properties specific to the left and right sides
@@ -116,11 +116,11 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 %      channels.L.ind_prop_conj (1-by-N_prop integer row vector; optional):
 %         A permutation vector that switches one propagating channel with one
 %         having a complex-conjugated transverse profile. In particular,
-%            channels.fun_phi(kydx_prop(channels.L.ind_prop_conj))
+%            channels.fun_u(kydx_prop(channels.L.ind_prop_conj))
 %         equals
-%            conj(channels.fun_phi(kydx_prop)).
+%            conj(channels.fun_u(kydx_prop)).
 %         For periodic boundary, this flips the sign of ky. For Dirichlet and
-%         Neumann boundary, fun_phi is real, so there is no permutation.
+%         Neumann boundary, fun_u is real, so there is no permutation.
 %            Given a periodic boundary condition in y, when the set of output
 %         channels is the same as the set of input channels and they have the
 %         same order, the reflection matrix r is not symmetric because the
@@ -288,11 +288,11 @@ ind_zero_ky = [];
 
 % Handle periodic and Bloch periodic boundary conditions
 if strcmpi(yBC, 'Bloch')
-    error('To use Bloch periodic boundary condition in mesti_build_channels(), set the second input argument yBC to ky_B*p where ky_B is the Bloch wave number and p is the periodicity.');
+    error('To use Bloch periodic boundary condition in mesti_build_channels(), set the second input argument yBC to ky_B*Lambda where ky_B is the Bloch wave number and Lambda is the periodicity.');
 elseif isnumeric(yBC)
     ka = yBC;
     yBC = 'Bloch';
-    % ka must be real for channels.fun_phi(channels.kydx_all) to be unitary
+    % ka must be real for channels.fun_u(channels.kydx_all) to be unitary
     if ~isreal(ka)
         warning('ky_B*a = %g + 1i*%g is a complex number; must be real for a complete orthonormal transverse basis.', real(ka), imag(ka));
     end
@@ -315,31 +315,31 @@ if strcmpi(yBC, 'Bloch')
         ind_zero_ky = round(ny/2);
     end
     channels.kydx_all = (ka/ny) + ((1:ny)-ind_zero_ky)*(2*pi/ny);
-    % Dimensionless transverse mode profile: phi_{m,a} = exp(i*(m-m0)*kydx(a))/sqrt(ny)
-    channels.fun_phi = @(kydx) exp(((1:ny).'-m0)*(1i*kydx))/sqrt(ny);
+    % Dimensionless transverse mode profile: u(m,a) = exp(i*(m-m0)*kydx(a))/sqrt(ny)
+    channels.fun_u = @(kydx) exp(((1:ny).'-m0)*(1i*kydx))/sqrt(ny);
 elseif strcmpi(yBC, 'Dirichlet') % Dirichlet on both sides
     % f(0) = f(ny+1) = 0
     channels.kydx_all = (1:ny)*(pi/(ny+1));
-    % Dimensionless transverse mode profile: phi_{m,a} = sin(m*kydx(a))*sqrt(2/(ny+1))
-    channels.fun_phi = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+1)); 
+    % Dimensionless transverse mode profile: u(m,a) = sin(m*kydx(a))*sqrt(2/(ny+1))
+    channels.fun_u = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+1)); 
 elseif strcmpi(yBC, 'Neumann') % Neumann on both sides
     % f(0) = f(1), f(ny+1) = f(ny)
     channels.kydx_all = ((1:ny)-1)*(pi/ny);
     % Dimensionless transverse mode profile:
-    % When kydx == 0: phi_{m,a} = sqrt(1/ny)
-    % When kydx != 0: phi_{m,a} = cos((m-0.5)*kydx(a))*sqrt(2/ny)
+    % When kydx == 0: u(m,a) = sqrt(1/ny)
+    % When kydx != 0: u(m,a) = cos((m-0.5)*kydx(a))*sqrt(2/ny)
     % We subtract (~kydx)*(1-sqrt(1/2)) from the cos() which is nonzero only when kydx=0
-    channels.fun_phi = @(kydx) (cos(((0.5:ny).')*kydx)-((~kydx)*(1-sqrt(1/2))))*sqrt(2/ny); 
+    channels.fun_u = @(kydx) (cos(((0.5:ny).')*kydx)-((~kydx)*(1-sqrt(1/2))))*sqrt(2/ny); 
 elseif strcmpi(yBC, 'DirichletNeumann') % Dirichlet on the low side, Neumann on the high side
     % f(0) = 0, f(ny+1) = f(ny)
     channels.kydx_all = (0.5:ny)*(pi/(ny+0.5));
-    % Dimensionless transverse mode profile: phi_{m,a} = sin(m*kydx(a))*sqrt(2/(ny+0.5))
-    channels.fun_phi = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+0.5)); 
+    % Dimensionless transverse mode profile: u(m,a) = sin(m*kydx(a))*sqrt(2/(ny+0.5))
+    channels.fun_u = @(kydx) sin(((1:ny).')*kydx)*sqrt(2/(ny+0.5)); 
 elseif strcmpi(yBC, 'NeumannDirichlet') % Neumann on the low side, Dirichlet on the high side
     % f(0) = f(1), f(ny+1) = 0
     channels.kydx_all = (0.5:ny)*(pi/(ny+0.5));
-    % Dimensionless transverse mode profile: phi_{m,a} = cos((m-0.5)*kydx(a))*sqrt(2/(ny+0.5))
-    channels.fun_phi = @(kydx) cos(((0.5:ny).')*kydx)*sqrt(2/(ny+0.5)); 
+    % Dimensionless transverse mode profile: u(m,a) = cos((m-0.5)*kydx(a))*sqrt(2/(ny+0.5))
+    channels.fun_u = @(kydx) cos(((0.5:ny).')*kydx)*sqrt(2/(ny+0.5)); 
 else
     error('Input argument yBC = ''%s'' is not a supported option.', yBC);
 end
@@ -433,7 +433,7 @@ end
 
 % Permutation that switches one propagating channel with one having a complex-conjugated transverse profile.
 if isempty(ka)
-    % For Dirichlet and Neumann boundaries, fun_phi is real, so no permutation needed
+    % For Dirichlet and Neumann boundaries, fun_u is real, so no permutation needed
     side.ind_prop_conj = 1:side.N_prop;
 elseif ka == 0
     % For periodic boundary condition, complex conjugation switches ky and -ky

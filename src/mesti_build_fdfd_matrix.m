@@ -87,8 +87,8 @@ function [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(eps_or_inv_ep
 %      used with
 %                    - Ez(m,n+nx_Ez) = Ez(m,n)*exp(1i*x_BC)
 %                      Hz(m,n+nx_Hz) = Hz(m,n)*exp(1i*x_BC)
-%      In other words, xBC = kx_B*p where kx_B is the Bloch wave number, and p =
-%      nx_Ez*dx or nx_Hz*dx is the periodicity in x.
+%      In other words, xBC = kx_B*Lambda where kx_B is the Bloch wave number,
+%      and Lambda = nx_Ez*dx or nx_Hz*dx is the periodicity in x.
 %   yBC (character vector or numeric scalar; required):
 %      Boundary condition in y direction, analogous to xBC.
 %   xPML (two-element cell array or scalar structure or []; optional):
@@ -124,12 +124,12 @@ function [A, is_symmetric_A, xPML, yPML] = mesti_build_fdfd_matrix(eps_or_inv_ep
 %            (low-frequency) reflections. We don't use it by default 
 %            (alpha_max_over_omega = 0) since we are in frequency domain.
 %      We use the following PML coordinate-stretching factor:
-%         s(u) = kappa(u) + sigma(u)./(alpha(u) - i*omega)
+%         s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
 %      with
-%         sigma(u)/omega = sigma_max_over_omega*(u.^power_sigma),
-%         kappa(u) = 1 + (kappa_max-1)*(u.^power_kappa),
-%         alpha(u)/omega = alpha_max_over_omega*((1-u).^power_alpha),
-%      where omega is frequency, and u goes linearly from 0 at the beginning of
+%         sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+%         kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+%         alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+%      where omega is frequency, and p goes linearly from 0 at the beginning of
 %      the PML to 1 at the end of the PML. 
 %   yPML (two-element cell array or scalar structure or []; optional):
 %      Parameters for PML in y direction, analogous to xPML.
@@ -401,7 +401,7 @@ end
 
 % Handle periodic and Bloch periodic boundary conditions
 if strcmpi(BC, 'Bloch')
-    error('To use Bloch periodic boundary condition, set BC to k_B*p where k_B is the Bloch wave number and p is the periodicity.');
+    error('To use Bloch periodic boundary condition, set BC to k_B*Lambda where k_B is the Bloch wave number and Lambda is the periodicity.');
 elseif isnumeric(BC)
     ka = BC;
     BC = 'Bloch';
@@ -453,7 +453,7 @@ end
 
 n_H = size(ddx,1); % number of sites in x for df/dx (ie, Hy or Hz)
 
-% coordinate-stretching factor in x: s(x) = kappa(x) + sigma(x)/(alpha(u) - i*omega)
+% coordinate-stretching factor in x: s(x) = kappa(x) + sigma(x)/(alpha(p) - i*omega)
 s_E = ones(n_E,1); % s-factor for Ey or Ez (on integer sites)
 s_H = ones(n_H,1); % s-factor for Hy or Hz (on half-integer sites)
 
@@ -466,8 +466,8 @@ end
 npixels = [PML{1}.npixels, PML{2}.npixels];
 
 % Here, we let f = Ez for TM fields; f = Hz for TE fields
-% u_PML_1 and ind_PML_1 acts on f and d^2f/dx^2
-% u_PML_2 and ind_PML_2 acts on df/dx
+% p_PML_1 and ind_PML_1 are used for f and d^2f/dx^2
+% p_PML_2 and ind_PML_2 are used for df/dx
 if use_TM
     n = n_E;
 else
@@ -480,15 +480,15 @@ if sum(npixels) >= n
     error('Total number of pixels = %d in %s direction must be greater than the number of PML pixels = %d + %d = %d but is not.', n, direction, npixels(1), npixels(2), sum(npixels));
 end
 
-% Below, u(x) is a function that goes linearly from u(x)=0 at one site before PML to u(x)=1 at the "end of PML".
+% Below, p(x) is a function that goes linearly from p(x)=0 at one site before PML to p(x)=1 at the "end of PML".
 % Note that where the "end of PML" is depends on the boundary condition.
-% Let index i=0 be one site before PML, so u(i=0)=0.
-% Then, i=1 is the first site of PML and i=npixels is the last site of PML we explicitly simulate. But we do not set u(i=npixels)=1.
+% Let index i=0 be one site before PML, so p(i=0)=0.
+% Then, i=1 is the first site of PML and i=npixels is the last site of PML we explicitly simulate. But we do not set p(i=npixels)=1.
 % For Dirichlet BC, the BC is such that f=0 at i=npixels+1, so we let the end of PML be i=npixels+1, with an effective PML thickness of npixels+1 pixels.
 % For Neumann BC, the BC is such that df=0 at i=npixels+0.5, so we let the end of PML be i=npixels+0.5, with an effective PML thickness of npixels+0.5 pixels.
-% For periodic and Bloch periodic BC, we let u(x) be symmetric on the two sides of f with u(0.5)=u(n+0.5)=1; note that f(0.5) and f(n+0.5) are the same site (with a possible Bloch phase difference). If the PML parameters on the two sides are the same, the s-factor will be continuous across the periodic boundary.
+% For periodic and Bloch periodic BC, we let p(x) be symmetric on the two sides of f with p(0.5)=p(n+0.5)=1; note that f(0.5) and f(n+0.5) are the same site (with a possible Bloch phase difference). If the PML parameters on the two sides are the same, the s-factor will be continuous across the periodic boundary.
 
-% Construct u(x) and their corresponding indices for df/dx
+% Construct p(x) and their corresponding indices for df/dx
 if strcmpi(BC, 'Bloch')
     if npixels(1)*npixels(2) == 0
         warning('Bloch periodic boundary condition is used with a single-sided PML in %s direction; transmission through PML will only undergo single-pass attenuation.', direction);
@@ -497,70 +497,70 @@ if strcmpi(BC, 'Bloch')
     if use_TM
         % f = Ez; ddx*f = [df(1.5), ..., df(n_E+0.5)].'
         % no s-factor for df(0.5) since we only consider df(n_E+0.5)
-        u_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
+        p_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
         ind_PML_2 = {fliplr(1:npixels(1)), (n+1)-fliplr(1:(npixels(2)+1))};
     else
         % f = Hz; (-ddx')*f = [df(0.5), ..., df(n_H-0.5)].'
         % no s-factor for df(n_H+0.5) since we only consider df(0.5)
-        u_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
+        p_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
         ind_PML_2 = {fliplr(1:(npixels(1)+1)), (n+1)-fliplr(1:npixels(2))};
     end
 elseif (use_TM && strcmpi(BC, 'PEC')) || (~use_TM && strcmpi(BC, 'PMC')) % Dirichlet on both sides
     npixels_effective = [npixels(1)+1, npixels(2)+1];
-    u_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
+    p_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
     ind_PML_2 = {fliplr(1:(npixels(1)+1)), (n+2)-fliplr(1:(npixels(2)+1))};
 elseif (use_TM && strcmpi(BC, 'PMC')) || (~use_TM && strcmpi(BC, 'PEC')) % Neumann on both sides
     npixels_effective = [npixels(1)+0.5, npixels(2)+0.5];
-    u_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
+    p_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
     ind_PML_2 = {fliplr(1:npixels(1)), n-fliplr(1:npixels(2))};
 elseif (use_TM && strcmpi(BC, 'PECPMC')) || (~use_TM && strcmpi(BC, 'PMCPEC')) % Dirichlet on the low side, Neumann on the high side
     npixels_effective = [npixels(1)+1, npixels(2)+0.5];
-    u_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
+    p_PML_2 = {((1:(npixels(1)+1))-0.5)/npixels_effective(1), ((1:npixels(2))-0.5)/npixels_effective(2)};
     ind_PML_2 = {fliplr(1:(npixels(1)+1)), (n+1)-fliplr(1:npixels(2))};
 elseif (use_TM && strcmpi(BC, 'PMCPEC')) || (~use_TM && strcmpi(BC, 'PECPMC')) % Neumann on the low side, Dirichlet on the high side
     npixels_effective = [npixels(1)+0.5, npixels(2)+1];
-    u_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
+    p_PML_2 = {((1:npixels(1))-0.5)/npixels_effective(1), ((1:(npixels(2)+1))-0.5)/npixels_effective(2)};
     ind_PML_2 = {fliplr(1:npixels(1)), (n+1)-fliplr(1:(npixels(2)+1))};
 else
     error('Input argument %sBC = ''%s'' is not a supported option.', direction, BC);
 end
 
-% Construct u(x) and their corresponding indices for f and d^2f/dx^2
-u_PML_1 = {(1:npixels(1))/npixels_effective(1), (1:npixels(2))/npixels_effective(2)};
+% Construct p(x) and their corresponding indices for f and d^2f/dx^2
+p_PML_1 = {(1:npixels(1))/npixels_effective(1), (1:npixels(2))/npixels_effective(2)};
 ind_PML_1 = {fliplr(1:npixels(1)), (n+1)-fliplr(1:npixels(2))};
 
 % Recall that f = Ez for TM fields; f = Hz for TE fields
 if use_TM
-    u_PML_E = u_PML_1;
+    p_PML_E = p_PML_1;
     ind_PML_E = ind_PML_1;
-    u_PML_H = u_PML_2;
+    p_PML_H = p_PML_2;
     ind_PML_H = ind_PML_2;
 else
-    u_PML_H = u_PML_1;
+    p_PML_H = p_PML_1;
     ind_PML_H = ind_PML_1;
-    u_PML_E = u_PML_2;
+    p_PML_E = p_PML_2;
     ind_PML_E = ind_PML_2;
 end
 
 % Loop over PML on the two sides
 for ii = 1:2
     if npixels(ii) > 0
-        % coordinate-stretching factor s(u) from Eq 7.73 of Taflove & Hagness's 2005 FDTD book
+        % coordinate-stretching factor s(p) from Eq 7.73 of Taflove & Hagness's 2005 FDTD book
         % sigma is the conductivity, equivalent to imag-coordinate stretching, used to attenuate propagating waves.
         % kappa is real-coordinate stretching, used to accelerate the attenuation of evanescent waves.
         % alpha is used for complex frequency shifting (CFS) to suppress reflection of low-frequency components for time-domain simulations.
         % In general, kappa, sigma, alpha can all be arbitrary functions of position.
         % To minimize discretization-induced reflection, kappa should start from 1, and sigma should start from 0.
         % We use a polynomial grading for all of them: Eqs 7.60 and 7.79 of Taflove & Hagness's 2005 FDTD book.
-        kappa = @(u) 1 + (PML{ii}.kappa_max-1)*(u.^(PML{ii}.power_kappa));
-        sigma_over_omega = @(u) PML{ii}.sigma_max_over_omega*(u.^(PML{ii}.power_sigma));
-        alpha_over_omega = @(u) PML{ii}.alpha_max_over_omega*((1-u).^(PML{ii}.power_alpha));
-        func_s = @(u) kappa(u) + sigma_over_omega(u)./(alpha_over_omega(u) - 1i);
+        kappa = @(p) 1 + (PML{ii}.kappa_max-1)*(p.^(PML{ii}.power_kappa));
+        sigma_over_omega = @(p) PML{ii}.sigma_max_over_omega*(p.^(PML{ii}.power_sigma));
+        alpha_over_omega = @(p) PML{ii}.alpha_max_over_omega*((1-p).^(PML{ii}.power_alpha));
+        func_s = @(p) kappa(p) + sigma_over_omega(p)./(alpha_over_omega(p) - 1i);
 
-        % Evaluate s(u) on integer and half-integer sites
+        % Evaluate s(p) on integer and half-integer sites
         % Note s_E and s_H should be sampled directly from the polynomial functions; if we use the polynomial for one and linear interpolation for the other, the performance will be much worse.
-        s_E(ind_PML_E{ii}) = func_s(u_PML_E{ii}).'; % column vector
-        s_H(ind_PML_H{ii}) = func_s(u_PML_H{ii}).'; % column vector
+        s_E(ind_PML_E{ii}) = func_s(p_PML_E{ii}).'; % column vector
+        s_H(ind_PML_H{ii}) = func_s(p_PML_H{ii}).'; % column vector
     end
 end
 

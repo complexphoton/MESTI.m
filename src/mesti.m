@@ -189,12 +189,12 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %               default (alpha_max_over_omega = 0) since we are in frequency
 %               domain.
 %         We use the following PML coordinate-stretching factor:
-%            s(u) = kappa(u) + sigma(u)./(alpha(u) - i*omega)
+%            s(p) = kappa(p) + sigma(p)./(alpha(p) - i*omega)
 %         with
-%            sigma(u)/omega = sigma_max_over_omega*(u.^power_sigma),
-%            kappa(u) = 1 + (kappa_max-1)*(u.^power_kappa),
-%            alpha(u)/omega = alpha_max_over_omega*((1-u).^power_alpha),
-%         where omega is frequency, and u goes linearly from 0 at the beginning
+%            sigma(p)/omega = sigma_max_over_omega*(p.^power_sigma),
+%            kappa(p) = 1 + (kappa_max-1)*(p.^power_kappa),
+%            alpha(p)/omega = alpha_max_over_omega*((1-p).^power_alpha),
+%         where omega is frequency, and p goes linearly from 0 at the beginning
 %         of the PML to 1 at the end of the PML. 
 %            By default, syst.PML = {}, which means no PML on any side. PML is
 %         only placed on the side(s) specified by syst.PML.

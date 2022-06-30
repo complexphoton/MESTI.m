@@ -317,7 +317,7 @@ intensity_profiles = zeros(numel(y_plot), numel(x_plot), n_angles_profiles);
 for ii = 1:n_angles_profiles
     % Reconstruct field profile immediately after the metalens, restricted
     % to the propagating components, per Eq. (S7) of the APF paper:
-    %    Ez^(a)(x=L,y) = sum_b t_ba*phi_b(y)/sqrt(kx_b)
+    %    Ez^(a)(x=L,y) = sum_b t_ba*u_b(y)/sqrt(kx_b)
     % The summation over plane waves b can be evaluated with ifft as follows:
     Ez0 = circshift(prefactor_ifft.*ifft((1./sqrt_nu_R).*t(:,a_list(ii)), ny_R), -1);
 
