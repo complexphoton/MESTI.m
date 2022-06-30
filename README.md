@@ -78,6 +78,6 @@ Here are some images from the examples above:
 
 For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
 
-- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Full-wave solver for massively multi-channel optics using augmented partial factorization,"  [arXiv:2205.07887](https://arxiv.org/abs/2205.07887) (2022).
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Fast multi-source nanophotonic simulations using augmented partial factorization,"  [arXiv:2205.07887](https://arxiv.org/abs/2205.07887) (2022).
 
 Please cite this paper when you use MESTI.
