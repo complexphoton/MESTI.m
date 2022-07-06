@@ -283,15 +283,6 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         the boundary condition behind the PML is always set to Dirichlet (ie,
 %         PEC for TM, PMC for TE).
 %            Note that PML cannot be used when opts.method = 'RGF'.
-%      syst.use_continuous_dispersion (logical scalar; optional):
-%         Whether to use the dispersion equation of the continuous wave equation
-%         when building the input/output channels. Defaults to false, in which
-%         case the finite-difference dispersion is used.
-%      syst.m0 (real numeric scalar; optional, defaults to 0):
-%         Center of the transverse mode profile with periodic or Bloch periodic
-%         boundary condition, u(m,a) = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
-%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx) and ny = ny_Ez for TM,
-%         ny_Hz for TE.
 %   in (cell array or scalar structure; required):
 %      The set of input channels or input wavefronts.
 %         To specify all propagating channels on one side or on both sides, use
@@ -482,6 +473,15 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         'out' is given, in which case opts.nrhs must equal 1. When iterative
 %         refinement is used, the relevant information will be returned in
 %         info.itr_ref_nsteps, info.itr_ref_omega_1, and info.itr_ref_omega_2.
+%      opts.use_continuous_dispersion (logical scalar; optional):
+%         Whether to use the dispersion equation of the continuous wave equation
+%         when building the input/output channels. Defaults to false, in which
+%         case the finite-difference dispersion is used.
+%      opts.m0 (real numeric scalar; optional, defaults to 0):
+%         Center of the transverse mode profile with periodic or Bloch periodic
+%         boundary condition, u(m,a) = exp(i*ky(a)*syst.dx*(m-m0))/sqrt(ny),
+%         where ky(a) = syst.ky_B + a*(2*pi/ny*syst.dx) and ny = ny_Ez for TM,
+%         ny_Hz for TE.
 %
 %   === Output Arguments ===
 %   field_profiles (3D array):
@@ -830,12 +830,6 @@ end
 % Total number of pixels in x
 nx_tot = nx_s + sum(nx_extra);
 
-% syst.use_continuous_dispersion and syst.m0 will be initialized/checked in mesti_build_channels()
-if ~isfield(syst, 'use_continuous_dispersion') || isempty(syst.use_continuous_dispersion)
-    syst.use_continuous_dispersion = false; % Use finite-difference dispersion by default
-end
-if ~isfield(syst, 'm0'); syst.m0 = []; end
-
 %% Part 1.2: Check the input argument 'opts' and assign default values
 
 if ~((isstruct(in) && isscalar(in)) || (iscell(in) && numel(in) <= 2))
@@ -1005,6 +999,12 @@ else
     use_RGF = false;
 end
 
+% opts.use_continuous_dispersion and opts.m0 will be initialized/checked in mesti_build_channels()
+if ~isfield(opts, 'use_continuous_dispersion') || isempty(opts.use_continuous_dispersion)
+    opts.use_continuous_dispersion = false; % Use finite-difference dispersion by default
+end
+if ~isfield(opts, 'm0'); opts.m0 = []; end
+
 % opts.symmetrize_K will be checked/initialized later
 
 % The following fields of opts will be checked/initialized in mesti_matrix_solver():
@@ -1023,8 +1023,7 @@ if ~two_sided
     % For convenience, we set syst.epsilon_R so it is not [], and so we can still use channels.L below
     syst.epsilon_R = NaN;
 end
-% we can also use channels = mesti_build_channels(syst);
-channels = mesti_build_channels(ny, syst.polarization, yBC, k0dx, syst.epsilon_L, syst.epsilon_R, syst.use_continuous_dispersion, syst.m0);
+channels = mesti_build_channels(ny, syst.polarization, yBC, k0dx, syst.epsilon_L, syst.epsilon_R, opts.use_continuous_dispersion, opts.m0);
 N_prop_L = channels.L.N_prop;
 if two_sided
     N_prop_R = channels.R.N_prop;
@@ -1048,8 +1047,8 @@ t1 = clock; timing_init = etime(t1,t0); % Initialization time
 %% Part 2.1: Build the self-energy matrix, if needed
 
 if use_self_energy(1) || use_self_energy(2)
-    if syst.use_continuous_dispersion
-        warning('The outgoing boundary condition based on self-energy is not exact when syst.use_continuous_dispersion = true; consider using PML or setting syst.use_continuous_dispersion = false.');
+    if opts.use_continuous_dispersion
+        warning('The outgoing boundary condition based on self-energy is not exact when opts.use_continuous_dispersion = true; consider using PML or setting opts.use_continuous_dispersion = false.');
     end
     if opts.verbal; fprintf('Building G0 ... '); end
 

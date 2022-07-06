@@ -201,16 +201,8 @@ if nargin == 1
     else
         epsilon_R = syst.epsilon_R;
     end
-    if ~isfield(syst, 'use_continuous_dispersion')
-        use_continuous_dispersion = [];
-    else
-        use_continuous_dispersion = syst.use_continuous_dispersion;
-    end
-    if ~isfield(syst, 'm0')
-        m0 = [];
-    else
-        m0 = syst.m0;
-    end
+    use_continuous_dispersion = [];
+    m0 = [];
 else
     if nargin < 5
         error('Not enough input arguments.');
@@ -247,12 +239,12 @@ end
 if isempty(use_continuous_dispersion)
     use_continuous_dispersion = false;
 elseif ~(islogical(use_continuous_dispersion) && isscalar(use_continuous_dispersion))
-    error('Input argument use_continuous_dispersion or syst.use_continuous_dispersion must be a logical scalar, if given.');
+    error('Input argument use_continuous_dispersion must be a logical scalar, if given.');
 end
 if isempty(m0)
     m0 = 0;
 elseif ~(isreal(m0) && isscalar(m0))
-    error('Input argument m0 or syst.m0 must be a real scalar, if given.');
+    error('Input argument m0 must be a real scalar, if given.');
 end
 
 use_TM = strcmpi(polarization, 'TM');
