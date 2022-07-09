@@ -359,7 +359,7 @@ end
 
 % determine the symmetry of matrix A, assuming no spatial symmetry in epsilon or inv_epsilon
 if (isnumeric(xBC) && xBC ~= 0 && xBC ~= pi && nx_Ez > 1) || (isnumeric(yBC) && yBC ~= 0 && yBC ~= pi && ny_Ez > 1)
-    % Bloch periodic boundary condition with ka != 0 or pi breaks the symmetry of A because its ddx is complex-valued
+    % Bloch periodic boundary condition with k_B*periodicity != 0 or pi breaks the symmetry of A because its ddx is complex-valued
     is_symmetric_A = false;
 elseif ~isempty(xPML) || ~isempty(yPML)
     if ~use_UPML
@@ -403,13 +403,13 @@ end
 if strcmpi(BC, 'Bloch')
     error('To use Bloch periodic boundary condition, set BC to k_B*Lambda where k_B is the Bloch wave number and Lambda is the periodicity.');
 elseif isnumeric(BC)
-    ka = BC;
+    kLambda = BC;
     BC = 'Bloch';
-    if ~isreal(ka)
-        warning('k%s_B*a = %g + 1i*%g is a complex number.', direction, real(ka), imag(ka));
+    if ~isreal(kLambda)
+        warning('k%s_B*periodicity = %g + 1i*%g is a complex number.', direction, real(kLambda), imag(kLambda));
     end
 elseif strcmpi(BC, 'periodic')
-    ka = 0;
+    kLambda = 0;
     BC = 'Bloch';
 end
 
@@ -418,11 +418,11 @@ end
 % df = (df/dx)*dx, proportional to Hy or Hz, on half-integer sites
 % avg_f = average of f between two neighboring sites, on half-integer sites
 if strcmpi(BC, 'Bloch')
-    % f(n_E+1) = f(1)*exp(1i*ka); f(0) = f(n_E)*exp(-1i*ka)
+    % f(n_E+1) = f(1)*exp(1i*kLambda); f(0) = f(n_E)*exp(-1i*kLambda)
     % ddx*f = [df(1.5), ..., df(n_E+0.5)].'
-    ddx = spdiags([ones(n_E,1),-ones(n_E,1),exp(1i*ka)*ones(n_E,1)], [1,0,1-n_E], n_E, n_E);
+    ddx = spdiags([ones(n_E,1),-ones(n_E,1),exp(1i*kLambda)*ones(n_E,1)], [1,0,1-n_E], n_E, n_E);
     % avg*f = [avg_f(1.5), ..., avg_f(n_E+0.5)].'
-    avg = spdiags([ones(n_E,1),ones(n_E,1),exp(1i*ka)*ones(n_E,1)]/2, [1,0,1-n_E], n_E, n_E);
+    avg = spdiags([ones(n_E,1),ones(n_E,1),exp(1i*kLambda)*ones(n_E,1)]/2, [1,0,1-n_E], n_E, n_E);
 elseif strcmpi(BC, 'PEC') % PEC on both sides
     % f(0) = f(n_E+1) = 0
     % ddx*f = [df(0.5), ..., df(n_E+0.5)].'

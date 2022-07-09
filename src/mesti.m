@@ -158,12 +158,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %                  'y'   - PML in y direction
 %            side (character vector; optional): Side(s) where PML is placed.
 %               Available choices are (case-insensitive):
-%                  'all'  - (default) PML on both sides
-%                  'low'  - one-sided PML; end at the first pixel (n=1 or m=1)
-%                  'high' - one-sided PML; end at the last pixel (n=nx or m=ny)
-%                  'both' - same as 'all'
-%                  '-'    - same as 'low'
-%                  '+'    - same as 'high'
+%                  'both' - (default) PML on both sides
+%                  '-'    - one-sided PML; end at the first pixel (n=1 or m=1)
+%                  '+'    - one-sided PML; end at the last pixel (n=nx or m=ny)
 %            power_sigma (non-negative scalar; optional): Power of the
 %               polynomial grading for the conductivity sigma; defaults to 3.
 %            sigma_max_over_omega (non-negative scalar; optional):
@@ -490,9 +487,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
 %      info.xPML (two-element cell array; optional);
-%         PML parameters on the low and high sides of x direction, if used.
+%         PML parameters on the two sides in x direction, if used.
 %      info.yPML (two-element cell array; optional);
-%         PML parameters on the low and high sides of y direction, if used.
+%         PML parameters on the two sides in y direction, if used.
 %      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
 %      info.ordering (positive integer vector; optional):
@@ -685,39 +682,39 @@ for ii = 1:numel(syst.PML)
         error('syst.PML{%d}.direction = ''%s'' is not a supported option; use ''all'', ''x'', or ''y''.', ii, PML_ii.direction);
     end
 
-    % If PML is specified, we put it on both low and high sides by default
+    % If PML is specified, we put it on both sides by default
     if ~isfield(PML_ii, 'side') || isempty(PML_ii.side)
-        PML_ii.side = 'all';
+        PML_ii.side = 'both';
     elseif ~((ischar(PML_ii.side) && isrow(PML_ii.side)) || (isstring(PML_ii.side) && isscalar(PML_ii.side)))
         error('syst.PML{%d}.side must be a character vector or string, if given.', ii);
-    elseif ~ismember(lower(PML_ii.side), {'all', 'both', 'low', 'high', '-', '+'})
-        error('syst.PML{%d}.side = ''%s'' is not a supported option; use ''all'', ''low'', or ''high''.', ii, PML_ii.side);
+    elseif ~ismember(lower(PML_ii.side), {'both', '-', '+'})
+        error('syst.PML{%d}.side = ''%s'' is not a supported option; use ''both'', ''-'', or ''+''.', ii, PML_ii.side);
     end
 
     % Convert {PML_ii.direction and PML_ii.side} to a list of the PML locations
     % 1=xPML_low, 2=xPML_high, 3=yPML_low, 4=yPML_high
     if strcmpi(PML_ii.direction, 'all') % x & y
-        if strcmpi(PML_ii.side, 'all') || strcmpi(PML_ii.side, 'both') % low & high
+        if strcmpi(PML_ii.side, 'both')
             ind_ii = [1,2,3,4];
-        elseif strcmpi(PML_ii.side, 'low') || strcmpi(PML_ii.side, '-')
+        elseif strcmpi(PML_ii.side, '-')
             ind_ii = [1,3];
-        else % PML_ii.side = 'high' or '+'
+        else % PML_ii.side = or '+'
             ind_ii = [2,4];
         end
     elseif strcmpi(PML_ii.direction, 'x')
-        if strcmpi(PML_ii.side, 'all') || strcmpi(PML_ii.side, 'both') % low & high
+        if strcmpi(PML_ii.side, 'both')
             ind_ii = [1,2];
-        elseif strcmpi(PML_ii.side, 'low') || strcmpi(PML_ii.side, '-')
+        elseif strcmpi(PML_ii.side, '-')
             ind_ii = 1;
-        else % PML_ii.side = 'high' or '+'
+        else % PML_ii.side = '+'
             ind_ii = 2;
         end
     else % PML_ii.direction = 'y'
-        if strcmpi(PML_ii.side, 'all') || strcmpi(PML_ii.side, 'both') % low & high
+        if strcmpi(PML_ii.side, 'both')
             ind_ii = [3,4];
-        elseif strcmpi(PML_ii.side, 'low') || strcmpi(PML_ii.side, '-')
+        elseif strcmpi(PML_ii.side, '-')
             ind_ii = 3;
-        else % PML_ii.side = 'high' or '+'
+        else % PML_ii.side = '+'
             ind_ii = 4;
         end
     end

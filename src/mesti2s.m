@@ -551,7 +551,7 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
 %      info.xPML (two-element cell array; optional);
-%         PML parameters on the low and high sides of x direction, if used.
+%         PML parameters on the two sides in x direction, if used.
 %      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
 %      info.ordering (positive integer vector; optional):
@@ -745,14 +745,14 @@ elseif ~((~iscell(syst.xBC) && strcmpi(syst.xBC, 'outgoing')) || (isstruct(syst.
     error('syst.xBC must be ''outgoing'' or a scalar structure or a two-element cell array, if given.');
 end
 
-% Apply the same xBC on all sides; the second element will be ignored if two_sided = false
+% Apply the same xBC on both sides; the second element will be ignored if two_sided = false
 if ~(iscell(syst.xBC) && numel(syst.xBC)==2)
     syst.xBC = {syst.xBC, syst.xBC};
 elseif ~two_sided
     error('For a one-sided geometry, boundary condition on the right is PEC for TM, PMC for TE; syst.xBC only specifies boundary condition on the left and must be ''outgoing'' or a scalar structure, if given.');
 end
 
-% Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on all sides
+% Start with default setting: exact outgoing boundary using self-energy, with no PML and no spacer on both sides
 % nx_extra is the number of homogeneous-space pixels to be added to syst.epsilon or syst.inv_epsilon{2} in x direction.
 % The two elements of nx_extra and use_self_energy correspond to the left and right sides.
 if two_sided
@@ -774,7 +774,7 @@ syst.PML = {}; % to be used in mesti()
 n_PML = 0; % number of sides where PML is used
 
 % Loop over syst.xBC and handle PML parameters, if specified
-str_sides = {'low', 'high'};
+str_sides = {'-', '+'};
 for ii = 1:n_sides
     if ~strcmpi(syst.xBC{ii}, 'outgoing')
         use_self_energy(ii) = false;

@@ -275,21 +275,21 @@ else
 end
 
 % These are used only for periodic and Bloch periodic boundary conditions; otherwise they stay empty
-ka = []; % ky_B*periodicity
+kLambda_y = []; % ky_B*periodicity
 ind_zero_ky = [];
 
 % Handle periodic and Bloch periodic boundary conditions
 if strcmpi(yBC, 'Bloch')
     error('To use Bloch periodic boundary condition in mesti_build_channels(), set the second input argument yBC to ky_B*Lambda where ky_B is the Bloch wave number and Lambda is the periodicity.');
 elseif isnumeric(yBC)
-    ka = yBC;
+    kLambda_y = yBC;
     yBC = 'Bloch';
-    % ka must be real for channels.fun_u(channels.kydx_all) to be unitary
-    if ~isreal(ka)
-        warning('ky_B*a = %g + 1i*%g is a complex number; must be real for a complete orthonormal transverse basis.', real(ka), imag(ka));
+    % kLambda_y must be real for channels.fun_u(channels.kydx_all) to be unitary
+    if ~isreal(kLambda_y)
+        warning('ky_B*periodicity = %g + 1i*%g is a complex number; must be real for a complete orthonormal transverse basis.', real(kLambda_y), imag(kLambda_y));
     end
 elseif strcmpi(yBC, 'periodic')
-    ka = 0;
+    kLambda_y = 0;
     yBC = 'Bloch';
 end
 
@@ -299,14 +299,14 @@ end
 
 % Transverse modes (form a complete basis and are independent of epsilon_L/R)
 if strcmpi(yBC, 'Bloch')
-    % f(ny+1) = f(1)*exp(1i*ka); f(0) = f(ny)*exp(-1i*ka)
-    % The transverse mode index where kydx = ka/ny
+    % f(ny+1) = f(1)*exp(1i*ky_*B*periodicity); f(0) = f(ny)*exp(-1i*ky_B*periodicity)
+    % The transverse mode index where kydx = ky_B*periodicity/ny
     if mod(ny,2) == 1
         ind_zero_ky = round((ny+1)/2);
     else
         ind_zero_ky = round(ny/2);
     end
-    channels.kydx_all = (ka/ny) + ((1:ny)-ind_zero_ky)*(2*pi/ny);
+    channels.kydx_all = (kLambda_y/ny) + ((1:ny)-ind_zero_ky)*(2*pi/ny);
     % Dimensionless transverse mode profile: u(m,a) = exp(i*(m-m0)*kydx(a))/sqrt(ny)
     channels.fun_u = @(kydx) exp(((1:ny).'-m0)*(1i*kydx))/sqrt(ny);
 elseif strcmpi(yBC, 'Dirichlet') % Dirichlet on both sides
@@ -337,7 +337,7 @@ else
 end
 
 % Properties for the homogeneous space on the left (kxdx, sqrt_nu_prop, number of propagating channels, etc; depends on epsilon_L/R)
-side = setup_longitudinal(k0dx, epsilon_L, channels.kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion);
+side = setup_longitudinal(k0dx, epsilon_L, channels.kydx_all, use_TM, kLambda_y, ind_zero_ky, use_continuous_dispersion);
 
 if two_sided
     channels.L = side;
@@ -345,7 +345,7 @@ if two_sided
     if epsilon_R == epsilon_L
         channels.R = side;
     elseif ~isnan(epsilon_R)
-        channels.R = setup_longitudinal(k0dx, epsilon_R, channels.kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion);
+        channels.R = setup_longitudinal(k0dx, epsilon_R, channels.kydx_all, use_TM, kLambda_y, ind_zero_ky, use_continuous_dispersion);
     end
 else
     % add the fields of 'side' to 'channels'
@@ -358,7 +358,7 @@ end
 end
 
 
-function side = setup_longitudinal(k0dx, epsilon_bg, kydx_all, use_TM, ka, ind_zero_ky, use_continuous_dispersion)
+function side = setup_longitudinal(k0dx, epsilon_bg, kydx_all, use_TM, kLambda_y, ind_zero_ky, use_continuous_dispersion)
 % Returns a structure 'side'. See comments at the beginning of this file for more info.
 
 k0dx2_epsilon = (k0dx^2)*epsilon_bg;
@@ -424,10 +424,10 @@ else
 end
 
 % Permutation that switches one propagating channel with one having a complex-conjugated transverse profile.
-if isempty(ka)
+if isempty(kLambda_y)
     % For Dirichlet and Neumann boundaries, fun_u is real, so no permutation needed
     side.ind_prop_conj = 1:side.N_prop;
-elseif ka == 0
+elseif kLambda_y == 0
     % For periodic boundary condition, complex conjugation switches ky and -ky
     if ismember(ind_zero_ky, side.ind_prop) || (mod(side.N_prop,2)==0)
         % Simply flip the ordering
@@ -436,7 +436,7 @@ elseif ka == 0
         % The last channel has -ky equal to ky due to aliasing so should not be flipped
         side.ind_prop_conj = [(side.N_prop-1):-1:1, side.N_prop];
     end
-    % TODO: implement side.ind_prop_conj when ka == pi
+    % TODO: implement side.ind_prop_conj when kLambda_y == pi
 end
 
 end
