@@ -394,6 +394,12 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         opts.prefactor*C*inv(A)*B - D or opts.prefactor*C*inv(A)*B or
 %         opts.prefactor*inv(A)*B. Such prefactor makes it easier to use C =
 %         transpose(B) to take advantage of reciprocity. Defaults to 1.
+%      opts.exclude_PML_in_field_profiles (logical scalar; optional, defaults to false):
+%         When opts.exclude_PML_in_field_profiles = true, the PML pixels
+%         (specified by syst.PML.npixels) are excluded from the returned
+%         field_profiles on each side where PML is used; otherwise the full
+%         field profiles are returned. Only used for field-profile computations
+%         (i.e., when the output projection matrix C is not given).
 %      opts.solver (character vector; optional):
 %         The software used for sparse matrix factorization. Available choices
 %         are (case-insensitive):
@@ -476,9 +482,19 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         info.itr_ref_omega_1, and info.itr_ref_omega_2.
 %
 %   === Output Arguments ===
-%   S (full numeric matrix or 3D array):
-%      C*inv(A)*B or reshape(inv(A)*B, ny, nx, []) where [ny, nx] = [ny_Ez,
-%      nx_Ez] for TM, [ny_Hz, nx_Hz] for TE.
+%   field_profiles (3D array):
+%      For field-profile computations (i.e., when the output projection matrix C
+%      is not given), the returned field_profiles are the spatial field profiles
+%      of Ez (for TM polarization) or Hz (for TE polarization) resulting from
+%      the input sources specified by B.
+%         When opts.exclude_PML_in_field_profiles = false, field_profiles =
+%      reshape(inv(A)*B, ny, nx, M) where [ny, nx] = [ny_Ez, nx_Ez] for TM,
+%      [ny_Hz, nx_Hz] for TE, and M = size(B, 2).
+%         When opts.exclude_PML_in_field_profiles = true, the PML pixels
+%      (specified by syst.PML.npixels) are excluded from field_profiles on each
+%      side where PML is used.
+%   S (full numeric matrix):
+%      The generalized scattering matrix S = C*inv(A)*B or S = C*inv(A)*B - D.
 %   info (scalar structure):
 %      A structure that contains the following fields:
 %      info.opts (scalar structure):
@@ -777,6 +793,7 @@ if ~(isstruct(opts) && isscalar(opts))
     error('Input argument ''opts'' must be a scalar structure or [], if given.');
 end
 
+% opts.return_field_profile is only used internally (but will be returned within info.opts)
 if isempty(C) && ~isstruct(C)
     opts.return_field_profile = true;
 elseif (ismatrix(C) && isnumeric(C)) || (isstruct(C) && ~isempty(C))
@@ -806,6 +823,20 @@ if ~isfield(opts, 'prefactor') || isempty(opts.prefactor)
     opts.prefactor = 1;
 elseif ~(isnumeric(opts.prefactor) && isscalar(opts.prefactor))
     error('opts.prefactor must be a numeric scalar, if given.');
+end
+
+% By default, we don't exclude the PML pixels from the returned field_profiles.
+if opts.return_field_profile
+    if ~isfield(opts, 'exclude_PML_in_field_profiles') || isempty(opts.exclude_PML_in_field_profiles)
+        opts.exclude_PML_in_field_profiles = false;
+    elseif ~(islogical(opts.exclude_PML_in_field_profiles) && isscalar(opts.exclude_PML_in_field_profiles))
+        error('opts.exclude_PML_in_field_profiles must be a logical scalar, if given.');
+    end
+else
+    if isfield(opts, 'exclude_PML_in_field_profiles') && ~isempty(opts.exclude_PML_in_field_profiles)
+        warning('opts.exclude_PML_in_field_profiles is not used when output projection C is given; will be ignored.');
+        opts = rmfield(opts, 'exclude_PML_in_field_profiles');
+    end
 end
 
 % By default, we don't clear syst in the caller's workspace
@@ -1212,6 +1243,29 @@ if ~info.opts.analysis_only
     S = (opts.prefactor)*S;
 
     if opts.return_field_profile
+
+        % Exclude the PML pixels from the returned field profiles
+        if opts.exclude_PML_in_field_profiles
+            n_start = 1; n_end = nx;
+            m_start = 1; m_end = ny;
+            % Identify indices of the interior, excluding PML
+            if ~isempty(xPML)
+                n_start = n_start + xPML{1}.npixels;
+                n_end = n_end - xPML{2}.npixels;
+            end
+            if ~isempty(yPML)
+                m_start = m_start + yPML{1}.npixels;
+                m_end = m_end - yPML{2}.npixels;
+            end
+            ind_all = reshape(1:(nx*ny), ny, nx);
+            ind_interior = reshape(ind_all(m_start:m_end, n_start:n_end), [], 1);
+            % Only keep field profiles in the interior
+            S = S(ind_interior, :);
+            % Use [ny, nx] to defnote size of the interior
+            nx = n_end - n_start + 1;
+            ny = m_end - m_start + 1;
+        end
+
         % Reshape each of the sz_B_2 field profiles from a vector to a matrix
         S = reshape(S, [ny, nx, sz_B_2]);
     end

@@ -233,6 +233,11 @@ r = mesti(syst, B_struct, C, D, opts);
 % Here, we compute the full field profile for the purpose of visualizing
 % the system as the incident Gaussian beams are scanned across y.
 
+% Exclude the PML pixels from the returned field profiles
+opts.exclude_PML_in_field_profiles = true;
+x_interior = x((nPML+1):(nx-nPML));
+y_interior = y((nPML+1):(ny-nPML));
+
 field_profiles = mesti(syst, B_struct, [], [], opts);
 
 %% Animate the field profiles
@@ -249,8 +254,7 @@ for ii = 1:M_in
     % Plot the total field profile; exclude PML
     clf
     ax1 = subplot(1,2,1);
-    imagesc(x, y, ...
-        real(field_profiles((nPML+1):(ny-nPML), (nPML+1):(nx-nPML), ii)));
+    imagesc(x_interior, y_interior, real(field_profiles(:, :, ii)));
     set(gca,'YDir','normal')
     caxis([-1,1]) % center the colorbar axis so zero = white
     colormap(ax1, cmap_bluered);
