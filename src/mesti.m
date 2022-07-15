@@ -527,9 +527,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 t0 = clock;
 
 if nargin < 2; error('Not enough input arguments.'); end
-if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
-if ~isfield(syst, 'wavelength');        error('Input argument ''syst'' must have field ''wavelength''.'); end
-if ~isfield(syst, 'dx');                error('Input argument ''syst'' must have field ''dx''.'); end
+if ~(isstruct(syst) && isscalar(syst)); error('Input argument syst must be a scalar structure.'); end
+if ~isfield(syst, 'wavelength');        error('Input argument syst must have field ''wavelength''.'); end
+if ~isfield(syst, 'dx');                error('Input argument syst must have field ''dx''.'); end
 if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
 if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0);     error('syst.dx must be a positive scalar.'); end
 
@@ -551,7 +551,7 @@ else
     elseif isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
         error('syst.polarization must be given when syst.epsilon and syst.inv_epsilon both exist.');
     else % neither syst.epsilon nor syst.inv_epsilon exists
-        error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+        error('Input argument syst must have field ''epsilon'' or ''inv_epsilon''.');
     end
 end
 
@@ -769,7 +769,7 @@ end
 %% Part 1.2: Check validity of the other input arguments and assign default values
 
 if ~((ismatrix(B) && isnumeric(B)) || (isstruct(B) && ~isempty(B)))
-    error('Input argument ''B'' must be a numeric matrix or a non-empty structure array.'); 
+    error('Input argument B must be a numeric matrix or a non-empty structure array.'); 
 end
 
 % C is an optional argument
@@ -782,7 +782,7 @@ if nargin < 4
     D = [];
 end
 if ~((ismatrix(D) && isnumeric(D)) || isempty(D))
-    error('Input argument ''D'' must be a numeric matrix or [], if given.');
+    error('Input argument D must be a numeric matrix or [], if given.');
 end
 
 % opts is an optional argument
@@ -790,7 +790,7 @@ if nargin < 5 || isempty(opts)
     opts = struct();
 end
 if ~(isstruct(opts) && isscalar(opts))
-    error('Input argument ''opts'' must be a scalar structure or [], if given.');
+    error('Input argument opts must be a scalar structure or [], if given.');
 end
 
 % opts.return_field_profile is only used internally (but will be returned within info.opts)
@@ -803,7 +803,7 @@ elseif isequal(C, 'transpose(B)')
     opts.return_field_profile = false;
     use_transpose_B = true;
 else
-    error('Input argument ''C'' must be a numeric matrix or a non-empty structure array or ''transpose(B)'' or [], if given.');
+    error('Input argument C must be a numeric matrix or a non-empty structure array or ''transpose(B)'' or [], if given.');
 end
 
 % Check that the user did not accidentally use options only in mesti2s()
@@ -910,11 +910,11 @@ t1 = clock; timing_init = etime(t1,t0); % Initialization time
 if isstruct(B)
     B_struct = B;
     if ~isfield(B_struct, 'data')
-        error('Input argument ''B'' must have field ''data'' when B is a structure array.');
+        error('Input argument B must have field ''data'' when B is a structure array.');
     elseif ~isfield(B_struct, 'pos') && ~isfield(B_struct, 'ind')
-        error('Input argument ''B'' must have field ''pos'' or ''ind'' when B is a structure array.');
+        error('Input argument B must have field ''pos'' or ''ind'' when B is a structure array.');
     elseif isfield(B_struct, 'pos') && isfield(B_struct, 'ind')
-        error('Input argument ''B'' cannot have both field ''pos'' and field ''ind'' when B is a structure array.');
+        error('Input argument B cannot have both field ''pos'' and field ''ind'' when B is a structure array.');
     end
     if isfield(B_struct, 'pos')
         for ii = 1:numel(B_struct)
@@ -958,7 +958,7 @@ if isstruct(B)
         B = sparse(nxy, 0);
     end
 
-    % Loop over the structure array
+    % Loop over different positions of the input source
     for ii = 1:numel(B_struct)
         data = B_struct(ii).data;
         if isfield(B_struct, 'pos')
@@ -1042,11 +1042,11 @@ end
 if isstruct(C)
     C_struct = C;
     if ~isfield(C_struct, 'data')
-        error('Input argument ''C'' must have field ''data'' when C is a structure array.');
+        error('Input argument C must have field ''data'' when C is a structure array.');
     elseif ~isfield(C_struct, 'pos') && ~isfield(C_struct, 'ind')
-        error('Input argument ''C'' must have field ''pos'' or ''ind'' when C is a structure array.');
+        error('Input argument C must have field ''pos'' or ''ind'' when C is a structure array.');
     elseif isfield(C_struct, 'pos') && isfield(C_struct, 'ind')
-        error('Input argument ''C'' cannot have both field ''pos'' and field ''ind'' when C is a structure array.');
+        error('Input argument C cannot have both field ''pos'' and field ''ind'' when C is a structure array.');
     end
     if isfield(C_struct, 'pos')
         for ii = 1:numel(C_struct)
@@ -1090,7 +1090,7 @@ if isstruct(C)
         C = sparse(0, nxy);
     end
 
-    % Loop over the structure array
+    % Loop over different positions of the output projection
     for ii = 1:numel(C_struct)
         data = C_struct(ii).data;
         if isfield(C_struct, 'pos')
@@ -1272,7 +1272,7 @@ if ~info.opts.analysis_only
 
     % subtract D
     if ~isempty(D)
-        if opts.return_field_profile; error('Input argument ''D'' must be empty for field-profile computations where C = [].'); end
+        if opts.return_field_profile; error('Input argument D must be empty for field-profile computations where C = [].'); end
         [sz_D_1, sz_D_2] = size(D);
         if sz_D_1~=sz_C_1; error('size(D,1) must equal size(C,1); size(D,1) = %d, size(C,1) = %d.', sz_D_1, sz_C_1); end
         if sz_D_2~=sz_B_2; error('size(D,2) must equal size(B,2); size(D,2) = %d, size(B,2) = %d.', sz_D_2, sz_B_2); end

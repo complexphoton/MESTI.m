@@ -573,10 +573,10 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 t0 = clock;
 
 if nargin < 2; error('Not enough input arguments.'); end
-if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
-if ~isfield(syst, 'epsilon_L');         error('Input argument ''syst'' must have field ''epsilon_L''.'); end
-if ~isfield(syst, 'wavelength');        error('Input argument ''syst'' must have field ''wavelength''.'); end
-if ~isfield(syst, 'dx');                error('Input argument ''syst'' must have field ''dx''.'); end
+if ~(isstruct(syst) && isscalar(syst)); error('Input argument syst must be a scalar structure.'); end
+if ~isfield(syst, 'epsilon_L');         error('Input argument syst must have field ''epsilon_L''.'); end
+if ~isfield(syst, 'wavelength');        error('Input argument syst must have field ''wavelength''.'); end
+if ~isfield(syst, 'dx');                error('Input argument syst must have field ''dx''.'); end
 if ~(isreal(syst.epsilon_L)     && isscalar(syst.epsilon_L));  error('syst.epsilon_L must be a real scalar.'); end
 if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
 if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0);     error('syst.dx must be a positive scalar.'); end
@@ -599,7 +599,7 @@ else
     elseif isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
         error('syst.polarization must be given when syst.epsilon and syst.inv_epsilon both exist.');
     else % neither syst.epsilon nor syst.inv_epsilon exists
-        error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+        error('Input argument syst must have field ''epsilon'' or ''inv_epsilon''.');
     end
 end
 
@@ -691,7 +691,7 @@ if isfield(syst, 'ky_B') && ~isempty(syst.ky_B)
     yBC = (syst.ky_B)*(ny*syst.dx); % dimensionless
 else
     if ~isfield(syst, 'yBC') || isempty(syst.yBC)
-        error('Input argument ''syst'' must have non-empty field ''yBC'' when syst.ky_B is not given.');
+        error('Input argument syst must have non-empty field ''yBC'' when syst.ky_B is not given.');
     elseif ~((ischar(syst.yBC) && isrow(syst.yBC)) || (isstring(syst.yBC) && isscalar(syst.yBC)))
         error('syst.yBC must be a character vector or string, if given.');
     elseif ~ismember(lower(syst.yBC), lower({'Bloch', 'periodic', 'PEC', 'PMC', 'PECPMC', 'PMCPEC'}))
@@ -833,7 +833,7 @@ nx_tot = nx_s + sum(nx_extra);
 %% Part 1.2: Check the input argument 'opts' and assign default values
 
 if ~((isstruct(in) && isscalar(in)) || (iscell(in) && numel(in) <= 2))
-    error('Input argument ''in'' must be a scalar structure or a cell array with no more than two elements.');
+    error('Input argument in must be a scalar structure or a cell array with no more than two elements.');
 end
 
 % out is an optional argument
@@ -841,7 +841,7 @@ if nargin < 3
     out = [];
 end
 if ~((isstruct(out) && isscalar(out)) || (iscell(out) && numel(out) <= 2) || isempty(out))
-    error('Input argument ''out'' must be a scalar structure or a cell array with no more than two elements or [], if given.');
+    error('Input argument out must be a scalar structure or a cell array with no more than two elements or [], if given.');
 end
 
 % opts is an optional argument
@@ -849,7 +849,7 @@ if nargin < 4 || isempty(opts)
     opts = struct();
 end
 if ~(isstruct(opts) && isscalar(opts))
-    error('Input argument ''opts'' must be a scalar structure or [], if given.');
+    error('Input argument opts must be a scalar structure or [], if given.');
 end
 
 % Check that the user did not accidentally use options only in mesti()
@@ -1257,7 +1257,7 @@ if ~isempty(out)
     else % isstruct(out)
         field_names = setdiff(fieldnames(out), {'ind_L','ind_R', 'v_L', 'v_R'});
         if numel(field_names) > 0
-            error('Input argument ''out'' contains unrecognized field %s.', field_names{1});
+            error('Input argument out contains unrecognized field %s.', field_names{1});
         end
 
         % Use the user-specified set of output channels on the left and/or right

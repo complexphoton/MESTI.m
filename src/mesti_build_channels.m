@@ -138,7 +138,7 @@ function channels = mesti_build_channels(ny, polarization, yBC, k0dx, epsilon_L,
 if nargin == 1
     % Extract parameters from syst
     syst = ny;
-    if ~(isstruct(syst) && isscalar(syst)); error('Input argument ''syst'' must be a scalar structure.'); end
+    if ~(isstruct(syst) && isscalar(syst)); error('Input argument syst must be a scalar structure.'); end
 
     % Assign polarization
     % We don't check syst.epsilon and syst.inv_epsilon since those are checked in mesti() or mesti2s().
@@ -162,15 +162,15 @@ if nargin == 1
         elseif isfield(syst, 'epsilon') && isfield(syst, 'inv_epsilon')
             error('syst.polarization must be given when syst.epsilon and syst.inv_epsilon both exist.');
         else % neither syst.epsilon nor syst.inv_epsilon exists
-            error('Input argument ''syst'' must have field ''epsilon'' or ''inv_epsilon''.');
+            error('Input argument syst must have field ''epsilon'' or ''inv_epsilon''.');
         end
     end
 
-    if ~isfield(syst, 'epsilon_L'); error('Input argument ''syst'' must have field ''epsilon_L''.'); end
+    if ~isfield(syst, 'epsilon_L'); error('Input argument syst must have field ''epsilon_L''.'); end
     epsilon_L = syst.epsilon_L;
 
-    if ~isfield(syst, 'wavelength'); error('Input argument ''syst'' must have field ''wavelength''.'); end
-    if ~isfield(syst, 'dx'); error('Input argument ''syst'' must have field ''dx''.'); end
+    if ~isfield(syst, 'wavelength'); error('Input argument syst must have field ''wavelength''.'); end
+    if ~isfield(syst, 'dx'); error('Input argument syst must have field ''dx''.'); end
     if ~(isnumeric(syst.wavelength) && isscalar(syst.wavelength)); error('syst.wavelength must be a numeric scalar.'); end
     if ~(isreal(syst.dx) && isscalar(syst.dx) && syst.dx > 0); error('syst.dx must be a positive scalar.'); end
     k0dx = (2*pi/syst.wavelength)*(syst.dx);
@@ -185,7 +185,7 @@ if nargin == 1
         yBC = (syst.ky_B)*(ny*syst.dx); % dimensionless
     else
         if ~isfield(syst, 'yBC') || isempty(syst.yBC)
-            error('Input argument ''syst'' must have non-empty field ''yBC'' when syst.ky_B is not given.');
+            error('Input argument syst must have non-empty field ''yBC'' when syst.ky_B is not given.');
         elseif ~((ischar(syst.yBC) && isrow(syst.yBC)) || (isstring(syst.yBC) && isscalar(syst.yBC)))
             error('syst.yBC must be a character vector or string, if given.');
         elseif ~ismember(lower(syst.yBC), lower({'Bloch', 'periodic', 'PEC', 'PMC', 'PECPMC', 'PMCPEC'}))

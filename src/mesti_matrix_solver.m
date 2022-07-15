@@ -145,12 +145,12 @@ if nargin < 2
 end
 
 if ~issparse(A)
-    error('Input argument ''A'' must be a sparse matrix.');
+    error('Input argument A must be a sparse matrix.');
 end
 A_name = inputname(1); % name of the variable we call A in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
 if ~(ismatrix(B) && isnumeric(B))
-    error('Input argument ''B'' must be a numeric matrix.');
+    error('Input argument B must be a numeric matrix.');
 end
 B_name = inputname(2); % name of the variable we call B in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
@@ -167,7 +167,7 @@ elseif isequal(C, 'transpose(B)')
     return_X = false;
     use_transpose_B = true;
 else
-    error('Input argument ''C'' must be a numeric matrix or ''transpose(B)'' or [], if given.');
+    error('Input argument C must be a numeric matrix or ''transpose(B)'' or [], if given.');
 end
 C_name = inputname(3); % name of the variable we call C in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
@@ -176,7 +176,7 @@ if nargin < 4 || isempty(opts)
     opts = struct();
 end
 if ~(isstruct(opts) && isscalar(opts))
-    error('Input argument ''opts'' must be a scalar structure or [], if given.');
+    error('Input argument opts must be a scalar structure or [], if given.');
 end
 
 % Check that the user did not accidentally use options only in mesti2s()
@@ -241,7 +241,7 @@ if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MATLAB')
 end
 
 if opts.iterative_refinement && ~(~return_X && strcmpi(opts.method, 'factorize_and_solve') && strcmpi(opts.solver, 'MUMPS'))
-    error('To use opts.iterative_refinement = true, input argument ''C'' must not be empty, opts.method must be ''factorize_and_solve'', and opts.solver must be ''MUMPS''.\nHere isempty(C) = %d, opts.method = ''%s'', opts.solver = ''%s''.', isempty(C), opts.method, opts.solver);
+    error('To use opts.iterative_refinement = true, input argument C must not be empty, opts.method must be ''factorize_and_solve'', and opts.solver must be ''MUMPS''.\nHere isempty(C) = %d, opts.method = ''%s'', opts.solver = ''%s''.', isempty(C), opts.method, opts.solver);
 end
 
 % Turn off solver's verbal output by default
@@ -274,7 +274,7 @@ end
 [sz_A_1, sz_A_2] = size(A);
 [sz_B_1, sz_B_2] = size(B);
 [sz_C_1, sz_C_2] = size(C);
-if sz_A_1~=sz_A_2; error('Input argument ''A'' must be a square matrix; size(A) = [%d, %d].', sz_A_1, sz_A_2); end
+if sz_A_1~=sz_A_2; error('Input argument A must be a square matrix; size(A) = [%d, %d].', sz_A_1, sz_A_2); end
 if sz_A_2~=sz_B_1; error('size(A,2) must equal size(B,1); size(A,2) = %d, size(B,1) = %d.', sz_A_2, sz_B_1); end
 if sz_C_2~=sz_A_1 && use_C; error('size(C,2) must equal size(A,1); size(C,2) = %d, size(A,1) = %d.', sz_C_2, sz_A_1); end
 
