@@ -819,7 +819,6 @@ for ii = 1:n_sides
         nx_extra(ii) = 1 + npix_PML + npix_spacer;
 
         PML_ii = rmfield(PML_ii, {'npixels_PML', 'npixels_spacer'}); % these won't be used in mesti()
-        PML_ii.npixels = npix_PML;   % to be used in mesti()
         PML_ii.direction = 'x';      % to be used in mesti()
         PML_ii.side = str_sides{ii}; % to be used in mesti()
 
@@ -1622,6 +1621,7 @@ t1 = clock;
 
 % Include the -2i prefactor that should have been in the input matrix B
 S = (-2i)*S;
+info.opts.prefactor = -2i;
 
 %% Part 4: wrap up
 

@@ -247,8 +247,8 @@ yPML = set_PML_params(yPML, k0dx, epsilon_bg_y, 'y');
 %   avg_x_E*f = average of f among two neighboring pixels
 % where f = Ey or Ez is a 1d vector.
 % Note that sx_E and sx_H are column vectors.
-[ddx_E, avg_x_E, sx_E, sx_H] = build_ddx_E(nx_Ez, xBC, xPML, 'x', use_TM); % ddx_E operates on Ey or Ez
-[ddy_E, avg_y_E, sy_E, sy_H] = build_ddx_E(ny_Ez, yBC, yPML, 'y', use_TM); % ddy_E operates on Ex or Ez
+[ddx_E, avg_x_E, sx_E, sx_H, ind_xPML_E] = build_ddx_E(nx_Ez, xBC, xPML, 'x', use_TM); % ddx_E operates on Ey or Ez
+[ddy_E, avg_y_E, sy_E, sy_H, ind_yPML_E] = build_ddx_E(ny_Ez, yBC, yPML, 'y', use_TM); % ddy_E operates on Ex or Ez
 
 % The derivative matrices on H
 ddx_H = -ddx_E'; % ddx_H operates on Hy or Hz
@@ -358,24 +358,21 @@ else
 end
 
 % determine the symmetry of matrix A, assuming no spatial symmetry in epsilon or inv_epsilon
-if (isnumeric(xBC) && xBC ~= 0 && xBC ~= pi && nx_Ez > 1) || (isnumeric(yBC) && yBC ~= 0 && yBC ~= pi && ny_Ez > 1)
-    % Bloch periodic boundary condition with k_B*periodicity != 0 or pi breaks the symmetry of A because its ddx is complex-valued
+is_symmetric_A = true;
+if (isnumeric(xBC) && xBC ~= 0 && xBC ~= pi && (nx_Ez > 1 || (~use_TM && include_inv_epsilon_xy && nx_Hz == 1 && ny_Hz > 1))) || ...
+   (isnumeric(yBC) && yBC ~= 0 && yBC ~= pi && (ny_Ez > 1 || (~use_TM && include_inv_epsilon_xy && ny_Hz == 1 && nx_Hz > 1)))
+    % Bloch periodic boundary condition with k_B*periodicity != 0 or pi breaks the symmetry of A because its ddx is complex-valued, except when there is only one pixel.
     is_symmetric_A = false;
 elseif ~isempty(xPML) || ~isempty(yPML)
     if ~use_UPML
         % SC-PML breaks the symmetry of A
         is_symmetric_A = false;
     elseif ~use_TM && include_inv_epsilon_xy
-        % off-diagonal components of inv(epsilon) breaks the symmetry of A when PML is used
-        is_symmetric_A = false;
-    else
-        is_symmetric_A = true;
+        % off-diagonal components of inv(epsilon) inside the PML breaks the symmetry of A
+        if nnz(inv_epsilon{3}(:,cell2mat(ind_xPML_E))) > 0 || nnz(inv_epsilon{3}(cell2mat(ind_yPML_E),:)) > 0
+            is_symmetric_A = false;
+        end
     end
-elseif ~use_TM && include_inv_epsilon_xy && ((isnumeric(xBC) && xBC ~= 0 && xBC ~= pi && nx_Hz == 1 && ny_Hz > 1) || (isnumeric(yBC) && yBC ~= 0 && yBC ~= pi && ny_Hz == 1 && nx_Hz > 1))
-    % A single layer with Bloch periodic boundary condition can still break the symmetry of A when inv(epsilon) has off-diagonal components
-    is_symmetric_A = false;
-else
-    is_symmetric_A = true;
 end
 
 end
@@ -388,12 +385,13 @@ function A = spdiag(d, n)
 end
 
 
-function [ddx, avg, s_E, s_H] = build_ddx_E(n_E, BC, PML, direction, use_TM)
+function [ddx, avg, s_E, s_H, ind_PML_E] = build_ddx_E(n_E, BC, PML, direction, use_TM)
 % ddx: first-derivative matrix (acting on Ey or Ez)
 % avg: average matrix (acting on Ey or Ez)
 % s_E: x-coordinate-stretching factor for Ey or Ez (on integer sites)
 % s_H: x-coordinate-stretching factor for Hy or Hz (on half-integer sites)
 % n_E: number of sites in x for Ey or Ez
+% ind_PML_E: cell array containing indices of the PML pixels for Ey or Ez (on integer sites)
 
 if ~((ischar(BC) && isrow(BC)) || ((isstring(BC) || isnumeric(BC)) && isscalar(BC)))
     error('Input argument %sBC must be a character vector or string, or numeric scalar (for Bloch periodic BC).', direction);
@@ -459,6 +457,7 @@ s_H = ones(n_H,1); % s-factor for Hy or Hz (on half-integer sites)
 
 % no coordinate stretching if no PML is specified
 if isempty(PML)
+    ind_PML_E = {[],[]};
     return
 end
 
