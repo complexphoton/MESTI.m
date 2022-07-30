@@ -4,7 +4,7 @@
 % matrix to determine an incident wavefront that can penetrate the disorder with
 % almost 100% transmission (called an "open channel"), and then use mesti2s() 
 % again to compute the field profile of the open channel while comparing to that
-% of a typical plane-wave input.
+% of a typical plane-wave input. We do so for both TM and TE polarizations.
 
 clear
 
@@ -27,22 +27,33 @@ epsilon_bg   = 1.0^2; % background in the scattering region
 epsilon_L    = 1.0^2; % frees space on the left
 epsilon_R    = 1.0^2; % frees space on the right
 
-% Generate a random collection of non-overlapping cylinders
-[epsilon, x0_list, y0_list, r0_list] = ...
-    build_epsilon_disorder(W, L, r_min, r_max, min_sep, nummber_density, ...
-    rng_seed, dx, epsilon_scat, epsilon_bg);
+yBC = 'periodic'; % boundary condition in y
 
-%% Compute the transmission matrix
+% Generate a random collection of non-overlapping cylinders
+% Note subpixel smoothing is not applied for simplicity
+build_TM = true;
+build_TE = true;
+[epsilon, inv_epsilon, x0_list, y0_list, r0_list] = ...
+    build_epsilon_disorder(W, L, r_min, r_max, min_sep, nummber_density, ...
+    rng_seed, dx, epsilon_scat, epsilon_bg, build_TM, build_TE, yBC);
+
+% Do subpixel smoothing for inv_epsilon{1}(:,1) and inv_epsilon{1}(:,end) used
+% for TE, which are at the boundary of the scattering region and the free space.
+inv_epsilon{1}(:,1)   = ((1/epsilon_L) + (1/epsilon_bg))/2;
+inv_epsilon{1}(:,end) = ((1/epsilon_R) + (1/epsilon_bg))/2;
+
+%% Compute the transmission matrix for TM polarization
+syst.polarization = 'TM';
 syst.epsilon = epsilon;
 syst.epsilon_L = epsilon_L;
 syst.epsilon_R = epsilon_R;
 syst.length_unit  = 'lambda_0';
 syst.wavelength = 1;
 syst.dx = dx;
-syst.yBC = 'periodic';
+syst.yBC = yBC;
 
 % Transmission matrix: input from left, output to the right
-[t, channels, ~] = mesti2s(syst, {'left'}, {'right'});
+[t, channels] = mesti2s(syst, {'left'}, {'right'});
 
 %% Compare an open channel and a plane-wave input
 % The most-open channels is the singular vector of the transmission matrix with 
@@ -71,26 +82,61 @@ opts.nx_L = round((L_tot-L)/2/dx);
 opts.nx_R = opts.nx_L;
 
 % Set out = [] for field-profile computations
-[field_profiles, ~, ~] = mesti2s(syst, in, [], opts);
+Ez = mesti2s(syst, in, [], opts);
 
 %% Animate the field profiles
 % Normalize the field amplitude with respect to the plane-wave-input profile
-field_profiles = field_profiles/max(abs(field_profiles(:,:,1)), [], 'all');
+Ez = Ez/max(abs(Ez(:,:,1)), [], 'all');
 
 nperiod = 2; % Number of periods to animate
 nframes_per_period = 20; % Number of frames per period
 
-% x and y coordinates of the centers of the pixels
-[ny, nx] = size(epsilon);
-x = (-(opts.nx_L-0.5):(nx+opts.nx_R))*dx;
-y = (0.5:ny)*dx;
+% x and y coordinates of the centers of the Ez pixels
+[ny_Ez, nx_Ez] = size(epsilon);
+x_Ez = (-(opts.nx_L-0.5):(nx_Ez+opts.nx_R))*dx;
+y_Ez = (0.5:ny_Ez)*dx;
 
 % Animate the field profile with plane-wave input
 figure
-animate_field_profile(field_profiles(:,:,1), x0_list, y0_list, r0_list, x, y, ...
+animate_field_profile(Ez(:,:,1), x0_list, y0_list, r0_list, x_Ez, y_Ez, ...
     nperiod, nframes_per_period);
 
 % Animate the field profile of the open channel
 figure
-animate_field_profile(field_profiles(:,:,2), x0_list, y0_list, r0_list, x, y, ...
+animate_field_profile(Ez(:,:,2), x0_list, y0_list, r0_list, x_Ez, y_Ez, ...
+    nperiod, nframes_per_period);
+
+%% TE polarization
+syst.polarization = 'TE';
+syst.inv_epsilon = inv_epsilon;
+[t, channels] = mesti2s(syst, {'left'}, {'right'});
+
+[~, sigma_max, v_max] = svds(t, 1, 'largest');
+N_prop_L = channels.L.N_prop; % number of propagating channels on the left
+ind_normal = round((N_prop_L+1)/2); % index of the normal-incident plane-wave
+T_avg = sum(abs(t).^2,'all')/N_prop_L; % average over all channels
+T_PW  = sum(abs(t(:,ind_normal)).^2); % normal-incident plane-wave
+T_open = sigma_max^2; % open channel
+fprintf('T_avg  = %f\nT_PW   = %f\nT_open = %f\n', T_avg, T_PW, T_open)
+
+in.v_L = zeros(N_prop_L, 2);
+in.v_L(ind_normal, 1) = 1;
+in.v_L(:, 2) = v_max;
+Hz = mesti2s(syst, in, [], opts);
+
+% x and y coordinates of the centers of the Hz pixels
+nx_Hz = size(inv_epsilon{1}, 2);
+ny_Hz = size(inv_epsilon{2}, 1);
+if ismember(lower(yBC), lower({'Bloch', 'periodic', 'PMC', 'PMCPEC'}))
+    dm_Hz = 0; % y = m*dx with m = 1 to ny_Hz
+else
+    dm_Hz = 1; % y = (m-1)*dx with m = 1 to ny_Hz
+end
+x_Hz = ((-opts.nx_L):(nx_Hz-1+opts.nx_R))*dx;
+y_Hz = ((1:ny_Hz)-dm_Hz)*dx;
+
+% Animate the field profile of the open channel
+figure
+Hz = Hz/max(abs(Hz(:,:,1)), [], 'all'); % Normalize with respect to the plane-wave-input profile
+animate_field_profile(Hz(:,:,2), x0_list, y0_list, r0_list, x_Hz, y_Hz, ...
     nperiod, nframes_per_period);
