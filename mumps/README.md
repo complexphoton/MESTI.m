@@ -44,9 +44,13 @@ After done with <code>Makefile.inc</code>, enter
 ```
 make d z
 ```
-in terminal, which will compile the sequential version of MUMPS with double precision for real and complex variables (*i.e.*, <code>dmumps</code> and <code>zmumps</code>). 
+in terminal, which will compile the sequential version of MUMPS with double precision for real and complex variables (*i.e.*, <code>dmumps</code> and <code>zmumps</code>).
 
 If there is no error, check if the following files have been generated in the <code>lib</code> folder: <code>libdmumps.a</code> (or <code>libdmumps.so</code>) and <code>libzmumps.a</code> (or <code>libzmumps.so</code>).
+
+Warning messages from the Fortran compiler are normal and can be ignored.
+
+If there is error, read the message and try to figure out where it comes from and/or look it up and address it. Before recompiling with <code>make d z</code>, be sure to type <code>make clean</code> first to remove files generate by the previous compile attempt.
 
 ## Compile the MATLAB interface for MUMPS
 
