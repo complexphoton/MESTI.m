@@ -380,39 +380,47 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         in one-sided geometries where syst.epsilon_R is not given; the field
 %         profile on the right is simply zero in such case.
 %      opts.solver (character vector; optional):
-%         The software used for sparse matrix factorization. Available choices
-%         are (case-insensitive):
-%            'MUMPS'  - (default) Uses MUMPS. Its MATLAB interface zmumps.m must
-%                       be in MATLAB's search path. This is much faster and uses
-%                       less memory.
-%            'MATLAB' - Uses the built-in lu() function in MATLAB, which uses
-%                       UMFPACK with AMD ordering. This requires no installation
-%                       but is much slower. This is be used by default if
-%                       zmumps.m is not found in the search path.
-%         opts.solver is not used when opts.method = 'RGF'.
+%         The solver used for sparse matrix factorization. Available choices are
+%         (case-insensitive):
+%            'MUMPS'  - (default when MUMPS is available) Use MUMPS. Its MATLAB
+%                       interface zmumps.m must be in MATLAB's search path.
+%            'MATLAB' - (default when MUMPS is not available) Use the built-in
+%                       lu() function in MATLAB, which uses UMFPACK with AMD
+%                       ordering.
+%         MUMPS is faster and uses less memory than lu(), and is required for
+%         the APF method.
+%            opts.solver is not used when opts.method = 'RGF'.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'APF' - Augmented partial factorization. When opts.solver =
-%                    'MUMPS', C*inv(A)*B is obtained through the Schur
-%                    complement of an augmented matrix K = [A,B;C,0] using a
-%                    partial factorization; this is the true APF. When
-%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
-%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
-%                    true APF but is slightly better than factorize_and_solve.
-%                    Cannot be used for computing the full field profile
-%                    inv(A)*B or with iterative refinement.
-%            'FS'  - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
-%                    with forward and backward substitutions, and optionally
-%                    project with C.
+%            'APF' - Augmented partial factorization. C*inv(A)*B is obtained
+%                    through the Schur complement of an augmented matrix
+%                    K = [A,B;C,0] using a partial factorization. Must have
+%                    opts.solver = 'MUMPS'. This is the most efficient method,
+%                    but it cannot be used for computing the full field profile
+%                    X=inv(A)*B or with iterative refinement.
+%            'FG'  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+%                    through C*inv(U)*inv(L)*B with optimized grouping. Must
+%                    have opts.solver = 'MATLAB'. This is slightly better than
+%                    'FS' when MUMPS is not available, but it cannot be used for
+%                    computing the full field profile X=inv(A)*B.
+%            'FS'  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+%                    with forward and backward substitutions, and project with
+%                    C as C*inv(A)*B = C*X. Here, opts.solver can be either
+%                    'MUMPS' or 'MATLAB', and it can be used for computing
+%                    the full field profile X=inv(A)*B or with iterative
+%                    refinement.
 %            'RGF' - Recursive Green's function method. Cannot be used for
 %                    computing the full field profile or with iterative
 %                    refinement, and cannot be used with PML or with TE
 %                    polarization.
+%            'C*inv(U)*inv(L)*B'   - Same as 'FG'.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if the input argument 'out' is not given or if
 %         opts.iterative_refinement = true, then 'factorize_and_solve' is used.
-%         Otherwise, 'APF' is used if ny is large or if TE polarization is used
-%         or if PML has been specified; 'RGF' is used otherwise.
+%         Otherwise, if ny is large or if TE polarization is used or if PML has
+%         been specified, then 'APF' is used when opts.solver = 'MUMPS', and
+%         'C*inv(U)*inv(L)*B' is used when opts.solver = 'MATLAB'. Otherwise, 
+%         'RGF' is used.
 %      opts.symmetrize_K (logical scalar; optional):
 %         Whether or not to pad input and/or output channels and perform
 %         permutations to make matrix K = [A,B;C,0] symmetric when computing its
@@ -421,10 +429,9 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %         affect what mesti2s() returns.
 %            opts.symmetrize_K can only be used when all of the following are
 %         met: (1) input argument 'out' is given, (2) 'in' and 'out' are not
-%         specified as wavefronts, (3) opts.solver = 'MUMPS', (4) opts.method =
-%         'APF', and (5) the boundary condition in y is not Bloch periodic.
-%         When all of these conditions are met, opts.symmetrize_K defaults to
-%         true; otherwise it is not used.
+%         specified as wavefronts, (3) opts.method = 'APF', and (4) the boundary
+%         condition in y is not Bloch periodic. When all of these conditions are
+%         met, opts.symmetrize_K defaults to true; otherwise it is not used.
 %      opts.clear_syst (logical scalar; optional, defaults to false):
 %         When opts.clear_syst = true and opts.method is not 'RGF', variable
 %         'syst' will be cleared in the caller's workspace to reduce peak memory
@@ -819,6 +826,7 @@ for ii = 1:n_sides
         nx_extra(ii) = 1 + npix_PML + npix_spacer;
 
         PML_ii = rmfield(PML_ii, {'npixels_PML', 'npixels_spacer'}); % these won't be used in mesti()
+        PML_ii.npixels = npix_PML;   % to be used in mesti()
         PML_ii.direction = 'x';      % to be used in mesti()
         PML_ii.side = str_sides{ii}; % to be used in mesti()
 
@@ -923,18 +931,24 @@ end
 if ~isfield(opts, 'method') || isempty(opts.method)
     % By default, if the input argument 'out' is not given or if
     % opts.iterative_refinement = true, then 'factorize_and_solve' is used.
-    % Otherwise, 'APF' is used if ny is large or if TE polarization is used
-    % or if PML has been specified; 'RGF' is used otherwise.
+    % Otherwise, if ny is large or if TE polarization is used or if PML has
+    % been specified, then 'APF' is used when opts.solver = 'MUMPS', and
+    % 'C*inv(U)*inv(L)*B' is used when opts.solver = 'MATLAB'. Otherwise, 
+    % 'RGF' is used.
     if opts.return_field_profile || (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true))
         opts.method = 'factorize_and_solve';
     elseif n_PML > 0 || ~use_TM
-        opts.method = 'APF';
+        if strcmpi(opts.solver, 'MUMPS')
+            opts.method = 'APF';
+        else
+            opts.method = 'C*inv(U)*inv(L)*B';
+        end
     elseif isfield(opts, 'store_ordering') && isequal(opts.store_ordering, true)
         opts.method = 'APF';
     elseif isfield(opts, 'analysis_only') && isequal(opts.analysis_only, true)
         opts.method = 'APF';
     else
-        % APF is more efficient when ny is large. RGF is more efficient when ny is small.
+        % APF and C*inv(U)*inv(L)*B are more efficient when ny is large. RGF is more efficient when ny is small.
         if strcmpi(opts.solver, 'MUMPS')
             if ny > 80
                 opts.method = 'APF';
@@ -943,7 +957,7 @@ if ~isfield(opts, 'method') || isempty(opts.method)
             end
         else
             if ny > 200
-                opts.method = 'APF';
+                opts.method = 'C*inv(U)*inv(L)*B';
             else
                 opts.method = 'RGF';
             end
@@ -951,14 +965,23 @@ if ~isfield(opts, 'method') || isempty(opts.method)
     end
 elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
     error('opts.method must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.method), lower({'APF', 'factorize_and_solve', 'FS', 'RGF'}))
-    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
-elseif opts.return_field_profile && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
+elseif ~ismember(lower(opts.method), lower({'APF', 'C*inv(U)*inv(L)*B', 'factorize_and_solve', 'FG', 'FS', 'RGF'}))
+    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''C*inv(U)*inv(L)*B'' or ''factorize_and_solve'' or ''RGF''.', opts.method);
+elseif opts.return_field_profile && ~ismember(lower(opts.method), lower({'factorize_and_solve', 'FS'}))
     error('opts.method = ''%s'' cannot be used for field-profile computations where out = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
-elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && (strcmpi(opts.method, 'APF') || strcmpi(opts.method, 'RGF'))
+elseif (isfield(opts, 'iterative_refinement') && isequal(opts.iterative_refinement, true)) && ~ismember(lower(opts.method), lower({'factorize_and_solve', 'FS'}))
     error('opts.method = ''%s'' cannot be used when opts.iterative_refinement = true; use opts.method = ''factorize_and_solve'' instead.', opts.method)
+elseif strcmpi(opts.method, 'FG')
+    opts.method = 'C*inv(U)*inv(L)*B';  % opts.method = 'FG' is short for opts.method = 'C*inv(U)*inv(L)*B'
 elseif strcmpi(opts.method, 'FS')
     opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
+end
+
+if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MATLAB')
+    error('opts.method = ''APF'' requires opts.solver = ''MUMPS''.');
+end
+if strcmpi(opts.method, 'C*inv(U)*inv(L)*B') && strcmpi(opts.solver, 'MUMPS')
+    error('opts.method = ''C*inv(U)*inv(L)*B'' requires opts.solver = ''MATLAB''.');
 end
 
 if strcmpi(opts.method, 'RGF')
@@ -1039,6 +1062,10 @@ if opts.verbal
     fprintf('xBC = {%s, %s}; yBC = %s', str_xBC{1}, str_xBC{2}, syst.yBC);
     if strcmpi(syst.yBC, 'Bloch'); fprintf(' (ky_B = %.4f)', syst.ky_B); end
     fprintf('; %s polarization\n', str_pol);
+
+    if ny >= 4000 && n_PML == 0
+        fprintf('Tip: PML is more efficient for wide systems. For example, set syst.xBC = struct(''npixels_PML'', 40).\n');
+    end
 end
 
 t1 = clock; timing_init = etime(t1,t0); % Initialization time
@@ -1346,8 +1373,8 @@ else
     is_symmetric_A = true;
 end
 
-% opts.symmetrize_K can only be used when all of the following are met: (1) input argument 'out' is given, (2) 'in' and 'out' are not specified as wavefronts, (3) opts.solver = 'MUMPS', (4) opts.method = 'APF', and (5) the boundary condition in y is not Bloch periodic.
-if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MUMPS') && is_symmetric_A
+% opts.symmetrize_K can only be used when all of the following are met: (1) input argument 'out' is given, (2) 'in' and 'out' are not specified as wavefronts, (3) opts.method = 'APF', and (4) the boundary condition in y is not Bloch periodic.
+if ~isempty(out) && use_ind_in && use_ind_out && strcmpi(opts.method, 'APF') && is_symmetric_A
     % By default, opts.symmetrize_K = true if it's possible
     if ~isfield(opts, 'symmetrize_K') || isempty(opts.symmetrize_K)
         opts.symmetrize_K = true;
@@ -1605,6 +1632,9 @@ else
     % Main computation happens here
     % Note that we should no longer use syst, B, and C beyond this point since they may be cleared inside mesti()
     [S, info] = mesti(syst, B, C, D, opts);
+
+    info.opts = rmfield(info.opts, 'prefactor'); % only used in mesti()
+    info.opts.symmetrize_K = use_transpose_B;
 end
 
 info.timing.init  = info.timing.init  + timing_init;
@@ -1621,7 +1651,6 @@ t1 = clock;
 
 % Include the -2i prefactor that should have been in the input matrix B
 S = (-2i)*S;
-info.opts.prefactor = -2i;
 
 %% Part 4: wrap up
 

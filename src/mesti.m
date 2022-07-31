@@ -328,10 +328,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      is the case, the user can set C = 'transpose(B)' as a character vector,
 %      and it will be replaced by transpose(B) in the code. Doing so has an
 %      advantage: if matrix A is symmetric (which is the case with UPML without
-%      Bloch periodic boundary), C = 'transpose(B)', opts.solver = 'MUMPS', and
-%      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
-%      symmetric when computing its Schur complement to lower computing time and
-%      memory usage.
+%      Bloch periodic boundary), C = 'transpose(B)', and opts.method = 'APF',
+%      the matrix K = [A,B;C,0] will be treated as symmetric when computing its
+%      Schur complement to lower computing time and memory usage.
 %         For field-profile computations, the user can simply omit C from the
 %      input arguments, as in mesti(syst, B), if there is no need to change the
 %      default opts. If opts is needed, the user can use
@@ -401,32 +400,40 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %         field profiles are returned. Only used for field-profile computations
 %         (i.e., when the output projection matrix C is not given).
 %      opts.solver (character vector; optional):
-%         The software used for sparse matrix factorization. Available choices
-%         are (case-insensitive):
-%            'MUMPS'  - (default) Uses MUMPS. Its MATLAB interface zmumps.m must
-%                       be in MATLAB's search path. This is much faster and uses
-%                       less memory.
-%            'MATLAB' - Uses the built-in lu() function in MATLAB, which uses
-%                       UMFPACK with AMD ordering. This requires no installation
-%                       but is much slower. This is be used by default if
-%                       zmumps.m is not found in the search path.
+%         The solver used for sparse matrix factorization. Available choices are
+%         (case-insensitive):
+%            'MUMPS'  - (default when MUMPS is available) Use MUMPS. Its MATLAB
+%                       interface zmumps.m must be in MATLAB's search path.
+%            'MATLAB' - (default when MUMPS is not available) Use the built-in
+%                       lu() function in MATLAB, which uses UMFPACK with AMD
+%                       ordering.
+%         MUMPS is faster and uses less memory than lu(), and is required for
+%         the APF method.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'APF' - Augmented partial factorization. When opts.solver =
-%                    'MUMPS', C*inv(A)*B is obtained through the Schur
-%                    complement of an augmented matrix K = [A,B;C,0] using a
-%                    partial factorization; this is the true APF. When
-%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
-%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
-%                    true APF but is slightly better than factorize_and_solve.
-%                    Cannot be used for computing the full field profile
-%                    inv(A)*B or with iterative refinement.
-%            'FS'  - Factorize and solve. Factorize A=L*U, solve for inv(A)*B
-%                    with forward and backward substitutions, and optionally
-%                    project with C.
+%            'APF' - Augmented partial factorization. C*inv(A)*B is obtained
+%                    through the Schur complement of an augmented matrix
+%                    K = [A,B;C,0] using a partial factorization. Must have
+%                    opts.solver = 'MUMPS'. This is the most efficient method,
+%                    but it cannot be used for computing the full field profile
+%                    X=inv(A)*B or with iterative refinement.
+%            'FG'  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+%                    through C*inv(U)*inv(L)*B with optimized grouping. Must
+%                    have opts.solver = 'MATLAB'. This is slightly better than
+%                    'FS' when MUMPS is not available, but it cannot be used for
+%                    computing the full field profile X=inv(A)*B.
+%            'FS'  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
+%                    with forward and backward substitutions, and project with
+%                    C as C*inv(A)*B = C*X. Here, opts.solver can be either
+%                    'MUMPS' or 'MATLAB', and it can be used for computing
+%                    the full field profile X=inv(A)*B or with iterative
+%                    refinement.
+%            'C*inv(U)*inv(L)*B'   - Same as 'FG'.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if C is given and opts.iterative_refinement = false, then
-%         'APF' is used. Otherwise, 'factorize_and_solve' is used.
+%         'APF' is used when opts.solver = 'MUMPS', and 'C*inv(U)*inv(L)*B' is
+%         used when opts.solver = 'MATLAB'. Otherwise, 'factorize_and_solve' is
+%         used.
 %      opts.clear_BC (logical scalar; optional, defaults to false):
 %         When opts.clear_BC = true, variables 'B' and 'C' will be cleared in
 %         the caller's workspace to reduce peak memory usage. Can be used when B

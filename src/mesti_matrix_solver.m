@@ -22,10 +22,9 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %      Matrix C in the C*inv(A)*B returned.
 %         If C = transpose(B), the user can set C = 'transpose(B)' as a
 %      character vector, which will be replaced by transpose(B) in the code. If
-%      matrix A is symmetric, C = 'transpose(B)', opts.solver = 'MUMPS', and
-%      opts.method = 'APF', the matrix K = [A,B;C,0] will be treated as
-%      symmetric when computing its Schur complement to lower computing time and
-%      memory usage.
+%      matrix A is symmetric, C = 'transpose(B)', and opts.method = 'APF', the
+%      matrix K = [A,B;C,0] will be treated as symmetric when computing its
+%      Schur complement to lower computing time and memory usage.
 %         To compute X = inv(A)*B, the user can simply omit C from the input
 %      argument if there is no need to change the default opts. If opts is
 %      needed, the user can set C = [] here.
@@ -39,32 +38,39 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %         opts.solver = 'MUMPS', in which case opts.is_symmetric_A will be
 %         determined by the issymmetric(A) command if not specified by user.
 %      opts.solver (character vector; optional):
-%         The software used for sparse matrix factorization. Available choices
-%         are (case-insensitive):
-%            'MUMPS'  - (default) Uses MUMPS. Its MATLAB interface zmumps.m must
-%                       be in MATLAB's search path. This is much faster and uses
-%                       less memory.
-%            'MATLAB' - Uses the built-in lu() function in MATLAB, which uses
-%                       UMFPACK with AMD ordering. This requires no installation
-%                       but is much slower. This is be used by default if
-%                       zmumps.m is not found in the search path.
+%         The solver used for sparse matrix factorization. Available choices are
+%         (case-insensitive):
+%            'MUMPS'  - (default when MUMPS is available) Use MUMPS. Its MATLAB
+%                       interface zmumps.m must be in MATLAB's search path.
+%            'MATLAB' - (default when MUMPS is not available) Use the built-in
+%                       lu() function in MATLAB, which uses UMFPACK with AMD
+%                       ordering.
+%         MUMPS is faster and uses less memory than lu(), and is required for
+%         the APF method.
 %      opts.method (character vector; optional):
 %         The solution method. Available choices are (case-insensitive):
-%            'APF' - Augmented partial factorization. When opts.solver =
-%                    'MUMPS', C*inv(A)*B is obtained through the Schur
-%                    complement of an augmented matrix K = [A,B;C,0] using a
-%                    partial factorization; this is the true APF. When
-%                    opts.solver = 'MATLAB', C*inv(A)*B is obtained as
-%                    C*inv(U)*inv(L)*B with optimized grouping, which is not the
-%                    true APF but is slightly better than factorize_and_solve.
-%                    Cannot be used for computing X=inv(A)*B or with iterative
-%                    refinement.
+%            'APF' - Augmented partial factorization. C*inv(A)*B is obtained
+%                    through the Schur complement of an augmented matrix
+%                    K = [A,B;C,0] using a partial factorization. Must have
+%                    opts.solver = 'MUMPS'. This is the most efficient method,
+%                    but it cannot be used for computing X=inv(A)*B or with
+%                    iterative refinement.
+%            'FG'  - Factorize and group. Factorize A=L*U, and obtain C*inv(A)*B
+%                    through C*inv(U)*inv(L)*B with optimized grouping. Must
+%                    have opts.solver = 'MATLAB'. This is slightly better than
+%                    'FS' when MUMPS is not available, but it cannot be used for
+%                    computing X=inv(A)*B.
 %            'FS'  - Factorize and solve. Factorize A=L*U, solve for X=inv(A)*B
 %                    with forward and backward substitutions, and project with
-%                    C as C*inv(A)*B = C*X.
+%                    C as C*inv(A)*B = C*X. Here, opts.solver can be either
+%                    'MUMPS' or 'MATLAB', and it can be used for computing
+%                    X=inv(A)*B or with iterative refinement.
+%            'C*inv(U)*inv(L)*B'   - Same as 'FG'.
 %            'factorize_and_solve' - Same as 'FS'.
 %         By default, if C is given and opts.iterative_refinement = false, then
-%         'APF' is used. Otherwise, 'factorize_and_solve' is used.
+%         'APF' is used when opts.solver = 'MUMPS', and 'C*inv(U)*inv(L)*B' is
+%         used when opts.solver = 'MATLAB'. Otherwise, 'factorize_and_solve' is
+%         used.
 %      opts.verbal_solver (logical scalar; optional, defaults to false):
 %         Whether to have the solver print detailed information to the standard
 %         output. Note the behavior of output from MUMPS depends on compiler.
@@ -191,33 +197,6 @@ elseif ~(islogical(opts.verbal) && isscalar(opts.verbal))
     error('opts.verbal must be a logical scalar, if given.');
 end
 
-% No iterative refinement by default; only used in factorize_and_solve when computing S=C*inv(A)*B with MUMPS
-str_itr_ref = [];
-if ~isfield(opts, 'iterative_refinement') || isempty(opts.iterative_refinement)
-    opts.iterative_refinement = false;
-elseif ~(islogical(opts.iterative_refinement) && isscalar(opts.iterative_refinement))
-    error('opts.iterative_refinement must be a logical scalar, if given.');
-elseif opts.iterative_refinement
-    str_itr_ref = ' with iterative refinement';
-end
-
-% Use APF for opts.method unless return_X = true or opts.iterative_refinement = true
-if ~isfield(opts, 'method') || isempty(opts.method)
-    if return_X || opts.iterative_refinement
-        opts.method = 'factorize_and_solve';
-    else
-        opts.method = 'APF';
-    end
-elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
-    error('opts.method must be a character vector or string, if given.');
-elseif ~ismember(lower(opts.method), lower({'APF', 'factorize_and_solve', 'FS'}))
-    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''factorize_and_solve''.', opts.method);
-elseif return_X && strcmpi(opts.method, 'APF')
-    error('opts.method = ''%s'' cannot be used when C = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
-elseif strcmpi(opts.method, 'FS')
-    opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
-end
-
 % Use MUMPS for opts.solver when it is available
 MUMPS_available = exist('zmumps','file');
 if ~isfield(opts, 'solver') || isempty(opts.solver)
@@ -234,12 +213,45 @@ elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
     error('opts.solver = ''%s'' but function zmumps() is not found.', opts.solver)
 end
 
-% When opts.method = 'APF' and opts.solver = 'MATLAB', the solution method is not actually APF, so we give it a more descriptive name
-str_method = opts.method;
-if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MATLAB')
-    str_method = 'C*inv(U)*inv(L)*B';
+% No iterative refinement by default; only used in factorize_and_solve when computing S=C*inv(A)*B with MUMPS
+str_itr_ref = [];
+if ~isfield(opts, 'iterative_refinement') || isempty(opts.iterative_refinement)
+    opts.iterative_refinement = false;
+elseif ~(islogical(opts.iterative_refinement) && isscalar(opts.iterative_refinement))
+    error('opts.iterative_refinement must be a logical scalar, if given.');
+elseif opts.iterative_refinement
+    str_itr_ref = ' with iterative refinement';
 end
 
+% By default, if C is given and opts.iterative_refinement = false, then 'APF' is used when opts.solver = 'MUMPS', and 'C*inv(U)*inv(L)*B' is used when opts.solver = 'MATLAB'. Otherwise, 'factorize_and_solve' is used.
+if ~isfield(opts, 'method') || isempty(opts.method)
+    if return_X || opts.iterative_refinement
+        opts.method = 'factorize_and_solve';
+    else
+        if strcmpi(opts.solver, 'MUMPS')
+            opts.method = 'APF';
+        else
+            opts.method = 'C*inv(U)*inv(L)*B';
+        end
+    end
+elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
+    error('opts.method must be a character vector or string, if given.');
+elseif ~ismember(lower(opts.method), lower({'APF', 'C*inv(U)*inv(L)*B', 'factorize_and_solve', 'FG', 'FS'}))
+    error('opts.method = ''%s'' is not a supported option; use ''APF'' or ''C*inv(U)*inv(L)*B'' or ''factorize_and_solve''.', opts.method);
+elseif return_X && ~ismember(lower(opts.method), lower({'factorize_and_solve', 'FS'}))
+    error('opts.method = ''%s'' cannot be used when C = []; use opts.method = ''factorize_and_solve'' instead.', opts.method)
+elseif strcmpi(opts.method, 'FG')
+    opts.method = 'C*inv(U)*inv(L)*B';  % opts.method = 'FG' is short for opts.method = 'C*inv(U)*inv(L)*B'
+elseif strcmpi(opts.method, 'FS')
+    opts.method = 'factorize_and_solve';  % opts.method = 'FS' is short for opts.method = 'factorize_and_solve'
+end
+
+if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MATLAB')
+    error('opts.method = ''APF'' requires opts.solver = ''MUMPS''.');
+end
+if strcmpi(opts.method, 'C*inv(U)*inv(L)*B') && strcmpi(opts.solver, 'MUMPS')
+    error('opts.method = ''C*inv(U)*inv(L)*B'' requires opts.solver = ''MATLAB''.');
+end
 if opts.iterative_refinement && ~(~return_X && strcmpi(opts.method, 'factorize_and_solve') && strcmpi(opts.solver, 'MUMPS'))
     error('To use opts.iterative_refinement = true, input argument C must not be empty, opts.method must be ''factorize_and_solve'', and opts.solver must be ''MUMPS''.\nHere isempty(C) = %d, opts.method = ''%s'', opts.solver = ''%s''.', isempty(C), opts.method, opts.solver);
 end
@@ -255,7 +267,7 @@ end
 if return_X
     use_C = false;
 elseif use_transpose_B
-    if strcmpi(opts.method, 'APF') && strcmpi(opts.solver, 'MUMPS')
+    if strcmpi(opts.method, 'APF')
         % In this case, we keep C = 'transpose(B)' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
         use_C = false;
     else
@@ -410,7 +422,7 @@ if (sz_B_2 == 0 || (sz_C_1 == 0 && use_C)) && ~opts.store_ordering
     opts.solver = 'None';
     if opts.verbal; fprintf('No computation needed\n'); end
 elseif opts.verbal
-    fprintf('< Method: %s using %s%s%s%s%s >\n', str_method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K);
+    fprintf('< Method: %s using %s%s%s%s%s >\n', opts.method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K);
 end
 
 if strcmpi(opts.method, 'None')
@@ -421,127 +433,127 @@ if strcmpi(opts.method, 'None')
     info.timing.solve = 0;
 elseif strcmpi(opts.method, 'APF')
 %% Compute S=C*inv(A)*B with APF (augmented partial factorization)
-    if strcmpi(opts.solver, 'MUMPS') % Build matrix K=[A,B;C,0] and use MUMPS to compute its Schur complement -C*inv(A)*B with the LU factors discarded.
-        t1 = clock;
-        if opts.verbal; fprintf('Building K  ... '); end
+    % Build matrix K=[A,B;C,0] and use MUMPS to compute its Schur complement -C*inv(A)*B with the LU factors discarded.
+    t1 = clock;
+    if opts.verbal; fprintf('Building K  ... '); end
 
-        N = size(A,1);
-        is_symmetric_K = opts.is_symmetric_A;
-        if use_transpose_B
-            M_tot = size(B, 2);
-            D = sparse(M_tot, M_tot); % zero matrix
-            K = [[A; transpose(B)], [B; D]];  % C = transpose(B)
-        else
-            % pad zeros so that size(B,2) = size(C,1)
-            M_in = size(B,2);
-            M_out = size(C,1);
-            M_tot = max([M_in, M_out]);
-            if M_tot > M_in
-                % pad M_tot-M_in columns of zeros to B
-                B = [B, sparse(N, M_tot-M_in)];
-            elseif M_tot > M_out
-                % pad M_tot-M_out rows of zeros to C
-                C = [C; sparse(M_tot-M_out, N)];
-            end
-            D = sparse(M_tot, M_tot); % zero matrix
-            K = [[A; C], [B; D]];
-            is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set C = 'transpose(B)' if C=B.'
+    N = size(A,1);
+    is_symmetric_K = opts.is_symmetric_A;
+    if use_transpose_B
+        M_tot = size(B, 2);
+        D = sparse(M_tot, M_tot); % zero matrix
+        K = [[A; transpose(B)], [B; D]];  % C = transpose(B)
+    else
+        % pad zeros so that size(B,2) = size(C,1)
+        M_in = size(B,2);
+        M_out = size(C,1);
+        M_tot = max([M_in, M_out]);
+        if M_tot > M_in
+            % pad M_tot-M_in columns of zeros to B
+            B = [B, sparse(N, M_tot-M_in)];
+        elseif M_tot > M_out
+            % pad M_tot-M_out rows of zeros to C
+            C = [C; sparse(M_tot-M_out, N)];
         end
-        if opts.clear_memory
-            clear A B C D
-            if ~isempty(A_name) || ~isempty(B_name) || ~isempty(C_name)
-                evalin('caller', ['clear ', A_name, ' ', B_name, ' ', C_name]); % do 'clear A B C' in caller's workspace
-            end
-        end
-        ind_schur = N + (1:M_tot); % indices for the Schur variables; must be a row vector
-
-        t2 = clock; timing_build = etime(t2,t1);
-        if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build); end
-
-        % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
-        % This is typically the most memory-consuming part of the whole simulation
-        [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
-
-        info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
-        
-        t1 = clock;
-        if opts.analysis_only
-            S = [];
-        else
-            % Retrieve C*inv(A)*B = -H = -K/A, stored as a dense matrix
-            S = -(id.SCHUR);
-
-            % Remove the padded zeros
-            if ~use_transpose_B
-                if M_tot > M_in
-                    S = S(:, 1:M_in);
-                elseif M_tot > M_out
-                    S = S(1:M_out, :);
-                end
-            end
-        end
-        % Destroy the MUMPS instance and deallocate memory
-        id.JOB = -2;  % what to do: terminate the instance
-        [~] = zmumps(id);
-        t2 = clock;
-
-        % When opts.analysis_only = true, the factorization time could be
-        % nonzero due to the instance termination time.
-        info.timing.factorize = info.timing.factorize + etime(t2,t1);
-        info.timing.solve = 0;
-    else % Compute C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
-        % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
-        % For simplicity, we refer to this as A = L*U below
-        [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
-        info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
-        if opts.clear_memory
-            clear A
-            if ~isempty(A_name)
-                evalin('caller', ['clear ', A_name]); % do 'clear A' in caller's workspace
-            end
-        end
-
-        % Here, we evaluate C*inv(A)*B, not necessarily as C*[inv(A)*B], but more generally as C*inv(U)*inv(L)*B.
-        % The full expression is C*inv(A)*B = C*Q*inv(U)*inv(L)*P*inv(R)*B.
-        % There are a few ways to group the mldivide or mrdivide operations. Like matrix multiplications, it is generally faster and more memory efficient to group such that we operate onto the side with fewer elements first.
-        if opts.verbal; fprintf('Solving     ... '); end
-        t1 = clock;
-        nnz_B = nnz(B);
-        nnz_C = nnz(C);
-        if nnz_B <= nnz_C
-            % Operate onto B first
-            inv_L_B = L\(P*(R\B)); % inv(L)*B
-            if opts.clear_memory
-                clear L P R B
-                if ~isempty(B_name)
-                    evalin('caller', ['clear ', B_name]); % do 'clear B' in caller's workspace
-                end
-            end
-            if nnz_C < nnz(inv_L_B)
-                S = full(((C*Q)/U)*inv_L_B); % [C*inv(U)]*[inv(L)*B]
-            else
-                % This version essentially is the same as factorize_and_solve except that here we project with C after the whole X is computed
-                S = (C*Q)*full(U\inv_L_B);   % C*[inv(U)*[inv(L)*B]]
-                if issparse(S); S = full(S); end
-            end
-        else
-            % Operate onto C first
-            C_inv_U = (C*Q)/U; % C*inv(U)
-            if opts.clear_memory
-                clear U Q C
-                if ~isempty(C_name)
-                    evalin('caller', ['clear ', C_name]); % do 'clear C' in caller's workspace
-                end
-            end
-            if nnz_B < nnz(C_inv_U)
-                S = full(C_inv_U*(L\(P*(R\B)))); % [C*inv(U)]*[inv(L)*B]
-            else
-                S = full(C_inv_U/L)*(P*(R\B));   % [[C*inv(U)]*inv(L)]*B
-            end
-        end
-        t2 = clock; info.timing.solve = etime(t2,t1);
-        if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
+        D = sparse(M_tot, M_tot); % zero matrix
+        K = [[A; C], [B; D]];
+        is_symmetric_K = false; % even if A is symmetric, generally C won't equal transpose(B); we will not check whether C equals B.' or not; the user should set C = 'transpose(B)' if C=B.'
     end
+    if opts.clear_memory
+        clear A B C D
+        if ~isempty(A_name) || ~isempty(B_name) || ~isempty(C_name)
+            evalin('caller', ['clear ', A_name, ' ', B_name, ' ', C_name]); % do 'clear A B C' in caller's workspace
+        end
+    end
+    ind_schur = N + (1:M_tot); % indices for the Schur variables; must be a row vector
+
+    t2 = clock; timing_build = etime(t2,t1);
+    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build); end
+
+    % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
+    % This is typically the most memory-consuming part of the whole simulation
+    [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
+
+    info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
+    
+    t1 = clock;
+    if opts.analysis_only
+        S = [];
+    else
+        % Retrieve C*inv(A)*B = -H = -K/A, stored as a dense matrix
+        S = -(id.SCHUR);
+
+        % Remove the padded zeros
+        if ~use_transpose_B
+            if M_tot > M_in
+                S = S(:, 1:M_in);
+            elseif M_tot > M_out
+                S = S(1:M_out, :);
+            end
+        end
+    end
+    % Destroy the MUMPS instance and deallocate memory
+    id.JOB = -2;  % what to do: terminate the instance
+    [~] = zmumps(id);
+    t2 = clock;
+
+    % When opts.analysis_only = true, the factorization time could be
+    % nonzero due to the instance termination time.
+    info.timing.factorize = info.timing.factorize + etime(t2,t1);
+    info.timing.solve = 0;
+elseif strcmpi(opts.method, 'C*inv(U)*inv(L)*B')
+%% Compute S=C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
+    % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
+    % For simplicity, we refer to this as A = L*U below
+    [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
+    info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
+    if opts.clear_memory
+        clear A
+        if ~isempty(A_name)
+            evalin('caller', ['clear ', A_name]); % do 'clear A' in caller's workspace
+        end
+    end
+
+    % Here, we evaluate C*inv(A)*B, not necessarily as C*[inv(A)*B], but more generally as C*inv(U)*inv(L)*B.
+    % The full expression is C*inv(A)*B = C*Q*inv(U)*inv(L)*P*inv(R)*B.
+    % There are a few ways to group the mldivide or mrdivide operations. Like matrix multiplications, it is generally faster and more memory efficient to group such that we operate onto the side with fewer elements first.
+    if opts.verbal; fprintf('Solving     ... '); end
+    t1 = clock;
+    nnz_B = nnz(B);
+    nnz_C = nnz(C);
+    if nnz_B <= nnz_C
+        % Operate onto B first
+        inv_L_B = L\(P*(R\B)); % inv(L)*B
+        if opts.clear_memory
+            clear L P R B
+            if ~isempty(B_name)
+                evalin('caller', ['clear ', B_name]); % do 'clear B' in caller's workspace
+            end
+        end
+        if nnz_C < nnz(inv_L_B)
+            S = full(((C*Q)/U)*inv_L_B); % [C*inv(U)]*[inv(L)*B]
+        else
+            % This version essentially is the same as factorize_and_solve except that here we project with C after the whole X is computed
+            S = (C*Q)*full(U\inv_L_B);   % C*[inv(U)*[inv(L)*B]]
+            if issparse(S); S = full(S); end
+        end
+    else
+        % Operate onto C first
+        C_inv_U = (C*Q)/U; % C*inv(U)
+        if opts.clear_memory
+            clear U Q C
+            if ~isempty(C_name)
+                evalin('caller', ['clear ', C_name]); % do 'clear C' in caller's workspace
+            end
+        end
+        if nnz_B < nnz(C_inv_U)
+            S = full(C_inv_U*(L\(P*(R\B)))); % [C*inv(U)]*[inv(L)*B]
+        else
+            S = full(C_inv_U/L)*(P*(R\B));   % [[C*inv(U)]*inv(L)]*B
+        end
+    end
+    t2 = clock; info.timing.solve = etime(t2,t1);
+    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.solve); end
 elseif strcmpi(opts.method, 'factorize_and_solve')
 %% Compute S=C*inv(A)*B or X=inv(A)*B by factorizing A and solving for X column by column
     % Factorize A = L*U where L and U are upper and lower triangular, with permutations
