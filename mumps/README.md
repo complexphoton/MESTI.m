@@ -69,7 +69,7 @@ Two examples of <code>make.inc</code> are provided below:
 1. [Linux](./linux/make.inc)
 2. [macOS](./macOS/make.inc)
 
-When simulating large systems, there can be segmentation fault due to bugs in this MATLAB interface. We suggest replacing the original <code>mumpsmex.c</code> with this modified one, [mumpsmex.c](mumpsmex.c), which modifies four lines such that it disables reading the scaling array from MATLAB, and it no longer outputs the scaling array to MATLAB; these lines are where the segmentation fault happens. Since MESTI does not use user-specified scaling arrays, these modifications do not affect functionality.
+**IMPORTANT**: When simulating large systems (such as the [metalens example](../examples/2d_metalens)), one may encounter segmentation fault due to a bug in the MATLAB interface that comes with MUMPS. Please replace the original <code>mumpsmex.c</code> in this <code>MATLAB</code> folder with a modified one here, [mumpsmex.c](mumpsmex.c), which modifies four lines to disable reading the scaling array from MATLAB and returning the scaling array to MATLAB; these lines are where the segmentation fault happens. Since MESTI does not use user-specified scaling arrays, these modifications do not affect functionality.
 
 Then, enter
 ```
