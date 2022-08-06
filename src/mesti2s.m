@@ -1493,13 +1493,14 @@ else % without opts.symmetrize_K
             end
         else % output wavefronts specified by v_out_L and v_out_R
             if has_u_prop_L % must be so when nnz(v_out_L) >= N_prop_L
+                % u_prop_L is a large ny-by-N_prop_L matrix; instead of conjugating it, we conjugate the smaller ny-by-M_out_L matrix
                 C_L = conj(u_prop_L*(reshape(conj(channels.L.sqrt_nu_prop.*exp((-1i*dn)*channels.L.kxdx_prop)), N_prop_L, 1).*v_out_L)); % use implicit expansion
             else
                 % build C_L using only the channels used
                 C_L = zeros(ny, M_out_L);
                 for ii = 1:M_out_L
                     ind = find(v_out_L(:,ii));
-                    C_L(:,ii) = conj(channels.fun_u(channels.L.kydx_prop(ind))*(reshape(conj(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind))),[],1).*v_out_L(ind,ii)));
+                    C_L(:,ii) = conj(channels.fun_u(channels.L.kydx_prop(ind)))*(reshape(channels.L.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.L.kxdx_prop(ind)),[],1).*conj(v_out_L(ind,ii)));
                 end
             end
             if two_sided
@@ -1509,7 +1510,7 @@ else % without opts.symmetrize_K
                     C_R = zeros(ny, M_out_R);
                     for ii = 1:M_out_R
                         ind = find(v_out_R(:,ii));
-                        C_R(:,ii) = conj(channels.fun_u(channels.R.kydx_prop(ind))*(reshape(conj(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind))),[],1).*v_out_R(ind,ii)));
+                        C_R(:,ii) = conj(channels.fun_u(channels.R.kydx_prop(ind)))*(reshape(channels.R.sqrt_nu_prop(ind).*exp((-1i*dn)*channels.R.kxdx_prop(ind)),[],1).*conj(v_out_R(ind,ii)));
                     end
                 end
             end
