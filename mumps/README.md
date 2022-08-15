@@ -2,7 +2,7 @@
 MESTI uses the sequential version of MUMPS for the augmented partial factorization (APF) method, and optionally for the factorize-and-solve method. Here are steps to install MUMPS.
 
 ## Download MUMPS
-Go to the [MUMPS website](http://mumps.enseeiht.fr/index.php?page=dwnld) and fill out the download request form. The MUMPS maintainers will email you the download link.
+Go to the [MUMPS website](https://graal.ens-lyon.fr/MUMPS/index.php?page=dwnld) and fill out the download request form. The MUMPS maintainers will email you the download link.
 
 ## Prerequisites
 To compile the sequential version of MUMPS and its MATLAB interface, you need compilation tools like <code>make</code>, <code>ar</code>, and <code>ranlib</code>, C and Fortran compilers, BLAS library, LAPACK library, and a compatible <code>mex</code> compiler. Instructions specific to the operating system are provided below:
