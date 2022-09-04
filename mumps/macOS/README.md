@@ -37,7 +37,7 @@ In the next step, we will install Homebrew, which will install CLT (if not alrea
 
 ### Homebrew
 
-Xcode and CLT do not include a Fortran compiler. Here, we use [Homebrew](https://brew.sh/) to install one; Homebrew can also be used for the optional installation of <code>openblas</code> and <code>cmake</code> below. Copy the following line and paste it in terminal.
+Xcode and CLT do not include a Fortran compiler. Here, we use [Homebrew](https://brew.sh/) to install one; Homebrew can also be used for the optional installation of <code>openblas</code> and <code>cmake</code> below. If you already have Homebrew installed, run <code>brew update</code> to update it. If you don't have Homebrew installed, copy the following line and paste it in terminal.
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
@@ -59,7 +59,9 @@ After installing Homebrew, enter
 ```
 brew install gcc
 ```
-in terminal. This will install the [GNU compiler collection](https://gcc.gnu.org/), which includes the Fortran compiler <code>gfortran</code>.
+in terminal. This will install the [GNU compiler collection (GCC)](https://gcc.gnu.org/), which includes the Fortran compiler <code>gfortran</code>. If you already installed GCC through Homebrew before, this will update GCC to the most current stable version.
+
+If you update GCC in the future (through <code>brew upgrade</code> or by running <code>brew install gcc</code> again), and the first number of the GCC version changes (_e.g._ from gcc 11.x.x to gcc 12.x.x), then you'll need to update that version number in the <code>LIBFORT</code> path within the <code>make.inc</code> of the MATLAB interface of MUMPS, and recompile that MATLAB interface.
 
 ### (Optional) OpenBLAS
 
