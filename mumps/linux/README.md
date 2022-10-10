@@ -77,7 +77,7 @@ echo $MKLROOT
 In some cases, the cluster cannot find the BLAS and LAPACK libraries by itself when you run MATLAB interface for MUMPS. You will also need to override MATLAB's own MKL. To solve those issues, you can append those library paths to `LD_PRELOAD` and `LD_LIBRARY_PATH` before running MATLAB. For example, if BLAS and LAPACK libraries are used through MKL, you can type,
 
 ```shell
-export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_intel_lp64.so:$MKLROOT/lib/intel64/libmkl_sequential.so:$MKLROOT/lib/intel64/libmkl_intel_thread.so:$MKLROOT/lib/intel64/libmkl_core.so
+export LD_PRELOAD=$LD_PRELOAD:$MKLROOT/lib/intel64/libmkl_intel_lp64.so:$MKLROOT/lib/intel64/libmkl_gnu_thread.so:$MKLROOT/lib/intel64/libmkl_core.so
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MKLROOT/lib/intel64
 ```
 
@@ -90,3 +90,6 @@ sudo apt install libopenblas-dev
 ```
 
 in the terminal and then use the corresponding `LIBBLAS` and `LAPACK` in the `Makefile.inc` and `make.inc` we provided.
+
+Note that MUMPS supports shared memory, multithreaded parallelism through the use of multithreaded
+BLAS libraries.  `Makefile.inc` and `make.inc` on Linux, we provided activate the OpenMP feature. You can use the environment variable `OMP_NUM_THREADS` to set the number of threads.

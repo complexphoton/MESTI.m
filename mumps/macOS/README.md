@@ -4,6 +4,8 @@ We need the following tools before compiling MUMPS and its MATLAB interface on m
 
 Much of the following (and the whole MUMPS compilation process) needs to be done in a command-line environment. You can either use Apple's built-in Terminal app (in the /Applications/Utilities/ folder) or a 3rd-party one like iTerm2.
 
+Note that now `Makefile.inc` and `make.inc` on macOS we provided do not activate the OpenMP feature.
+
 ### MATLAB for Apple silicon Macs
 
 If you are not sure whether your Mac runs on an Intel processor or Apple silicon, click the Apple logo on the top left corner of the menu bar, and click About This Mac. A Mac with Intel processor will show an item **Processor** (*e.g.*, Intel Core i7); a Mac with Apple silicon will show an item **Chip** (*e.g.*, Apple M1) instead.

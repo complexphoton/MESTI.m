@@ -143,7 +143,7 @@ RANLIB  = ranlib
 # contact the maintenance team of your cluster.
 
 # LAPACK library is under the folder of $(MKLROOT)/lib/intel64
-LAPACK = -L$(MKLROOT)/lib/intel64 -lmkl_sequential -lmkl_intel_lp64 -lmkl_core
+LAPACK = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core
 
 # Use the following for openblas
 # LAPACK = -llapack
@@ -156,7 +156,7 @@ LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq
 
 # DEFINE HERE YOUR BLAS LIBRARY
 # BLAS library is under the folder of $(MKLROOT)/lib/intel64
-LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64
+LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core
 
 # Use the following for openblas
 # LIBBLAS = -lblas
@@ -180,9 +180,9 @@ CDEFS   = -DAdd_
 #COMPILER OPTIONS
 # The -fallow-argument-mismatch is needed for gfortran 10.0 and later for OPTF.
 # If you use gfortran 10.0 and later, uncomment -fallow-argument-mismatch.
-OPTF    = -O -fPIC #-fallow-argument-mismatch 
-OPTL    = -O -I. -fPIC
-OPTC    = -O -fPIC 
+OPTF    = -O -fPIC -fopenmp -DBLR_MT #-fallow-argument-mismatch
+OPTL    = -O -I. -fPIC -fopenmp
+OPTC    = -O -fPIC -fopenmp
 
 #Sequential:
 

@@ -74,4 +74,4 @@ LIBBLAS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64
 # extra options passed via mex command
 # Add -DINTSIZE64 if MUMPS was compiled with 64-bit integers (BLAS
 # library should then have 64-bit integers as well)
-OPTC    = -g
+OPTC    = -O CFLAGS='$$CFLAGS -fopenmp' LDFLAGS='$$LDFLAGS -fopenmp'
