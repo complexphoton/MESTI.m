@@ -2,26 +2,27 @@
 
 **MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
-MESTI implements the **augmented partial factorization (APF)** method described in [arXiv:2205.07887](https://arxiv.org/abs/2205.07887). APF bypasses the conventional solution of Maxwell's equations and directly computes a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
+MESTI implements the **augmented partial factorization (APF)** method described in [arXiv:2205.07887](https://arxiv.org/abs/2205.07887). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
 MESTI.m uses MATLAB and considers 2D systems, with either transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) or transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*). A parallel 3D vectorial version written in Julia is under development and will be released in the future.
 
-MESTI is a general-purpose solver with its interface written to provide maximal flexibility. The user can specify
+MESTI is a general-purpose solver with its interface written to provide maximal flexibility. It currently supports
  - TM or TE polarization.
  - Any relative permittivity profile *ε*(*x*,*y*), including anisotropy from [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing). Absorption and linear gain can be described by the imaginary part of *ε*(*x*,*y*). Any material dispersion *ε*(*ω*) can be used since this is in frequency domain.
  - Any list of input source profiles (user-specified or automatically built).
  - Any list of output projection profiles (or no projection, in which case the complete field profiles are returned).
- - Real-valued or complex-valued frequency.
- - [Perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) on any side(s), with both imaginary and real coordinate stretching.
+ - Real-valued or complex-valued frequency *ω*.
+ - [Perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) on any side(s), with both imaginary-coordinate and real-coordinate stretching.
  - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
  - Exact outgoing boundaries in two-sided or one-sided geometries.
  - Whether to use APF, a conventional direct solver, or the [recursive Green's function method](https://github.com/chiaweihsu/RGF) for the computation.
+ - Shared memory parallelism (with multithreaded BLAS and OpenMP in MUMPS).
 
 ## Installation
 
 No installation is required for MESTI itself; just download it and add the <code>MESTI.m/src</code> folder to the search path using the <code>addpath</code> command in MATLAB. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the APF method, the user needs to install the serial version of [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) and its MATLAB interface. Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the serial version of [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) and its MATLAB interface (note: the serial version already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Summary 
 
