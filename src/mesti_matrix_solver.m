@@ -263,13 +263,21 @@ elseif ~(islogical(opts.verbal_solver) && isscalar(opts.verbal_solver))
     error('opts.verbal_solver must be a logical scalar, if given.');
 end
 
+% matrix sizes
+[sz_A_1, sz_A_2] = size(A);
+[sz_B_1, sz_B_2] = size(B);
+
 % Determine whether matrix C will be used
 if return_X
     use_C = false;
+    sz_C_1 = sz_A_1;
+    sz_C_2 = sz_A_1;
 elseif use_transpose_B
     if strcmpi(opts.method, 'APF')
         % In this case, we keep C = 'transpose(B)' here and use transpose(B) later so the memory of transpose(B) can be automatically cleared after use
         use_C = false;
+        sz_C_2 = sz_B_1;
+        sz_C_1 = sz_B_2;
     else
         % In other cases, we may as well allocate the memory for C now
         C = transpose(B);
@@ -283,12 +291,12 @@ end
 % (2) C = 'transpose(B)', return_X = false, use_transpose_B = true, opts.method = 'APF', opts.solver = 'MUMPS'
 
 % Check matrix sizes
-[sz_A_1, sz_A_2] = size(A);
-[sz_B_1, sz_B_2] = size(B);
-[sz_C_1, sz_C_2] = size(C);
+if use_C
+    [sz_C_1, sz_C_2] = size(C);
+end
 if sz_A_1~=sz_A_2; error('Input argument A must be a square matrix; size(A) = [%d, %d].', sz_A_1, sz_A_2); end
 if sz_A_2~=sz_B_1; error('size(A,2) must equal size(B,1); size(A,2) = %d, size(B,1) = %d.', sz_A_2, sz_B_1); end
-if sz_C_2~=sz_A_1 && use_C; error('size(C,2) must equal size(A,1); size(C,2) = %d, size(A,1) = %d.', sz_C_2, sz_A_1); end
+if sz_C_2~=sz_A_1; error('size(C,2) must equal size(A,1); size(C,2) = %d, size(A,1) = %d.', sz_C_2, sz_A_1); end
 
 % By default, we don't clear variables unless specified by user
 if ~isfield(opts, 'clear_memory') || isempty(opts.clear_memory)
@@ -417,7 +425,7 @@ t2 = clock; timing_init = etime(t2,t0);
 %% Computation Part
 
 % No need to compute if numel(S) = 0 and we don't need to keep the ordering
-if (sz_B_2 == 0 || (sz_C_1 == 0 && use_C)) && ~opts.store_ordering
+if (sz_B_2 == 0 || sz_C_1 == 0) && ~opts.store_ordering
     opts.method = 'None';
     opts.solver = 'None';
     if opts.verbal; fprintf('No computation needed\n'); end
