@@ -1,6 +1,7 @@
 function f = asp(f0, x, kx_prop, ny_tot, ny_pad_low)
 %ASP Use angular spectrum propagation (ASP) to propagate a scalar field
 %   from f0 = f(x=0,y) to f(x,y).
+%
 %   === Input Arguments ===
 %   f0 (numeric column vector or matrix):
 %       Initial field profile at x = 0 plane, as a column vector.
