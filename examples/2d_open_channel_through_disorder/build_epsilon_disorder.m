@@ -66,7 +66,7 @@ x2 = L;
 y1 = 0;
 y2 = W;
 
-if N_scatterers > 2400
+if N_scatterers > 3000
     % Store the indices of the existing cylinders by their approximate locations, to facilitate overlap checking when N_scatterers is large
     use_cell = true;
     cell_size = 2*r_max + min_sep;
@@ -89,9 +89,6 @@ for ii = 1:N_scatterers
     if use_cell
         % Distance for overlap checking
         dist_check = r0 + min_sep + r_max;
-    else
-        % Check all existing cylinders for overlap
-        ind_check = 1:(ii-1);
     end
 
     % min/max values for the coordinates of the cylinder center
@@ -117,13 +114,16 @@ for ii = 1:N_scatterers
 
             % Indices of cylinders we need to check for overlap
             ind_check = cell2mat(reshape(ind_scatterers(m1:m2,n1:n2), 1, []));
-        end
 
-        % Check for overlap
-        if ~isempty(ind_check) && min((x0_list(ind_check)-x0).^2+(y0_list(ind_check)-y0).^2-(r0_list(ind_check)+(r0+min_sep)).^2) <= 0
-            found = false;
+            % Check those cylinders for overlap
+            if isempty(ind_check) || min((x0_list(ind_check)-x0).^2+(y0_list(ind_check)-y0).^2-(r0_list(ind_check)+(r0+min_sep)).^2) > 0
+                found = true;
+            end
         else
-            found = true;
+            % Check all existing cylinders for overlap
+            if ii==1 || min((x0_list(1:(ii-1))-x0).^2+(y0_list(1:(ii-1))-y0).^2-(r0_list(1:(ii-1))+(r0+min_sep)).^2) > 0
+                found = true;
+            end
         end
     end
     x0_list(ii) = x0;
