@@ -56,10 +56,10 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %   The other components of epsilon(x,y) are zero.
 %
 %   This file builds the input and output channels using mesti_build_channels(),
-%   builds the matrices B and C, and then calls mesti() to solve the scattering
-%   problems. For scattering-matrix computations in TM polarization, mesti2s()
-%   can also use the recursive Green's function method instead, which is
-%   efficient in 1D and for 2D systems with a small width in y.
+%   builds the nonzero blocks of matrices B and C, and then calls mesti() to
+%   solve the scattering problems. For scattering-matrix computations in TM
+%   polarization, mesti2s() can also use the recursive Green's function method
+%   instead, which is efficient in 1D and for 2D systems with a small width in y.
 %
 %   === Input Arguments ===
 %   syst (scalar structure; required):
@@ -1592,27 +1592,28 @@ else
     n_R = nx_extra(1) + nx_s + 1;
 
     % Specify inputs
-    if two_sided; B = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
+    if two_sided; B_struct = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
     % inputs on the left surface
-    B(1).pos  = [1, n_L, ny, 1];
-    B(1).data = reshape(B_L, ny, 1, []); % we don't specify the number of inputs since it can be M_in_L or length(ind_L)
+    B_struct(1).pos  = [1, n_L, ny, 1];
+    B_struct(1).data = reshape(B_L, ny, 1, []); % we don't specify the number of inputs since it can be M_in_L or length(ind_L)
     % inputs on the right surface
     if two_sided
-        B(2).pos  = [1, n_R, ny, 1];
-        B(2).data = reshape(B_R, ny, 1, []); % we don't specify the number of inputs since it can be M_in_R or length(ind_R)
+        B_struct(2).pos  = [1, n_R, ny, 1];
+        B_struct(2).data = reshape(B_R, ny, 1, []); % we don't specify the number of inputs since it can be M_in_R or length(ind_R)
     end
 
     % Specify outputs
     if build_C
-        if two_sided; C = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
+        if two_sided; C_struct = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
         % outputs on the left surface
-        C(1).pos  = [1, n_L, ny, 1];
-        C(1).data = reshape(C_L, ny, 1, M_out_L);
+        C_struct(1).pos  = [1, n_L, ny, 1];
+        C_struct(1).data = reshape(C_L, ny, 1, M_out_L);
         % outputs on the right surface
         if two_sided
-            C(2).pos  = [1, n_R, ny, 1];
-            C(2).data = reshape(C_R, ny, 1, M_out_R);
+            C_struct(2).pos  = [1, n_R, ny, 1];
+            C_struct(2).data = reshape(C_R, ny, 1, M_out_R);
         end
+        C = C_struct;
     elseif use_transpose_B
         C = 'transpose(B)';
     else
@@ -1620,19 +1621,19 @@ else
     end
 
     if opts.clear_memory
-        clear B_L B_R C_L C_R
+        clear B_L B_R C_L C_R C_struct
     end
 
     % D will be subtracted later
     D = [];
 
-    % variables syst, B, and C can be cleared from mesti() since we don't need them anymore
+    % variables syst, B_struct, and C can be cleared from mesti() since we don't need them anymore
     opts.clear_syst = opts.clear_memory;
     opts.clear_BC = opts.clear_memory;
 
     % Main computation happens here
-    % Note that we should no longer use syst, B, and C beyond this point since they may be cleared inside mesti()
-    [S, info] = mesti(syst, B, C, D, opts);
+    % Note that we should no longer use syst, B_struct, and C beyond this point since they may be cleared inside mesti()
+    [S, info] = mesti(syst, B_struct, C, D, opts);
 
     info.opts = rmfield(info.opts, 'prefactor'); % only used in mesti()
     info.opts.symmetrize_K = use_transpose_B;
