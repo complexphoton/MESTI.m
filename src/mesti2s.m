@@ -1595,11 +1595,11 @@ else
     if two_sided; B_struct = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
     % inputs on the left surface
     B_struct(1).pos  = [1, n_L, ny, 1];
-    B_struct(1).data = reshape(B_L, ny, 1, []); % we don't specify the number of inputs since it can be M_in_L or length(ind_L)
+    B_struct(1).data = B_L;
     % inputs on the right surface
     if two_sided
         B_struct(2).pos  = [1, n_R, ny, 1];
-        B_struct(2).data = reshape(B_R, ny, 1, []); % we don't specify the number of inputs since it can be M_in_R or length(ind_R)
+        B_struct(2).data = B_R;
     end
 
     % Specify outputs
@@ -1607,11 +1607,11 @@ else
         if two_sided; C_struct = struct('pos', {[],[]}, 'data', {[],[]}); end % pre-allocate
         % outputs on the left surface
         C_struct(1).pos  = [1, n_L, ny, 1];
-        C_struct(1).data = reshape(C_L, ny, 1, M_out_L);
+        C_struct(1).data = C_L;
         % outputs on the right surface
         if two_sided
             C_struct(2).pos  = [1, n_R, ny, 1];
-            C_struct(2).data = reshape(C_R, ny, 1, M_out_R);
+            C_struct(2).data = C_R;
         end
         C = C_struct;
     elseif use_transpose_B
