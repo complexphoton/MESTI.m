@@ -15,7 +15,7 @@ L_tot   = 40;   % full length of the system for plotting
 r_min   = 0.2;  % minimal radius of the cylindrical scatterers
 r_max   = 0.4;  % maximal radius of the cylindrical scatterers
 min_sep = 0.05; % minimal separation between cylinders
-nummber_density = 1.3; % number density, in units of 1/lambda_0^2
+number_density = 1.3; % number density, in units of 1/lambda_0^2
 rng_seed = 0;   % random number generator seed
 
 % Relative permittivity, unitless
@@ -31,7 +31,7 @@ yBC = 'periodic'; % boundary condition in y
 build_TM = true;
 build_TE = true;
 [epsilon, inv_epsilon, x0_list, y0_list, r0_list] = ...
-    build_epsilon_disorder(W, L, r_min, r_max, min_sep, nummber_density, ...
+    build_epsilon_disorder(W, L, r_min, r_max, min_sep, number_density, ...
     rng_seed, dx, epsilon_scat, epsilon_bg, build_TM, build_TE, yBC);
 
 % Do subpixel smoothing for inv_epsilon{1}(:,1) and inv_epsilon{1}(:,end) used

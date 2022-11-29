@@ -1,4 +1,4 @@
-function [epsilon, inv_epsilon, x0_list, y0_list, r0_list] = build_epsilon_disorder(W, L, r_min, r_max, min_sep, nummber_density, rng_seed, dx, epsilon_scat, epsilon_bg, build_TM, build_TE, yBC)
+function [epsilon, inv_epsilon, x0_list, y0_list, r0_list] = build_epsilon_disorder(W, L, r_min, r_max, min_sep, number_density, rng_seed, dx, epsilon_scat, epsilon_bg, build_TM, build_TE, yBC)
 %   Generate a random collection of cylinders and build the relative permittivity profile.
 %   === Input Arguments ===
 %   W       = width of the scattering region
@@ -6,7 +6,7 @@ function [epsilon, inv_epsilon, x0_list, y0_list, r0_list] = build_epsilon_disor
 %   r_min   = minimal radius of the cylinders
 %   r_max   = maximal radius of the cylinders
 %   min_sep = minimal separation between cylinders
-%   nummber_density = number density of the cylinders
+%   number_density = number density of the cylinders
 %   rng_seed = random number generator seed
 %   dx       = discretization grid size
 %   epsilon_scat = relative permittivity of the cylinders
@@ -15,7 +15,7 @@ function [epsilon, inv_epsilon, x0_list, y0_list, r0_list] = build_epsilon_disor
 %   build_TE = whether to build 1/epsilon for TE polarization
 %   yBC = boundary condition in y
 
-N_scatterers = round(nummber_density*L*W);
+N_scatterers = round(number_density*L*W);
 nx_Ez = round(L/dx);
 ny_Ez = round(W/dx);
 
