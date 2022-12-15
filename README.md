@@ -2,7 +2,7 @@
 
 **MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
-MESTI implements the **augmented partial factorization (APF)** method described in [arXiv:2205.07887](https://arxiv.org/abs/2205.07887). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
+MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://www.nature.com/articles/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
 MESTI.m uses MATLAB and considers 2D systems, with either transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) or transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*). A parallel 3D vectorial version written in Julia is under development and will be released in the future.
 
@@ -79,6 +79,6 @@ Here are some images from the examples above:
 
 For more information on the theory, capability, and benchmarks (*e.g.*, scaling of computing time, memory usage, and accuracy), please see:
 
-- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu, "Fast multi-source nanophotonic simulations using augmented partial factorization,"  [arXiv:2205.07887](https://arxiv.org/abs/2205.07887) (2022).
+- Ho-Chun Lin, Zeyu Wang, and Chia Wei Hsu. Fast multi-source nanophotonic simulations using augmented partial factorization. *Nature Computational Science.* [https://doi.org/10.1038/s43588-022-00370-6](https://www.nature.com/articles/s43588-022-00370-6) (2022).
 
 Please cite this paper when you use MESTI.
