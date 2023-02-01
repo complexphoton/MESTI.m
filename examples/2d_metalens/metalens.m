@@ -49,7 +49,7 @@ if do_compression
     % the compression error significantly.
     use_Hann_window = true;
 
-    % pad_ratio = (number of channels to compute)/(number of extra channels to pad)
+    % pad_ratio = (number of extra channels to pad)/(number of channels of interest)
     % Set pad_ratio = 0 to skip padding.
     % When Hann window is used, it is important to also pad extra channels;
     % otherwise the compression error may go up instead of down.
