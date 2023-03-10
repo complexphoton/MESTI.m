@@ -473,6 +473,10 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
+%      opts.parallel_dependency_graph (logical scalar; optional):
+%         If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+%         This typically improve the time performance, but marginally increase 
+%         the memory usage.
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
 %         errors. Iterative refinement can only be used when opts.solver =
@@ -1016,6 +1020,10 @@ if strcmpi(opts.method, 'RGF')
         warning('opts.nthreads_OMP is not used when opts.method = ''RGF''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
     end
+    if isfield(opts, 'parallel_dependency_graph') && ~isempty(opts.parallel_dependency_graph)
+        warning('opts.parallel_dependency_graph is not used when opts.method = ''RGF''; will be ignored.');
+        opts = rmfield(opts, 'parallel_dependency_graph');
+    end    
     use_RGF = true;
 else
     use_RGF = false;
@@ -1037,6 +1045,7 @@ if ~isfield(opts, 'm0'); opts.m0 = []; end
 %    opts.ordering
 %    opts.analysis_only
 %    opts.nthreads_OMP
+%    opts.parallel_dependency_graph
 %    opts.iterative_refinement
 
 % Set up the homogeneous-space channels on the two sides

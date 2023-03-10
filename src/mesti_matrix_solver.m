@@ -109,6 +109,10 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
+%      opts.parallel_dependency_graph (logical scalar; optional):
+%         If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
+%         This typically improve the time performance, but marginally increase 
+%         the memory usage.
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
 %         errors. Iterative refinement can only be used when opts.solver =
@@ -366,6 +370,13 @@ if strcmpi(opts.solver, 'MUMPS')
             error('opts.nthreads_OMP must be a positive integer scalar, if given.');
         end
     end
+
+    %
+    if ~isfield(opts, 'parallel_dependency_graph') || isempty(opts.parallel_dependency_graph)
+        opts.parallel_dependency_graph = false;
+    elseif ~(islogical(opts.parallel_dependency_graph) && isscalar(opts.parallel_dependency_graph))
+        error('opts.parallel_dependency_graph must be a logical scalar, if given.');
+    end
 else
     if isfield(opts, 'is_symmetric_A') && ~isempty(opts.is_symmetric_A)
         opts = rmfield(opts, 'is_symmetric_A');
@@ -393,6 +404,11 @@ else
     if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
         warning('opts.nthreads_OMP is only used when opts.solver = ''MUMPS''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
+    end
+
+    if isfield(opts, 'parallel_dependency_graph') && ~isempty(opts.parallel_dependency_graph)
+        warning('opts.parallel_dependency_graph is only used when opts.solver = ''MUMPS''; will be ignored.');
+        opts = rmfield(opts, 'parallel_dependency_graph');
     end
 end
 
@@ -747,6 +763,12 @@ end
 % set the number of OpenMP threads, if given (only available after MUMPS 5.2.0)
 if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
     id.ICNTL(16) = opts.nthreads_OMP;
+end
+
+if opts.parallel_dependency_graph
+    % Split dependency graph and processed independently by OpenMP threads.
+    % This typically improve the time performance, but marginally increase the memory usage in full multithread.
+    id.KEEP(401) = 1;
 end
 
 if nargin == 4
