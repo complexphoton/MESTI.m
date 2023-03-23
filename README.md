@@ -24,7 +24,7 @@ where *b*(*x*,*y*) is the source profile. A 3D vectorial version written in Juli
 
 MESTI.m is a general-purpose solver with its interface written to provide maximal flexibility. It supports
  - TM or TE polarization.
- - Any relative permittivity profile *ε*(*x*,*y*), real-valued or complex-valued. The imaginary part of *ε*(*x*,*y*) describes absorption and linear gain. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) (which results in anisotropic *ε* in TE polarization) before calling MESTI.
+ - Any relative permittivity profile *ε*(*x*,*y*), real-valued or complex-valued. The imaginary part of *ε*(*x*,*y*) describes absorption and linear gain. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) (which produces an anisotropic *ε* in TE polarization) before calling MESTI.
  - Infinite open spaces can be described with [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
  - Any material dispersion *ε*(*ω*) can be used since this is in frequency domain.
  - Any list of input source profiles (user-specified or automatically built).
