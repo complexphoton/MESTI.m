@@ -131,6 +131,9 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
+%      info.nnz (scalar structure):
+%         A structure containing the number of nonzero elements for the various
+%         matrices, in fields 'A', 'B', 'C', 'S', 'X'.
 %      info.ordering_method (character vector; optional):
 %         Ordering method used in MUMPS.
 %      info.ordering (positive integer vector; optional):
@@ -164,18 +167,26 @@ if ~(ismatrix(B) && isnumeric(B))
 end
 B_name = inputname(2); % name of the variable we call B in the caller's workspace; will be empty if there's no variable for it in the caller's workspace
 
+info.nnz.A = nnz(A);
+info.nnz.B = nnz(B);
+
 % C is an optional argument
 if nargin < 3
     C = [];
 end
 if isempty(C)  % return_X = isempty(C), but is easier to understand the meaning when we use return_X
     return_X = true;
+    info.nnz.X = size(A,1)*size(B,2);
 elseif ismatrix(C) && isnumeric(C)
     return_X = false;
     use_transpose_B = false;
+    info.nnz.C = nnz(C);
+    info.nnz.S = size(C,1)*size(B,2);
 elseif isequal(C, 'transpose(B)')
     return_X = false;
     use_transpose_B = true;
+    info.nnz.C = info.nnz.B;
+    info.nnz.S = size(B,2)^2;
 else
     error('Input argument C must be a numeric matrix or ''transpose(B)'' or [], if given.');
 end
@@ -203,7 +214,9 @@ end
 
 % Use MUMPS for opts.solver when it is available
 MUMPS_available = exist('zmumps','file');
+solver_specified = true;
 if ~isfield(opts, 'solver') || isempty(opts.solver)
+    solver_specified = false;
     if MUMPS_available
         opts.solver = 'MUMPS';
     else
@@ -236,6 +249,9 @@ if ~isfield(opts, 'method') || isempty(opts.method)
             opts.method = 'APF';
         else
             opts.method = 'C*inv(U)*inv(L)*B';
+            if ~solver_specified && info.nnz.A > 2e6
+                warning('Function zmumps() is not found, so the APF method will not be used. For systems of this size, APF we recommend that you install MUMPS so that APF can be used. If you have already installed MUMPS, make sure you have added its path with the addpath command. To suppress this warning message, you can explicitly specify not to use MUMPS by setting opts.solver = ''MATLAB''.');
+            end
         end
     end
 elseif ~((ischar(opts.method) && isrow(opts.method)) || (isstring(opts.method) && isscalar(opts.method)))
@@ -436,7 +452,7 @@ elseif isfield(opts, 'nrhs') && ~isempty(opts.nrhs)
     opts = rmfield(opts, 'nrhs');
 end
 
-t2 = clock; timing_init = etime(t2,t0);
+t2 = clock; info.timing.init = etime(t2,t0);
 
 %% Computation Part
 
@@ -446,6 +462,11 @@ if (sz_B_2 == 0 || sz_C_1 == 0) && ~opts.store_ordering
     opts.solver = 'None';
     if opts.verbal; fprintf('No computation needed\n'); end
 elseif opts.verbal
+    if return_X
+        fprintf('nnz(A) = %.3g; nnz(B) = %.3g; numel(X) = %.3g\n', info.nnz.A, info.nnz.B, info.nnz.X);
+    else
+        fprintf('nnz(A) = %.3g; nnz(B) = %.3g\nnnz(C) = %.3g; numel(S) = %.3g\n', info.nnz.A, info.nnz.B, info.nnz.C, info.nnz.S);
+    end
     fprintf('< Method: %s using %s%s%s%s%s >\n', opts.method, opts.solver, str_nrhs, str_ordering, str_itr_ref, str_sym_K);
 end
 
@@ -491,14 +512,13 @@ elseif strcmpi(opts.method, 'APF')
     end
     ind_schur = N + (1:M_tot); % indices for the Schur variables; must be a row vector
 
-    t2 = clock; timing_build = etime(t2,t1);
-    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', timing_build); end
+    t2 = clock;
+    info.timing.build = etime(t2,t1);  % the build time for A, B, C will be added in addition to this
+    if opts.verbal; fprintf('elapsed time: %7.3f secs\n', info.timing.build); end
 
     % Call MUMPS to analyze and compute the Schur complement (using a partial factorization)
     % This is typically the most memory-consuming part of the whole simulation
-    [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, ind_schur);
-
-    info.timing.build = timing_build;  % the build time for A, B, C will be added in addition to this
+    [id, info] = MUMPS_analyze_and_factorize(K, opts, is_symmetric_K, info, ind_schur);
     
     t1 = clock;
     if opts.analysis_only
@@ -529,7 +549,7 @@ elseif strcmpi(opts.method, 'C*inv(U)*inv(L)*B')
 %% Compute S=C*inv(U)*inv(L)*B where A=LU, with the order of multiplication based on matrix nnz
     % Factorize as P*inv(R)*A*Q = L*U where R is diagonal, L and U are lower and upper triangular, and P and Q are permutation matrices
     % For simplicity, we refer to this as A = L*U below
-    [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
+    [L, U, P, Q, R, info] = MATLAB_factorize(A, opts, info);
     info.timing.build = 0;  % the build time for A, B, C will be added in addition to this
     if opts.clear_memory
         clear A
@@ -543,9 +563,7 @@ elseif strcmpi(opts.method, 'C*inv(U)*inv(L)*B')
     % There are a few ways to group the mldivide or mrdivide operations. Like matrix multiplications, it is generally faster and more memory efficient to group such that we operate onto the side with fewer elements first.
     if opts.verbal; fprintf('Solving     ... '); end
     t1 = clock;
-    nnz_B = nnz(B);
-    nnz_C = nnz(C);
-    if nnz_B <= nnz_C
+    if info.nnz.B <= info.nnz.C
         % Operate onto B first
         inv_L_B = L\(P*(R\B)); % inv(L)*B
         if opts.clear_memory
@@ -554,7 +572,7 @@ elseif strcmpi(opts.method, 'C*inv(U)*inv(L)*B')
                 evalin('caller', ['clear ', B_name]); % do 'clear B' in caller's workspace
             end
         end
-        if nnz_C < nnz(inv_L_B)
+        if info.nnz.C < nnz(inv_L_B)
             S = full(((C*Q)/U)*inv_L_B); % [C*inv(U)]*[inv(L)*B]
         else
             % This version essentially is the same as factorize_and_solve except that here we project with C after the whole X is computed
@@ -570,7 +588,7 @@ elseif strcmpi(opts.method, 'C*inv(U)*inv(L)*B')
                 evalin('caller', ['clear ', C_name]); % do 'clear C' in caller's workspace
             end
         end
-        if nnz_B < nnz(C_inv_U)
+        if info.nnz.B < nnz(C_inv_U)
             S = full(C_inv_U*(L\(P*(R\B)))); % [C*inv(U)]*[inv(L)*B]
         else
             S = full(C_inv_U/L)*(P*(R\B));   % [[C*inv(U)]*inv(L)]*B
@@ -582,9 +600,9 @@ elseif strcmpi(opts.method, 'factorize_and_solve')
 %% Compute S=C*inv(A)*B or X=inv(A)*B by factorizing A and solving for X column by column
     % Factorize A = L*U where L and U are upper and lower triangular, with permutations
     if strcmpi(opts.solver, 'MUMPS')
-        [id, info] = MUMPS_analyze_and_factorize(A, opts, opts.is_symmetric_A);
+        [id, info] = MUMPS_analyze_and_factorize(A, opts, opts.is_symmetric_A, info);
     else
-        [L, U, P, Q, R, info] = MATLAB_factorize(A, opts);
+        [L, U, P, Q, R, info] = MATLAB_factorize(A, opts, info);
         if opts.clear_memory
             clear A
             if ~isempty(A_name)
@@ -709,14 +727,13 @@ end
 
 if opts.use_given_ordering; opts = rmfield(opts, 'ordering'); end % We don't return the user-specified ordering again since it can be large
 info.opts = opts; % Return the parameters used for user's reference
-info.timing.init = timing_init; % Initialization time
 t2 = clock; info.timing.total = etime(t2,t0); % Total computing time
 
 end
 
 
 %% Call MATLAB's lu() to factorize matrix A
-function [L, U, P, Q, R, info] = MATLAB_factorize(A, opts)
+function [L, U, P, Q, R, info] = MATLAB_factorize(A, opts, info)
 
 if opts.verbal; fprintf('Factorizing ... '); end
 t1 = clock;
@@ -738,7 +755,7 @@ end
 
 
 %% Call MUMPS to analyze and factorize matrix A (if ind_schur is not given) or to compute its Schur complement (if ind_schur is given)
-function [id, info] = MUMPS_analyze_and_factorize(A, opts, is_symmetric, ind_schur)
+function [id, info] = MUMPS_analyze_and_factorize(A, opts, is_symmetric, info, ind_schur)
 
 %% Initialize MUMPS
 N = size(A,1);
@@ -771,7 +788,7 @@ if opts.parallel_dependency_graph
     id.KEEP(401) = 1;
 end
 
-if nargin == 4
+if nargin == 5
     % Specify where the Schur block is; id.VAR_SCHUR must be a row vector
     % We should allow ind_schur to be an empty vector (for which the Schur complement is an empty matrix), but the MATLAB interface of MUMPS crashes when id.VAR_SCHUR is empty, so we need to exclude such scenario here
     if ~isempty(ind_schur)
@@ -841,7 +858,7 @@ id.JOB = 2;  % what to do: factorize
 id = zmumps(id,A);  % run the factorization
 if id.INFOG(1) < 0; error(MUMPS_error_message(id.INFOG)); end % check for errors
 
-if nargin == 4
+if nargin == 5
     if isempty(ind_schur)
         id.SCHUR = zeros(0,0);
     else

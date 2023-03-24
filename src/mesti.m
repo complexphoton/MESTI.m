@@ -513,6 +513,9 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
+%      info.nnz (scalar structure):
+%         A structure containing the number of nonzero elements for the various
+%         matrices, in fields 'A', 'B', 'C', 'S', 'X'.
 %      info.xPML (two-element cell array; optional);
 %         PML parameters on the two sides in x direction, if used.
 %      info.yPML (two-element cell array; optional);

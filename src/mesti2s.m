@@ -561,6 +561,9 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      info.timing (scalar structure):
 %         A structure containing timing of the various stages, in seconds, in
 %         fields 'total', 'init', 'build', 'analyze', 'factorize', 'solve'.
+%      info.nnz (scalar structure):
+%         A structure containing the number of nonzero elements for the various
+%         matrices, in fields 'A', 'B', 'C', 'S', 'X'.
 %      info.xPML (two-element cell array; optional);
 %         PML parameters on the two sides in x direction, if used.
 %      info.ordering_method (character vector; optional):
@@ -918,7 +921,9 @@ end
 
 % Use MUMPS for opts.solver when it is available
 MUMPS_available = exist('zmumps','file');
+solver_specified = true;
 if ~isfield(opts, 'solver') || isempty(opts.solver)
+    solver_specified = false;
     if MUMPS_available
         opts.solver = 'MUMPS';
     else
@@ -932,7 +937,9 @@ elseif strcmpi(opts.solver, 'MUMPS') && ~MUMPS_available
     error('opts.solver = ''%s'' but function zmumps() is not found.', opts.solver)
 end
 
+method_specified = true;
 if ~isfield(opts, 'method') || isempty(opts.method)
+    method_specified = false;
     % By default, if the input argument 'out' is not given or if
     % opts.iterative_refinement = true, then 'factorize_and_solve' is used.
     % Otherwise, if ny is large or if TE polarization is used or if PML has
@@ -1401,6 +1408,14 @@ else
         opts = rmfield(opts, 'symmetrize_K');
     end
     use_transpose_B = false;
+end
+
+% Remove opts.solver and opts.method so that mesti_matrix_solver() will know they were not specified by the user.
+if ~solver_specified && ~use_RGF
+    opts = rmfield(opts, 'solver');
+end
+if ~method_specified
+    opts = rmfield(opts, 'method');
 end
 
 % No need to build C if we symmetrize K
