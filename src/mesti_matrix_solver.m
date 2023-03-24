@@ -250,7 +250,7 @@ if ~isfield(opts, 'method') || isempty(opts.method)
         else
             opts.method = 'C*inv(U)*inv(L)*B';
             if ~solver_specified && info.nnz.A > 2e6
-                warning('Function zmumps() is not found, so the APF method will not be used. For systems of this size, APF we recommend that you install MUMPS so that APF can be used. If you have already installed MUMPS, make sure you have added its path with the addpath command. To suppress this warning message, you can explicitly specify not to use MUMPS by setting opts.solver = ''MATLAB''.');
+                warning('Function zmumps() is not found, so the APF method will not be used. For systems of this size, we recommend that you install MUMPS so that APF can be used. If you have already installed MUMPS, please make sure you have added its path with the addpath command. To suppress this warning message, you can explicitly specify not to use MUMPS by setting opts.solver = ''MATLAB''.');
             end
         end
     end
