@@ -12,13 +12,15 @@ $$
 
 or in transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*) with
 
-$$\begin{align*}
+```math
+\begin{align*}
 &\left[
 -\frac{\partial}{\partial x}\left(\varepsilon^{-1}\right)_{yy}(x,y) \frac{\partial}{\partial x}
 -\frac{\partial}{\partial y}\left(\varepsilon^{-1}\right)_{xx}(x,y) \frac{\partial}{\partial y} \right. \\
-&\\,\\,\\,\left. +\frac{\partial}{\partial y}\left(\varepsilon^{-1}\right)_{xy}(x,y) \frac{\partial}{\partial x}
+&\,\,\,\left. +\frac{\partial}{\partial y}\left(\varepsilon^{-1}\right)_{xy}(x,y) \frac{\partial}{\partial x}
 +\frac{\partial}{\partial x}\left(\varepsilon^{-1}\right)_{yx}(x,y) \frac{\partial}{\partial y} - \frac{\omega^2}{c^2} \right] H_z(x,y) = b(x,y),
-\end{align*}$$
+\end{align*}
+```
 
 where *b*(*x*,*y*) is the source profile. A 3D vectorial version written in Julia is under development and will be released in the near future.
 
