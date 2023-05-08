@@ -19,7 +19,7 @@ where `...` is the path to MATLAB on the cluster.
 
 ### GNU compilers collection
 
-The compilation of MUMPS requires both C and Fortran compilers. Both C and Fortran compliers are included in GNU Compiler Collection (GCC), which should be installed on a cluster. On a local machine, you will need to install them by yourself.
+The compilation of MUMPS requires both C and Fortran compilers. Both C and Fortran compilers are included in GNU Compiler Collection (GCC), which should be installed on a cluster. On a local machine, you will need to install them by yourself.
 
 On a cluster, it is likely that GCC has already been installed. You can type
 ```shell
@@ -92,4 +92,4 @@ sudo apt install libopenblas-dev
 in the terminal and then use the corresponding `LIBBLAS` and `LAPACK` in the `Makefile.inc` and `make.inc` we provided.
 
 Note that MUMPS supports shared memory, multithreaded parallelism through the use of multithreaded
-BLAS libraries.  `Makefile.inc` and `make.inc` on Linux, we provided activate the OpenMP feature. You can use the environment variable `OMP_NUM_THREADS` to set the number of threads.
+BLAS libraries. We provide `Makefile.inc` and `make.inc` on Linux and they activate the OpenMP feature. You can use the environment variable `OMP_NUM_THREADS` to set the number of threads.

@@ -477,7 +477,6 @@ end
 % seen.
 norm_factor = 100/max(intensity_profiles, [], 'all');
 
-% Loop through Gaussian beams focused at different locations.
 colormap('hot');
 deg = char(176);
 figure

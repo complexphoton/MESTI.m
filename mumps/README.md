@@ -8,6 +8,7 @@ Go to the [MUMPS website](https://graal.ens-lyon.fr/MUMPS/index.php?page=dwnld) 
 To compile the sequential version of MUMPS and its MATLAB interface, you need compilation tools like <code>make</code>, <code>ar</code>, and <code>ranlib</code>, C and Fortran compilers, BLAS library, LAPACK library, and a compatible <code>mex</code> compiler. Instructions specific to the operating system are provided below:
 1. [Linux](./linux)
 2. [macOS](./macOS)
+3. [windows](./windows)
 
 If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) program for graph partitioning (not to be confused with MESTI). Download the serial version of METIS, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). Compile it with <code>make config; make</code>. If you have write access to <code>/usr/local</code>, you can install METIS to there with <code>sudo make install</code>; otherwise you can move the METIS folder to where you want and specify its path when compiling MUMPS. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
 
@@ -35,6 +36,7 @@ and add <code>-Dmetis</code> to <code>ORDERINGSF</code>.
 Two examples of <code>Makefile.inc</code> for MUMPS 5.5.0 are provided below:
 1. [Linux](./linux/Makefile.inc)
 2. [macOS](./macOS/Makefile.inc)
+3. [windows](./windows/Makefile.inc)
 
 To download, click the link above, click on the "Raw" button, and right click to save the file. If the browser adds a .txt file extension, rename to remove the txt extension.
 
@@ -68,6 +70,7 @@ and uncomment the <code>#LMETIS     = -L$(LMETISDIR) -lmetis</code> line.
 Two examples of <code>make.inc</code> are provided below:
 1. [Linux](./linux/make.inc)
 2. [macOS](./macOS/make.inc)
+3. [windows](./windows/make.inc)
 
 **IMPORTANT**: When simulating large systems (such as the [metalens example](../examples/2d_metalens)), one may encounter segmentation fault due to a bug in the MATLAB interface that comes with MUMPS. Please replace the original <code>mumpsmex.c</code> in this <code>MATLAB</code> folder with a modified one here, [mumpsmex.c](mumpsmex.c), which modifies four lines to disable reading the scaling array from MATLAB and returning the scaling array to MATLAB; these lines are where the segmentation fault happens. Since MESTI does not use user-specified scaling arrays, these modifications do not affect functionality.
 
