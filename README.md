@@ -44,10 +44,10 @@ MESTI.m is a general-purpose solver with its interface written to provide maxima
 
 MESTI.m can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
 
-- Scattering and transport problems: transmission, reflection, waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
+- Scattering and transport problems: [transmission](./examples/2d_open_channel_through_disorder), [reflection](./examples/2d_reflection_matrix_Gaussian_beams), waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
 - Thermal emission.
 - Local density of states.
-- Inverse design based on the above quantities.
+- [Inverse design](https://github.com/complexphoton/APF_inverse_design) based on the above quantities.
 
 Since MESTI can use the APF method to handle a large number of input states simultaneously, the computational advantage of MESTI is the most pronounced in multi-input systems.
 
@@ -69,7 +69,7 @@ No installation is required for MESTI itself. To use, simply download it and add
 
 However, to use the APF method, the user needs to install the serial version of [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
-## Summary 
+## Usage Summary 
 
 The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile *b*(*x*,*y*). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
 
@@ -98,14 +98,15 @@ For example, typing <code>help mesti</code> in MATLAB brings up the documentatio
 
 Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
 
-1. [Fabry–Pérot etalon](./examples/1d_fabry_perot): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
-2. [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
-3. [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
-4.  [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
-5. [Meta-atom design for metasurfaces](./examples/2d_meta_atom): 2D, using <code>mesti2s()</code> with Bloch periodic boundary.
-6. [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (APF-c).
+- [Fabry–Pérot etalon](./examples/1d_fabry_perot): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
+- [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
+- [Open channel in a disordered system](./examples/2d_open_channel_through_disorder): 2D, using <code>mesti2s()</code>, transmission matrix & field profile with customized wavefronts.
+-  [Reflection matrix in Gaussian-beam basis](./examples/2d_reflection_matrix_Gaussian_beams): 2D, using <code>mesti()</code>, reflection matrix in customized basis for a fully open system.
+- [Meta-atom design for metasurfaces](./examples/2d_meta_atom): 2D, using <code>mesti2s()</code> with Bloch periodic boundary.
+- [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (APF-c).
 
-More examples will be added in the future.
+Also see the following repository:
+- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): How to use MESTI to perform inverse design.
 
 ## Gallery
 Here are some images from the examples above:
