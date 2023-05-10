@@ -44,7 +44,7 @@ MESTI.m is a general-purpose solver with its interface written to provide maxima
 
 MESTI.m can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
 
-- Scattering and transport problems: [transmission](./examples/2d_open_channel_through_disorder), [reflection](./examples/2d_reflection_matrix_Gaussian_beams), waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
+- Scattering problems: [transmission](./examples/2d_metalens), [reflection](./examples/2d_reflection_matrix_Gaussian_beams), [transport through complex media](./examples/2d_open_channel_through_disorder), waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
 - Thermal emission.
 - Local density of states.
 - [Inverse design](https://github.com/complexphoton/APF_inverse_design) based on the above quantities.
@@ -109,7 +109,7 @@ Also see the following repository:
 - [APF inverse design](https://github.com/complexphoton/APF_inverse_design): How to use MESTI to perform inverse design.
 
 ## Gallery
-Here are some images from the examples above:
+Here are some animations from the examples above:
 
 1. Propagation through a Fabry–Pérot etalon
 <img src="./examples/1d_fabry_perot/fabry_perot_field_profile.gif" width="336" height="264"> 
@@ -122,6 +122,9 @@ Here are some images from the examples above:
 
 4. Angle dependence of a mm-wide hyperbolic metalens
 <img src="./examples/2d_metalens/metalens_animation.gif" width="580" height="297"> 
+
+5. Inverse design of a wide-angle metasurface beamsplitter
+<img src="https://github.com/complexphoton/APF_inverse_design/blob/main/inverse_design_codes/animated_opt.gif" width="480" height="276"> 
 
 ## Reference & Credit
 
