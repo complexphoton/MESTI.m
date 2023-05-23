@@ -13,7 +13,7 @@ MEX = /Applications/MATLAB_R2022a_Beta.app/bin/mex -g -largeArrayDims
 # MEX         = mkoctfile -g --mex
 
 # Change to the directory where you compiled MUMPS
-MUMPS_DIR = /Users/chsu/install/compile/MUMPS_5.5.0
+MUMPS_DIR = /Users/chsu/install/compile/MUMPS_5.6.0
 
 # Orderings (see main Makefile.inc file from MUMPS)
 # Uncomment the two lines below if you installed METIS to the default /usr/local folder

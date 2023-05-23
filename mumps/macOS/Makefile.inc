@@ -1,6 +1,6 @@
 #
-#  This file is part of MUMPS 5.5.0, released
-#  on Thu Apr 14 11:45:33 UTC 2022
+#  This file is part of MUMPS 5.6.0, released
+#  on Wed Apr 19 15:50:57 UTC 2023
 #
 ################################################################################
 #
@@ -12,7 +12,7 @@
 #   This defines some parameters dependent on your platform; you should
 #   look for the appropriate file in the directory ./Make.inc/ and copy it
 #   into a file called Makefile.inc. For example, from the MUMPS root
-#   directory, use 
+#   directory, use
 #   "cp Make.inc/Makefile.inc.generic.SEQ ./Makefile.inc"
 #   (see the main README file for details)
 #
@@ -98,6 +98,7 @@ PLAT    =
 # Library extension, + C and Fortran "-o" option
 # may be different under Windows
 LIBEXT  = .a
+SONAME  = -soname
 OUTC    = -o 
 OUTF    = -o 
 # RM : remove files

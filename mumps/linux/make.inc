@@ -16,14 +16,14 @@ MEX         = mex -g -largeArrayDims
 # MEX         = mkoctfile -g --mex
 
 # Change to the directory where you compiled MUMPS
-MUMPS_DIR = /project/cwhsu_38/shared/software/mumps-5.5.0-seq_wo_metis
+MUMPS_DIR = /project/cwhsu_38/shared/software/MUMPS_5.6.0
 
 # Orderings (see main Makefile.inc file from MUMPS)
 # If METIS has been installed, you can uncomment the following two lines to specify
 # the directory and library of METIS.
 # The following is the path of the METIS on Hsu's group in USC Discovery cluster:
 #LMETISDIR = /project/cwhsu_38/shared/software/metis-5.1.0/build/Linux-x86_64/libmetis
-#LMETIS     = -L$(LMETISDIR) -lmetis
+#LMETIS    = -L$(LMETISDIR) -lmetis
 LPORDDIR   = $(MUMPS_DIR)/PORD/lib
 LPORD      = -L$(LPORDDIR) -lpord
 LORDERINGS = $(LPORD) $(LMETIS)

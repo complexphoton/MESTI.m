@@ -12,7 +12,7 @@
 #   This defines some parameters dependent on your platform; you should
 #   look for the appropriate file in the directory ./Make.inc/ and copy it
 #   into a file called Makefile.inc. For example, from the MUMPS root
-#   directory, use 
+#   directory, use
 #   "cp Make.inc/Makefile.inc.generic.SEQ ./Makefile.inc"
 #   (see the main README file for details)
 #
@@ -27,7 +27,7 @@
 
 ########################################################################
 #Begin orderings
-
+#
 # NOTE that PORD is distributed within MUMPS by default. It is recommended to
 # install other orderings. For that, you need to obtain the corresponding package
 # and modify the variables below accordingly.
@@ -62,7 +62,9 @@ LPORD    = -L$(LPORDDIR) -lpord
 
 # If METIS has been installed, you can uncomment the following two lines to specify 
 # your own path of METIS.
-#LMETISDIR = /opt/metis-5.1.0/build/Linux-x86_64/libmetis
+# The following is the path of the METIS on hclin's laptop:
+#LMETISDIR = /home/hclin/local/lib
+#IMETIS    = -I/home/hclin/local/include
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -100,6 +102,7 @@ PLAT =
 # may be different under Windows
 LIBEXT  = .a
 LIBEXT_SHARED  = .so
+SONAME = -soname
 FPIC_OPT = -fPIC
 OUTC    = -o 
 OUTF    = -o 

@@ -3,10 +3,7 @@
 # depending on whether you want to generate the MATLAB or the Octave
 # interface
 
-# Location of the MATLAB mex compiler; change it based on the MATLAB version on your 
-# machine. For example, you may change the line to 
-# If you are using in Lmod module system and MATLAB is installed, you can use
-# "module load matlab". You do not need to change the following line.
+# Location of the MATLAB mex compiler; change it based on the MATLAB path on your machine
 # ( the use of -largeArrayDims is necessary to work with sparse
 # matrices since R2006b)
 MEX         = /usr/share/matlab/bin/mex -g -largeArrayDims
@@ -15,12 +12,13 @@ MEX         = /usr/share/matlab/bin/mex -g -largeArrayDims
 # MEX         = mkoctfile -g --mex
 
 # Change to the directory where you compiled MUMPS
-MUMPS_DIR = /home/hclin/MUMPS_5.6.0_seq
+MUMPS_DIR = /home/hclin/MUMPS_5.6.0
 
 # Orderings (see main Makefile.inc file from MUMPS)
 # If METIS has been installed, you can uncomment the following two lines to specify
 # the directory and library of METIS.
-#LMETISDIR = /opt/metis-5.1.0/build/Linux-x86_64/libmetis
+# The following is the path of the METIS on hclin's laptop:
+#LMETISDIR = /home/hclin/local/lib
 #LMETIS    = -L$(LMETISDIR) -lmetis
 LPORDDIR   = $(MUMPS_DIR)/PORD/lib
 LPORD      = -L$(LPORDDIR) -lpord
@@ -42,9 +40,6 @@ LORDERINGS = $(LPORD) $(LMETIS)
 
 # gfortran
 # Make this variable point to the path where the gfortran library is
-#LIBFORT = /usr/share/matlab/sys/os/glnxa64/libifcore.so.5 /usr/share/matlab/sys/os/glnxa64/libifport.so.5 /usr/share/matlab/sys/os/glnxa64/libirc.so
-#LIBFORT = -L/home/hclin/miniconda3/envs/mp/lib/ -lgfortran
-#LIBFORT = /usr/lib/gcc/x86_64-linux-gnu/9/libgfortran.so
 LIBFORT = -L/usr/lib/gcc/x86_64-linux-gnu/9/ -lgfortran
 
 # BLAS library:
