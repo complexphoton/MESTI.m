@@ -105,8 +105,9 @@ Examples in the [examples](./examples) folder illustrate the usage and the main 
 - [Meta-atom design for metasurfaces](./examples/2d_meta_atom): 2D, using <code>mesti2s()</code> with Bloch periodic boundary.
 - [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (APF-c).
 
-Also see the following repository:
-- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): How to use MESTI to perform inverse design.
+Also see the following repositories:
+- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): Using MESTI to perform multi-channel inverse design.
+- [Imaging simulations](https://github.com/complexphoton/Imaging-simulations): Using MESTI to perform full-wave simulations of imaging inside scattering media.
 
 ## Gallery
 Here are some animations from the examples above:
@@ -124,7 +125,10 @@ Here are some animations from the examples above:
 <img src="./examples/2d_metalens/metalens_animation.gif" width="580" height="297"> 
 
 5. Inverse design of a wide-angle metasurface beamsplitter
-<img src="https://github.com/complexphoton/APF_inverse_design/blob/main/inverse_design_codes/animated_opt.gif" width="480" height="276"> 
+<img src="https://github.com/complexphoton/APF_inverse_design/blob/main/inverse_design_codes/animated_opt.gif" width="480" height="276">
+
+6. Numerical experiments of tomographic imaging inside scattering media
+<img src="https://github.com/complexphoton/Imaging-simulations/blob/main/figs/large_system/reconstructed_images/combined_results.jpg"> 
 
 ## Reference & Credit
 
