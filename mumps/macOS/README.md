@@ -12,28 +12,11 @@ If you are not sure whether your Mac runs on an Intel processor or Apple silicon
 
 If your Mac runs on an Intel processor, you can skip this part :)
 
-If your Mac runs on Apple silicon&mdash;congratulations, it's faster (we've found an M1 Macbook Pro to be about twice as fast as an Intel Macbook Pro when running MESTI with the APF method due to the improved performance of vecLib), but there's extra work for you. None of the official MATLAB releases to date provide native support for Apple silicon; they run on Apple silicon Macs through Rosetta 2. That means when we compile the MATLAB interface for MUMPS, the <code>mex</code> compiler will try to compile for an Intel architecture, but Apple silicon is an ARM architecture, resulting in an error like [this](https://www.mathworks.com/matlabcentral/answers/1696860-use-gsl-compiled-on-apple-silicon-with-mex-function-on-matlab-2021b).
-
-MATLAB recently released a public beta with native Apple silicon support [here](https://www.mathworks.com/support/apple-silicon-r2022a-beta.html). Go to this page (you'll need to log in with a Mathworks account), fill out the required fields and Submit, and follow the instructions there. You'll need to install Azul Zulu OpenJDK 8 with the .dmg option, then download and install the MATLAB R2022a beta.
-
-### Xcode
-
-We need to install [Xcode](https://developer.apple.com/xcode/) because it is [required](https://www.mathworks.com/support/requirements/supported-compilers.html) by the MATLAB compiler <code>mex</code>. 
-
-Supposedly, <code>mex</code> only needs the <code>clang</code> compiler of Xcode, which can be obtained through the Xcode Command Line Tools (CLT)&mdash;a much smaller installation compared to the full Xcode. However, if you only install CLT, you'll get errors like what's described in [this thread](https://www.mathworks.com/matlabcentral/answers/307362-mex-on-macosx-without-xcode) when using <code>mex</code>. If you don't have enough disk space for Xcode, you can skip this part and use the workarounds described in that thread when compiling the MATLAB interface for MUMPS.
-
-To install Xcode, open the App Store app, search for Xcode, and install it. This is a large download (12.7GB for Xcode 13), and the resulting Xcode.app takes up 33 GB of disk space.
-
-After installation, you'll need to accept the Xcode license agreement. You can open Xcode.app from the /Applications folder, upon which a prompt will ask you to accept the license. Alternatively, you can enter the following in the terminal
-```
-sudo xcodebuild -license accept
-```
+If your Mac runs on Apple silicon&mdash;congratulations, it's faster (we've found an M1 Macbook Pro to be about twice as fast as an Intel Macbook Pro when running MESTI with the APF method due to the improved performance of vecLib). MATLAB runs natively on Apple Silicon from R2023b. The old versions can run on Apple silicon through Rosetta 2 but they do not support building the mex files as native ARM binaries. Thus, your MATLAB version should be R2023b or later to compile the MATLAB interface for MUMPS.
 
 ### Xcode Command Line Tools
 
 Apple's Xcode Command Line Tools (CLT) include <code>make</code>, <code>ar</code>, and <code>ranlib</code>, Apple's C compiler <code>clang</code>, and Apple's implementation of BLAS and LAPACK, [vecLib](https://developer.apple.com/documentation/accelerate/veclib), within its Accelerate framework. We need those.
-
-Technically, the same tools are already included in the full Xcode installation. However, there can be issues linking to vecLib when Xcode is installed but not CLT. Plus, Homebrew requires CLT.
 
 In the next step, we will install Homebrew, which will install CLT (if not already installed). So, nothing needs to be done here.
 
@@ -45,7 +28,7 @@ Xcode and CLT do not include a Fortran compiler. Here, we use [Homebrew](https:/
 ```
 Follow instructions from the script to install Homebrew and then to add it to your PATH.
 
-If CLT was not installed prior, Homebrew will install it as part of the script above. Note that even though we already installed Xcode, Homebrew will still ask for CLT to be installed, for [various reasons](https://github.com/Homebrew/brew/issues/10714#issuecomment-786663987).
+If CLT was not installed prior, Homebrew will install it as part of the script above. 
 
 As described in the [Homebrew installation page](https://docs.brew.sh/Installation), this installs Homebrew to <code>/opt/homebrew</code> for an Apple Silicon Mac, <code>/usr/local</code> for an Intel Mac.
 
@@ -86,3 +69,11 @@ If you plan to install [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/over
 brew install cmake
 ```
 in terminal to install CMake.
+
+## Troubleshooting
+
+- During the MATLAB interface compilation, you may encounter a warning with Xcode `license has not been accepted` and then an error with `no supported compiler was found`. This issue can be resolved by entering
+```
+/usr/libexec/PlistBuddy -c 'Add :IDEXcodeVersionForAgreedToGMLicense string 10.0' ~/Library/Preferences/com.apple.dt.Xcode.plist
+```
+in terminal. Alternatively, you can install the full Xcode and accept the Xcode license agreement if this trick does not work.

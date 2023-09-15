@@ -4,16 +4,16 @@
 # interface
 
 # Location of the MATLAB mex compiler; change it based on the MATLAB version on your machine.
-# For Apple silicon Macs, currently R2022a_Beta is the only compatible version.
+# MATLAB runs natively on Apple Silicon from R2023b.
 # ( the use of -largeArrayDims is necessary to work with sparse
 # matrices since R2006b)
-MEX = /Applications/MATLAB_R2022a_Beta.app/bin/mex -g -largeArrayDims
+MEX = /Applications/MATLAB_R2023b.app/bin/mex -g -largeArrayDims
 
 # To generate the Octave interface uncomment the following line
 # MEX         = mkoctfile -g --mex
 
 # Change to the directory where you compiled MUMPS
-MUMPS_DIR = /Users/chsu/install/compile/MUMPS_5.6.0
+MUMPS_DIR = ..
 
 # Orderings (see main Makefile.inc file from MUMPS)
 # Uncomment the two lines below if you installed METIS to the default /usr/local folder
