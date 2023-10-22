@@ -67,7 +67,7 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 No installation is required for MESTI itself. To use, simply download it and add the <code>MESTI.m/src</code> folder to the MATLAB search path using the <code>addpath</code> command. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the APF method, the user needs to install the serial version of [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Usage Summary 
 
