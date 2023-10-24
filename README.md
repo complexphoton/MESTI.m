@@ -24,7 +24,7 @@ or in transverse-electric (TE) polarization (*Ex*,*Ey*,*Hz*) with
 
 where *b*(*x*,*y*) is the source profile.
 
-A 3D vectorial version written in Julia, to be named MESTI.jl, is under development and will be released in the near future. In addition to 3D vectorial support, MESTI.jl will also provide MPI parallelization, subpixel smoothing, and single-precision arithmetic.
+We also have a Julia version, [MESTI.jl](https://github.com/complexphoton/MESTI.jl), that supports everything in MESTI.m here plus 3D vectorial capability with anisotropic *ε*, MPI parallelization, subpixel smoothing for common geometries, and single-precision arithmetic.
 
 MESTI.m is a general-purpose solver with its interface written to provide maximal flexibility. It supports
  - TM or TE polarization.
