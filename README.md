@@ -1,6 +1,6 @@
 # MESTI
 
-**MESTI** (Maxwell's Equations Solver with Thousands of Inputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
+**MESTI** (<ins>M</ins>axwell's <ins>E</ins>quations <ins>S</ins>olver with <ins>T</ins>housands of <ins>I</ins>nputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
 MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://doi.org/10.1038/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
@@ -42,7 +42,7 @@ MESTI.m is a general-purpose solver with its interface written to provide maxima
 
 ## When to use MESTI?
 
-MESTI.m can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
+MESTI can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
 
 - Scattering problems: [transmission](./examples/2d_metalens), [reflection](./examples/2d_reflection_matrix_Gaussian_beams), [transport through complex media](./examples/2d_open_channel_through_disorder), waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
 - Thermal emission.
@@ -51,13 +51,12 @@ MESTI.m can perform most linear-response computations in 2D and 1D for arbitrary
 
 Since MESTI can use the APF method to handle a large number of input states simultaneously, the computational advantage of MESTI is the most pronounced in multi-input systems.
 
-There are use cases that MESTI.m can handle but is not necessarily the most efficient, such as
+There are use cases that MESTI can handle but is not necessarily the most efficient, such as
 - Broadband response problems involving many frequencies but only a few input states. Time-domain methods like FDTD may be preferred as they can compute a broadband response without looping over frequencies.
 - Problems like plasmonics that require more than an order of magnitude difference in the discretization grid size at different regions of the structure. Finite-element methods may be preferred as they can handle varying spatial resolutions. (Finite-element methods can also adopt APF, but MESTI uses finite difference with a fixed grid size.)
 - Homogeneous structures with a small surface-to-volume ratio. Boundary element methods may be preferred as they only discretize the surface.
 
-Problems that MESTI.m currently does not handle:
-- 3D systems. The upcoming MESTI.jl will take care of this.
+Problems that MESTI currently does not handle:
 - Nonlinear systems (*e.g.*, *χ*<sup>(2)</sup>, *χ*<sup>(3)</sup>, gain media).
 - Magnetic systems (*e.g.*, spatially varying permeability *μ*)
 
@@ -65,7 +64,7 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 ## Installation
 
-No installation is required for MESTI itself. To use, simply download it and add the <code>MESTI.m/src</code> folder to the MATLAB search path using the <code>addpath</code> command. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
+No installation is required for MESTI.m itself. To use, simply download it and add the <code>MESTI.m/src</code> folder to the MATLAB search path using the <code>addpath</code> command. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
 However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
