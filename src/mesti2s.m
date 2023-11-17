@@ -1820,11 +1820,14 @@ else % when opts.return_field_profile = true
             % Add pixels such that we have opts.nx_L pixels of syst.epsilon_L on the left
             S_L = zeros(ny, nx_L_extra, size(S,3));
             % The n below is n = n - n_L, where n_L is the location of the inputs/outputs on the left surface.
+            % For the back propagation, incident wavefront would just use propagating channels and output wavefront would use all channels
             n = (-nx_L_extra):1:-1;  % 1-by-nx_L_extra row vector
             kx_x = reshape(channels.L.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_L_extra matrix through implicit expansion
-            exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
             exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
+            kx_x_prop = reshape(channels.L.kxdx_prop, channels.L.N_prop, 1).*n; % kx*x; channels.L.N_prop-by-nx_L_extra matrix through implicit expansion
+            exp_pikx_prop = exp( 1i*kx_x_prop); % exp(+i*kx*x)
             c_in = zeros(ny, 1);
+            c_in_prop = zeros(channels.L.N_prop, 1);
             n_L = 1; % index for the inputs/outputs on the left surface
             if M_in_L > 0
                 prefactor = reshape(exp((-1i*dn)*channels.L.kxdx_prop)./channels.L.sqrt_nu_prop, N_prop_L, 1);
@@ -1834,12 +1837,13 @@ else % when opts.return_field_profile = true
                 % c_in is the incident wavefront at n_L; note we need to back propagate dn pixel from x=0
                 c_in(:) = 0;
                 if use_ind_in
-                    c_in(channels.L.ind_prop(ind_in_L(ii))) = prefactor(ind_in_L(ii));
+                    c_in_prop(ind_in_L(ii)) = prefactor(ind_in_L(ii));
                 else
-                    c_in(channels.L.ind_prop) = prefactor.*v_in_L(:,ii);
+                    c_in_prop = prefactor.*v_in_L(:,ii);
                 end
-                c_out = c - c_in;
-                S_L(:, :, ii) = u*(c_in.*exp_pikx + c_out.*exp_mikx);
+                c_in(channels.L.ind_prop) = c_in_prop;
+                c_out = c - c_in;   
+                S_L(:, :, ii) = u(:,channels.L.ind_prop)*(c_in_prop.*exp_pikx_prop) + u*(c_out.*exp_mikx);
             end
             if two_sided
                 for ii = 1:M_in_R % input from right
@@ -1867,10 +1871,13 @@ else % when opts.return_field_profile = true
                 S_R = zeros(ny, nx_R_extra, size(S,3));
                 % The n below is n = n - n_R, where n_R is the location of the inputs/outputs on the right surface.
                 n = 1:nx_R_extra;  % 1-by-nx_R_extra row vector
+                % For the back propagation, incident wavefront would just use propagating channels and output wavefront would use all channels                
                 kx_x = reshape(channels.R.kxdx_all, ny, 1).*n; % kx*x; ny-by-nx_R_extra matrix through implicit expansion
                 exp_pikx = exp( 1i*kx_x); % exp(+i*kx*x)
-                exp_mikx = exp(-1i*kx_x); % exp(-i*kx*x)
+                kx_x_prop = reshape(channels.R.kxdx_prop, channels.R.N_prop, 1).*n; % kx*x; channels.R.N_prop-by-nx_R_extra matrix through implicit expansion
+                exp_mikx_prop = exp(-1i*kx_x_prop); % exp(-i*kx*x)
                 c_in = zeros(ny, 1);
+                c_in_prop = zeros(channels.R.N_prop, 1);
                 n_R = size(S, 2); % index for the inputs/outputs on the right surface
                 for ii = 1:M_in_L % input from left
                     c_out = u_prime*S(:, n_R, ii); % c_out = c because there is no input on the right side
@@ -1884,12 +1891,13 @@ else % when opts.return_field_profile = true
                     % c_in is the incident wavefront at n_R; note we need to back propagate dn pixel from x=L
                     c_in(:) = 0;
                     if use_ind_in
-                        c_in(channels.R.ind_prop(ind_in_R(ii))) = prefactor(ind_in_R(ii));
+                        c_in_prop(ind_in_R(ii)) = prefactor(ind_in_R(ii));
                     else
-                        c_in(channels.R.ind_prop) = prefactor.*v_in_R(:,ii);
+                        c_in_prop = prefactor.*v_in_R(:,ii);
                     end
+                    c_in(channels.R.ind_prop) = c_in_prop;
                     c_out = c - c_in;
-                    S_R(:, :, M_in_L+ii) = u*(c_in.*exp_mikx + c_out.*exp_pikx);
+                    S_R(:, :, M_in_L+ii) = u(:,channels.R.ind_prop)*(c_in_prop.*exp_mikx_prop) + u*(c_out.*exp_pikx);
                 end
                 S = cat(2, S, S_R);
             end
