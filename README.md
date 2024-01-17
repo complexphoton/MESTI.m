@@ -93,6 +93,20 @@ Detailed documentation is given in comments at the beginning of the function fil
 
 For example, typing <code>help mesti</code> in MATLAB brings up the documentation for <code>mesti()</code>.
 
+## Multithreading
+
+If MUMPS is installed, MESTI can leverage the multithreading feature during computation. Note that multithreading is applied specifically to the factorization and solving stages in MUMPS, which are the most computationally demanding (*Nature Computational Science* **2**, 815–822 (2022)).
+
+To control the number of threads used in MUMPS, we can assign a value to *opts.nthreads_OMP* and include *opts* as an input argument in the script. This allows us to determine the desired number of threads for MUMPS to utilize. Notice that we should not set *opts.nthreads_OMP* larger than the number of threads available on the machine. By default (*i.e.* without setting *opts.nthreads_OMP*), MUMPS uses the maximum number of threads available on the machine. 
+
+To check the actual number of threads, #OMP, used by MUMPS, set *opts.verbal_solver* to true and include *opts* as an input argument in the script. MUMPS prints detailed information to the standard output, allowing you to see the #OMP in the output. For example, MUMPS prints
+
+```text:Output
+      executing #MPI =      1 and #OMP =      4
+```
+
+and it shows that the number of threads in this computation is 4. Note that in the serial version of MUMPS, #MPI is always 1.
+
 ## Examples
 
 Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
