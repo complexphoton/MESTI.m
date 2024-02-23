@@ -2,7 +2,7 @@
 
 **MESTI** (<ins>M</ins>axwell's <ins>E</ins>quations <ins>S</ins>olver with <ins>T</ins>housands of <ins>I</ins>nputs) is an open-source software for full-wave electromagnetic simulations in frequency domain using finite-difference discretization on the [Yee lattice](https://meep.readthedocs.io/en/latest/Yee_Lattice).
 
-MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://doi.org/10.1038/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the information of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
+MESTI implements the **augmented partial factorization (APF)** method described in [this paper](https://doi.org/10.1038/s43588-022-00370-6). While conventional methods solve Maxwell's equations on every element of the discretization basis set (which contains much more information than is typically needed), APF bypasses such intermediate solution step and directly computes the projected quantities of interest: a generalized scattering matrix given any list of input source profiles and any list of output projection profiles. It can jointly handle thousands of inputs without a loop over them, using fewer computing resources than what a conventional direct method uses to handle a single input. It is exact with no approximation beyond discretization.
 
 MESTI.m here uses MATLAB with double-precision arithmetic and considers 2D systems either in transverse-magnetic (TM) polarization (*Hx*,*Hy*,*Ez*) with
 
@@ -28,15 +28,15 @@ We also have a Julia version, [MESTI.jl](https://github.com/complexphoton/MESTI.
 
 MESTI.m is a general-purpose solver with its interface written to provide maximal flexibility. It supports
  - TM or TE polarization.
- - Any relative permittivity profile *ε*(*x*,*y*), real-valued or complex-valued. The imaginary part of *ε*(*x*,*y*) describes absorption and linear gain. Users can optionally average the interface pixels for [subpixel smoothing](https://meep.readthedocs.io/en/latest/Subpixel_Smoothing) (which produces an anisotropic *ε* in TE polarization) before calling MESTI.
- - Infinite open spaces can be described with a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), which also allows for infinite substrates, waveguides, photonic crystals, *etc*. The PML implemented in MESTI includes both imaginary-coordinate and real-coordinate stretching, so it can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves.
- - Any material dispersion *ε*(*ω*) can be used since this is in frequency domain.
+ - Any relative permittivity profile *ε*(*x*,*y*), which can be real-valued or complex-valued. The imaginary part of *ε*(*x*,*y*) describes absorption and linear gain.
+ - Open boundary modeled by a [perfectly matched layer (PML)](https://en.wikipedia.org/wiki/Perfectly_matched_layer) placed on any side(s), with both imaginary-coordinate and real-coordinate stretching (so the PML can accelerate the attenuation of evanescent waves in addition to attenuating the propagating waves).
+ - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
+ - Any material dispersion *ε*(*ω*), since this is a frequency-domain method.
  - Any list of input source profiles (user-specified or automatically built).
  - Any list of output projection profiles (or no projection, in which case the complete field profiles are returned).
- - Periodic, Bloch periodic, perfect electrical conductor (PEC), and/or perfect magnetic conductor (PMC) boundary conditions.
- - Exact outgoing boundaries in two-sided or one-sided geometries.
+ - Exact outgoing boundaries based on the analytic self-energy in two-sided or one-sided geometries.
  - Real-valued or complex-valued frequency *ω*.
- - Automatic or manual choice between APF, conventional direct solver (*e.g.*, to compute the full field profile), and the [recursive Green's function method](https://github.com/chiaweihsu/RGF) as the solution method.
+ - Automatic or manual choice between APF, a conventional direct solver (*e.g.*, to compute the full field profile), and the [recursive Green's function method](https://github.com/chiaweihsu/RGF) as the solution method.
  - Linear solver using MUMPS (requires installation) or the built-in routines in MATLAB (which uses UMFPACK).
  - Shared memory parallelism (with multithreaded BLAS and with OpenMP in MUMPS).
 
@@ -52,13 +52,13 @@ MESTI can perform most linear-response computations in 2D and 1D for arbitrary s
 Since MESTI can use the APF method to handle a large number of input states simultaneously, the computational advantage of MESTI is the most pronounced in multi-input systems.
 
 There are use cases that MESTI can handle but is not necessarily the most efficient, such as
-- Broadband response problems involving many frequencies but only a few input states. Time-domain methods like FDTD may be preferred as they can compute a broadband response without looping over frequencies.
+- Broadband response problems involving many frequencies but only a few input states. Time-domain methods like FDTD may be preferred as they can compute a broadband response without looping over the frequencies.
 - Problems like plasmonics that require more than an order of magnitude difference in the discretization grid size at different regions of the structure. Finite-element methods may be preferred as they can handle varying spatial resolutions. (Finite-element methods can also adopt APF, but MESTI uses finite difference with a fixed grid size.)
 - Homogeneous structures with a small surface-to-volume ratio. Boundary element methods may be preferred as they only discretize the surface.
 
-Problems that MESTI currently does not handle:
+Problems that MESTI does not handle:
 - Nonlinear systems (*e.g.*, *χ*<sup>(2)</sup>, *χ*<sup>(3)</sup>, gain media).
-- Magnetic systems (*e.g.*, spatially varying permeability *μ*)
+- Magnetic systems (*e.g.*, spatially varying permeability *μ*).
 
 For eigenmode computation, such as waveguide mode solver and photonic band structure computation, one can use [<code>mesti_build_fdfd_matrix.m</code>](./src/mesti_build_fdfd_matrix.m) to build the matrix and then compute its eigenmodes. However, we don't currently provide a dedicated function to do so.
 
@@ -66,13 +66,13 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 No installation is required for MESTI.m itself. To use, simply download it and add the <code>MESTI.m/src</code> folder to the MATLAB search path using the <code>addpath</code> command. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which generally take longer and use more memory. So, MUMPS installation is strongly recommended for large-scale multi-input simulations or whenever efficiency is important. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which are significantly slower and use much more memory, especially for large systems and systems involving many channels. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Usage Summary 
 
-The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile *b*(*x*,*y*). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see [this paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
+The function [<code>mesti(syst, B, C, D)</code>](./src/mesti.m) provides the most flexibility. Structure <code>syst</code> specifies the polarization to use, permittivity profile, boundary conditions in *x* and *y*, which side(s) to put PML with what parameters, the wavelength, and the discretization grid size. Any list of input source profiles can be specified with matrix <code>B</code>, each column of which specifies one source profile *b*(*x*,*y*). Any list of output projection profiles can be specified with matrix <code>C</code>. Matrix <code>D</code> is optional (treated as zero when not specified) and subtracts the baseline contribution; see the [APF paper](https://doi.org/10.1038/s43588-022-00370-6) for details.
 
-The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from the left and/or right, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation.
+The function [<code>mesti2s(syst, in, out)</code>](./src/mesti2s.m) deals specifically with scattering problems in two-sided or one-sided geometries where *ε*(*x*,*y*) consists of an inhomogeneous scattering region with homogeneous spaces on the left (*-x*) and right (*+x*), light is incident from those sides, the boundary condition in *x* is outgoing, and the boundary condition in *y* is closed (*e.g.*, periodic or PEC). The user only needs to specify the input and output sides or channel indices or wavefronts through <code>in</code> and <code>out</code>. The function <code>mesti2s()</code> automatically builds the source matrix <code>B</code>, projection matrix <code>C</code>, baseline matrix <code>D</code>, and calls <code>mesti()</code> for the computation.
 Flux normalization in *x* is applied automatically and exactly, so the full scattering matrix is always unitary when *ε*(*x*,*y*) is real-valued.
 <code>mesti2s()</code> also offers the additional features of (1) exact outgoing boundaries in *x* based on the Green's function in free space, and (2) the [recursive Green's function method](https://github.com/chiaweihsu/RGF) when TM polarization is used; they are efficient for 1D systems and for 2D systems where the width in *y* is not large. 
 
@@ -80,7 +80,7 @@ To compute the complete field profiles, simply omit the argument <code>C</code> 
 
 The solution method, the linear solver to use, and other options can be specified with a structure <code>opts</code> as an optional input argument to <code>mesti()</code> or <code>mesti2s()</code>; see documentation for details. They are chosen automatically when not explicitly specified.
 
-The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.m) can be used to build the input and/or output matrices when using <code>mesti()</code>, or to determine which channels are of interest when using <code>mesti2s()</code>.
+The function [<code>mesti_build_channels()</code>](./src/mesti_build_channels.m) can be used to build the input and/or output matrices when using <code>mesti()</code> or to determine which channels are of interest when using <code>mesti2s()</code>.
 
 Additional functions that build the input/output matrices for different applications and the anisotropic *ε*(*x*,*y*) from subpixel smoothing will be added in the future.
 
@@ -95,17 +95,15 @@ For example, typing <code>help mesti</code> in MATLAB brings up the documentatio
 
 ## Multithreading
 
-If MUMPS is installed, MESTI can leverage the multithreading feature during computation. Note that multithreading is applied specifically to the factorization and solving stages in MUMPS, which are the most computationally demanding (*Nature Computational Science* **2**, 815–822 (2022)).
+MESTI can use multithreading for shared memory parallelization within MUMPS. By default, MUMPS uses the maximum number of threads available on the machine. One can use the field <code>opts.nthreads_OMP</code> of the optional input argument <code>opts</code> to change the number of threads used in MUMPS.
 
-To control the number of threads used in MUMPS, we can assign a value to *opts.nthreads_OMP* and include *opts* as an input argument in the script. This allows us to determine the desired number of threads for MUMPS to utilize. Notice that we should not set *opts.nthreads_OMP* larger than the number of threads available on the machine. By default (*i.e.* without setting *opts.nthreads_OMP*), MUMPS uses the maximum number of threads available on the machine. 
-
-To check the actual number of threads, #OMP, used by MUMPS, set *opts.verbal_solver* to true and include *opts* as an input argument in the script. MUMPS prints detailed information to the standard output, allowing you to see the #OMP in the output. For example, MUMPS prints
-
+To check the actual number of threads used in MUMPS, set <code>opts.verbal_solver = true</code> in the input argument and look at the standard output from MUMPS. For example, the following output
 ```text:Output
       executing #MPI =      1 and #OMP =      4
 ```
+shows that the number of threads used (#OMP) is 4. Since MESTI.m uses the serial version of MUMPS without MPI, #MPI is always 1.
 
-and it shows that the number of threads in this computation is 4. Note that in the serial version of MUMPS, #MPI is always 1.
+Multithreading is used during the factorization and solving stages within MUMPS, but not during the building and analyzing stages. With APF, most of the computing time is spent on factorization (*e.g.*, see Fig 2d of the [APF paper](https://doi.org/10.1038/s43588-022-00370-6)).
 
 ## Examples
 
@@ -137,11 +135,11 @@ Here are some animations from the examples above:
 4. Angle dependence of a mm-wide hyperbolic metalens
 <img src="./examples/2d_metalens/metalens_animation.gif" width="580" height="297"> 
 
-5. Inverse design of a wide-angle metasurface beamsplitter
-<img src="https://github.com/complexphoton/APF_inverse_design/blob/main/inverse_design_codes/animated_opt.gif" width="480" height="276">
+5. [Inverse-designed broad-angle metasurface beamsplitter](https://github.com/complexphoton/APF_inverse_design)
+<img src="https://bpb-us-e1.wpmucdn.com/sites.usc.edu/dist/0/252/files/2024/02/beam_splitter-8b26d6c09f23f2d7.gif" width="547" height="304">
 
-6. Numerical experiments of tomographic imaging inside scattering media
-<img src="https://github.com/complexphoton/Imaging-simulations/blob/main/figs/large_system/reconstructed_images/combined_results.jpg"> 
+6. [Full-wave modeling of tomographic imaging inside scattering media](https://github.com/complexphoton/Imaging-simulations)
+<img src="https://github.com/complexphoton/Imaging-simulations/blob/main/figs/large_system/reconstructed_images/combined_results.jpg" width="698" height="1023">
 
 ## Reference & Credit
 
