@@ -108,7 +108,7 @@ To check the actual number of threads used in MUMPS, set <code>opts.verbal_solve
 ```
 shows that the number of threads used (#OMP) is 4. Since MESTI.m uses the serial version of MUMPS without MPI, #MPI is always 1.
 
-On an Apple Silicon Mac, wee typically compile MUMPS by linking to Apple's vecLib for the BLAS library, without multithreading. See details in the [MUMPS installation](./mumps) page.
+On an Apple Silicon Mac, we typically compile MUMPS by linking to Apple's vecLib for the BLAS library, without multithreading. See details in the [MUMPS installation](./mumps) page.
 
 ## Examples
 
