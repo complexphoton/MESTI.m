@@ -39,10 +39,10 @@ LORDERINGS = $(LPORD) $(LMETIS)
 
 # gfortran
 # Use the following if you have an Apple silicon Mac and have gfortran installed through "brew install gcc"; change to your gcc version.
-LIBFORT = -L/opt/homebrew/lib/gcc/12 -lgfortran
+LIBFORT = -L/opt/homebrew/lib/gcc/13 -lgfortran
 
 # Use the following if you have an Intel Mac and have gfortran installed through "brew install gcc"; change to your gcc version.
-#LIBFORT = -L/usr/local/opt/gcc/lib/gcc/12 -lgfortran
+#LIBFORT = -L/usr/local/opt/gcc/lib/gcc/13 -lgfortran
 
 # BLAS library:
 # Use the following to link to BLAS and LAPACK in Apple's Accelerate framework.

@@ -42,7 +42,7 @@ MESTI.m is a general-purpose solver with its interface written to provide maxima
 
 ## When to use MESTI?
 
-MESTI can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
+MESTI.m can perform most linear-response computations in 2D and 1D for arbitrary structures, such as
 
 - Scattering problems: [transmission](./examples/2d_metalens), [reflection](./examples/2d_reflection_matrix_Gaussian_beams), [transport through complex media](./examples/2d_open_channel_through_disorder), waveguide bent, grating coupler, radar cross-section, controlled-source electromagnetic surveys, *etc*.
 - Thermal emission.
@@ -66,7 +66,7 @@ For eigenmode computation, such as waveguide mode solver and photonic band struc
 
 No installation is required for MESTI.m itself. To use, simply download it and add the <code>MESTI.m/src</code> folder to the MATLAB search path using the <code>addpath</code> command. The MATLAB version should be R2019b or later. (Using an earlier version is possible but requires minor edits.)
 
-However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI will still run but will only use other methods, which are significantly slower and use much more memory, especially for large systems and systems involving many channels. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
+However, to use the APF method, the user needs to install the serial version of [MUMPS](https://mumps-solver.org/index.php) and its MATLAB interface (note: the serial version of MUMPS already supports multithreading). Without MUMPS, MESTI.m will still run but will only use other methods, which are significantly slower and use much more memory, especially for large systems and systems involving many channels. See this [MUMPS installation](./mumps) page for steps to install MUMPS.
 
 ## Usage Summary 
 
@@ -95,7 +95,12 @@ For example, typing <code>help mesti</code> in MATLAB brings up the documentatio
 
 ## Multithreading
 
-MESTI can use multithreading for shared memory parallelization within MUMPS. By default, MUMPS uses the maximum number of threads available on the machine. One can use the field <code>opts.nthreads_OMP</code> of the optional input argument <code>opts</code> to change the number of threads used in MUMPS.
+MESTI.m can use shared memory parallelization across the cores within one node/socket through multithreading if MUMPS was compiled with multithreading enabled. The multithreading speed-up comes mainly from using a multithreaded BLAS library inside MUMPS. Parts of the MUMPS code also use multithreading through OpenMP directives.
+With APF, most of the computing time is spent on factorization within MUMPS (*e.g.*, see Fig 2d of the [APF paper](https://doi.org/10.1038/s43588-022-00370-6)). The factorization and solving stages within MUMPS are parallelized. The building and analyzing stages are not performance critical and are not parallelized.
+
+The default number of threads is the number of cores available on the machine (either the number of physical cores, or the number of cores requested when running the job with a scheduler like Slurm on a cluster).
+
+We can set the number of threads to be different from the default by setting the environment variable <code>OMP_NUM_THREADS</code> or the field <code>opts.nthreads_OMP</code> of the optional input argument <code>opts</code>.
 
 To check the actual number of threads used in MUMPS, set <code>opts.verbal_solver = true</code> in the input argument and look at the standard output from MUMPS. For example, the following output
 ```text:Output
@@ -103,11 +108,11 @@ To check the actual number of threads used in MUMPS, set <code>opts.verbal_solve
 ```
 shows that the number of threads used (#OMP) is 4. Since MESTI.m uses the serial version of MUMPS without MPI, #MPI is always 1.
 
-Multithreading is used during the factorization and solving stages within MUMPS, but not during the building and analyzing stages. With APF, most of the computing time is spent on factorization (*e.g.*, see Fig 2d of the [APF paper](https://doi.org/10.1038/s43588-022-00370-6)).
+On an Apple Silicon Mac, wee typically compile MUMPS by linking to Apple's vecLib for the BLAS library, without multithreading. See details in the [MUMPS installation](./mumps) page.
 
 ## Examples
 
-Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
+Examples in the [examples](./examples) folder illustrate the usage and the main functionalities of MESTI.m. Each example has its own folder, with its <code>.m</code> script, auxiliary files specific to that example, and a <code>README.md</code> page that shows the example script with its outputs:
 
 - [Fabry–Pérot etalon](./examples/1d_fabry_perot): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
 - [Distributed Bragg reflector](./examples/1d_distributed_bragg_reflector): 1D, using <code>mesti2s()</code>, with comparison to analytic solution.
@@ -117,8 +122,8 @@ Examples in the [examples](./examples) folder illustrate the usage and the main 
 - [Angle dependence of a mm-wide metalens](./examples/2d_metalens): 2D, using <code>mesti()</code> with compressed input/output matrices (APF-c).
 
 Also see the following repositories:
-- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): Using MESTI to perform multi-channel inverse design.
-- [Imaging simulations](https://github.com/complexphoton/Imaging-simulations): Using MESTI to perform full-wave simulations of imaging inside scattering media.
+- [APF inverse design](https://github.com/complexphoton/APF_inverse_design): Using MESTI.m to perform multi-channel inverse design.
+- [Imaging simulations](https://github.com/complexphoton/Imaging-simulations): Using MESTI.m to perform full-wave simulations of imaging inside scattering media.
 
 ## Gallery
 Here are some animations from the examples above:

@@ -4,15 +4,11 @@ We need the following tools before compiling MUMPS and its MATLAB interface on m
 
 Much of the following (and the whole MUMPS compilation process) needs to be done in a command-line environment. You can either use Apple's built-in Terminal app (in the /Applications/Utilities/ folder) or a 3rd-party one like iTerm2.
 
-Note that now `Makefile.inc` and `make.inc` on macOS we provided do not activate the OpenMP feature.
-
 ### MATLAB for Apple silicon Macs
 
 If you are not sure whether your Mac runs on an Intel processor or Apple silicon, click the Apple logo on the top left corner of the menu bar, and click About This Mac. A Mac with Intel processor will show an item **Processor** (*e.g.*, Intel Core i7); a Mac with Apple silicon will show an item **Chip** (*e.g.*, Apple M1) instead.
 
-If your Mac runs on an Intel processor, you can skip this part :)
-
-If your Mac runs on Apple silicon&mdash;congratulations, it's faster (we've found an M1 Macbook Pro to be about twice as fast as an Intel Macbook Pro when running MESTI with the APF method due to the improved performance of vecLib). MATLAB runs natively on Apple Silicon from R2023b. The old versions can run on Apple silicon through Rosetta 2 but they do not support building the mex files as native ARM binaries. Thus, your MATLAB version should be R2023b or later to compile the MATLAB interface for MUMPS.
+If your Mac runs on Apple silicon, the version of your MATLAB must be R2023b or later. Older versions of MATLAB can run on Apple silicon through Rosetta 2 but do not support building mex files as native ARM binaries, which we need to compile the MATLAB interface for MUMPS.
 
 ### Xcode Command Line Tools
 
@@ -50,17 +46,15 @@ If you update GCC in the future (through <code>brew upgrade</code> or by running
 
 ### (Optional) OpenBLAS
 
-MUMPS uses BLAS extensively, so we need a BLAS library. One option is Apple's [vecLib](https://developer.apple.com/documentation/accelerate/veclib) (which is already installed above with Xcode and CLT); another is [OpenBLAS](https://www.openblas.net/); another is [MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html).
+MUMPS uses BLAS extensively, so we need a BLAS library. One option is Apple's [vecLib](https://developer.apple.com/documentation/accelerate/veclib) within its Accelerate framework (which is already installed above with Xcode and CLT); another is [OpenBLAS](https://www.openblas.net/); another is [MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html).
 
-If you have an Apple silicon Mac, you should use vecLib, which we found to be much faster than OpenBLAS on an M1 Macbook Pro, consistent with [what others have found](https://github.com/danielchalef/openblas-benchmark-m1). (In fact, it is the vecLib improvement that makes an M1 Mac faster than an Intel Mac; when OpenBLAS is used, we found there to be no performance difference between an M1 Macbook Pro and an Intel Mackbook Pro when running MESTI with APF.) There's no reason to use MKL since MKL is only optimized for Intel machines. So, skip this part.
+If you have an Apple silicon Mac, you should use vecLib for BLAS. On an Apple silicon Mac, vecLib utilizes the Apple Matrix coprocessor (AMX), so it is much faster than single-threaded OpenBLAS (*e.g.*, see [this benchmark](https://github.com/danielchalef/openblas-benchmark-m1)) and has a comparable speed as multithreaded OpenBLAS (*e.g.*, see [this benchmark](https://github.com/OpenMathLib/OpenBLAS/issues/2814#issuecomment-771505972)). In this case, you don't need to install OpenBLAS, and you can skip this section.
 
-If you have an Intel Mac, you can consider installing OpenBLAS or MKL. It's optional, since vecLib is still available with no extra work. But we did find on an Intel Macbook Pro that MESTI with the APF method is about 30% faster when MUMPS is compiled with OpenBLAS compared to with vecLib. Most likely MKL will be even faster than OpenBLAS on an Intel Mac, but we did not test it; you can follow the instructions [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) if you want to use MKL instead (but note the macOS `Makefile.inc` and `make.inc` files we provide only consider vecLib and OpenBLAS.)
-
-To install OpenBLAS, enter
+If you have an Intel Mac, we recommend installing OpenBLAS. We found on an Intel Macbook Pro that MESTI with the APF method is about 30% faster when MUMPS is compiled with single-threaded OpenBLAS compared to with vecLib. Most likely MKL will be even faster than OpenBLAS on an Intel Mac, but we did not test it; you can follow the instructions [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) if you want to use MKL instead (but note the macOS `Makefile.inc` and `make.inc` files we provide only consider vecLib and OpenBLAS.) To install OpenBLAS, enter
 ```
 brew install openblas
 ```
-in the terminal. This will install OpenBLAS in <code>/opt/homebrew/opt/openblas</code> for an Apple Silicon Mac, <code>/usr/local/opt/openblas</code> for an Intel Mac. You can find this information in the future with the <code>brew info openblas</code> command.
+in the terminal. This will install OpenBLAS in <code>/usr/local/opt/openblas</code> for an Intel Mac (or <code>/opt/homebrew/opt/openblas</code> for an Apple Silicon Mac). You can find this information in the future with the <code>brew info openblas</code> command.
 
 ### (Optional) CMake
 
@@ -72,7 +66,7 @@ in terminal to install CMake.
 
 ## Troubleshooting
 
-- During the MATLAB interface compilation, you may encounter a warning with Xcode `license has not been accepted` and then an error with `no supported compiler was found`. This issue can be resolved by entering
+During the MATLAB interface compilation, you may encounter a warning with Xcode `license has not been accepted` and then an error with `no supported compiler was found`. This issue can be resolved by entering
 ```
 /usr/libexec/PlistBuddy -c 'Add :IDEXcodeVersionForAgreedToGMLicense string 10.0' ~/Library/Preferences/com.apple.dt.Xcode.plist
 ```

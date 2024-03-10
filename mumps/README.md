@@ -1,5 +1,5 @@
 # MUMPS Installation
-MESTI uses the sequential version of MUMPS for the augmented partial factorization (APF) method, and optionally for the factorize-and-solve method. Here are steps to install MUMPS.
+MESTI.m uses the sequential version of MUMPS for the augmented partial factorization (APF) method, and optionally for the factorize-and-solve method. Here are steps to install MUMPS.
 
 ## Download MUMPS
 Go to the [MUMPS website](https://mumps-solver.org/index.php?page=dwnld) and fill out the download request form. The MUMPS maintainers will email you the download link.
@@ -10,7 +10,7 @@ To compile the sequential version of MUMPS and its MATLAB interface, you need co
 2. [macOS](./macOS)
 3. [Windows](./windows)
 
-If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). Download it (you can just download archive/metis-5.1.0.tar.gz), decompress it, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). Compile it with <code>make config; make</code>. If you have write access to <code>/usr/local</code>, you can install METIS to there with <code>sudo make install</code>; otherwise you can move the METIS folder to where you want and specify its path when compiling MUMPS. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method, but METIS can sometimes reduce memory usage. Which one is better depends on the problem.
+If memory usage is important for you, you can optionally install the [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) (version 5.1.0) program for graph partitioning (not to be confused with MESTI). Download it (you can just download archive/metis-5.1.0.tar.gz), decompress it, and set it to double precision (use <code>#define REALTYPEWIDTH 64</code> in <code>include/metis.h</code>). Compile it with <code>make config; make</code>. If you have write access to <code>/usr/local</code>, you can install METIS to there with <code>sudo make install</code>; otherwise you can move the METIS folder to where you want and specify its path when compiling MUMPS. Later, if you set <code>opts.use_METIS = true</code> in <code>mesti()</code> or <code>mesti2s()</code>, MUMPS will use METIS instead of the default AMD method for matrix ordering. From our experience, in 2D, AMD is usually faster when using the APF method (because its analysis stage is faster), but METIS can sometimes reduce memory usage. Which one is better depends on the problem. In 3D, the factorization time generally dominates over the analysis time, and the METIS ordering is much better (both in memmory usage and in factorization time) than AMD.
 
 ## Compile MUMPS
 Suppose you downloaded the 5.6.0 version of MUMPS to your ~/Downloads/ folder. Then, go to the folder where you want to compile MUMPS, and enter
@@ -38,9 +38,13 @@ Examples of <code>Makefile.inc</code> are provided below:
 2. [macOS](./macOS/Makefile.inc)
 3. [Windows](./windows/Makefile.inc)
 
-To download, click the link above, click on the "Raw" button, and right click to save the file. If the browser adds a .txt file extension, rename to remove the txt extension.
+To download, click the link above, and click on the "Download raw file" button to the right of the "Raw" button.
 
-In the example of <code>Makefile.inc</code> for macOS, we link to Apple's [vecLib](https://developer.apple.com/documentation/accelerate/veclib) within its Accelerate framework for the BLAS library by default. For Intel Macs, OpenBLAS is faster, and you can comment out <code>LIBBLAS = -framework Accelerate</code> with a <code>#</code> in the beginning of the line, and uncomment the  <code>#LIBBLAS = -L/usr/local/opt/openblas/lib</code> line by deleting its <code>#</code>.
+These <code>Makefile.inc</code> examples for Linux and Windows enable multithreading by linking to a multithreaded BLAS library and compiling MUMPS with OpenMP activated.
+
+The <code>Makefile.inc</code> example for macOS does not use multithreading, because there we link to Apple's [vecLib](https://developer.apple.com/documentation/accelerate/veclib) within its Accelerate framework for the BLAS library. On Macs with an Apple Silicon processor, the Accelerate framework utilizes the Apple Matrix coprocessor (AMX), so it is not multithreaded but achieves speed comparable to or faster than multithreaded OpenBLAS (*e.g.*, see [this benchmark](https://github.com/OpenMathLib/OpenBLAS/issues/2814#issuecomment-771505972)). Multithreading is, therefore, not necessary.
+
+If you have a Mac with an Intel processor, OpenBLAS would be faster than Accelerate. In that case, you can comment out the line <code>LIBBLAS = -framework Accelerate</code> in <code>Makefile.inc</code> by adding a <code>#</code> in the beginning of the line, and uncomment the  <code>#LIBBLAS = -L/usr/local/opt/openblas/lib</code> line by deleting its <code>#</code>. In this case, multithreading can provide further speed-up, but we did not work out a multithreaded <code>Makefile.inc</code> example since Apple has moved away from Intel processors.
 
 After done with <code>Makefile.inc</code>, enter
 ```
@@ -78,7 +82,7 @@ Then, enter
 ```
 make
 ```
-in terminal, which will compile the MATLAB interface for MUMPS. Check that files <code>dmumpsmex.mexa64</code> and <code>zmumpsmex.mexa64</code> have been generated in the <code>MATLAB</code> folder.
+in terminal, which will compile the MATLAB interface for MUMPS. Check that files <code>dmumpsmex.mexa64</code> and <code>zmumpsmex.mexa64</code> (or <code>\*.mexmaca64</code> on a Mac) have been generated in the <code>MATLAB</code> folder.
 
 
 ## Test MUMPS
@@ -96,7 +100,7 @@ If they all pass, congratulations! You are done.
 
 Add this folder of MATLAB interface for MUMPS to the search path of MATLAB using the <code>addpath</code> command in MATLAB, so <code>mesti()</code> can find the function file <code>zmumps.m</code> there. You can also have this path to be added every time MATLAB starts by editing <code>startup.m</code> with the <code>edit(fullfile(userpath,'startup.m'))</code> command.
 
-If you would like to use METIS, but your cluster cannot find METIS libraries by itself when you run MATLAB interface for MUMPS. You can append the METIS libraries to your <code>LD_LIBRARYP_PATH</code>
+If you want to use METIS but your cluster cannot find the METIS library when you run the MATLAB interface for MUMPS, you can append the METIS library to your <code>LD_LIBRARYP_PATH</code> by
 
 ```shell
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LMETISDIR
