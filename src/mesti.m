@@ -480,9 +480,11 @@ function [S, info] = mesti(syst, B, C, D, opts)
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
-%      opts.parallel_dependency_graph (logical scalar; optional):
-%         If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
-%         This typically improve the time performance, but marginally increase 
+%      opts.use_L0_threads (logical scalar; optional, defaults to true):
+%         If MUMPS is multithread, whether to use tree parallelism (so-called
+%         L0-threads layer) in MUMPS. Please refer to Sec. 5.23 'Improved 
+%         multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
+%         This typically enhances the time performance, but marginally increases
 %         the memory usage.
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
@@ -885,7 +887,7 @@ end
 %    opts.ordering
 %    opts.analysis_only
 %    opts.nthreads_OMP
-%    opts.parallel_dependency_graph
+%    opts.use_L0_threads
 %    opts.iterative_refinement
 
 if opts.verbal

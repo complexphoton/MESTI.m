@@ -473,9 +473,11 @@ function [S, channels, info] = mesti2s(syst, in, out, opts)
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
-%      opts.parallel_dependency_graph (logical scalar; optional):
-%         If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
-%         This typically improve the time performance, but marginally increase 
+%      opts.use_L0_threads (logical scalar; optional, defaults to true):
+%         If MUMPS is multithread, whether to use tree parallelism (so-called
+%         L0-threads layer) in MUMPS. Please refer to Sec. 5.23 'Improved 
+%         multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
+%         This typically enhances the time performance, but marginally increases
 %         the memory usage.
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
@@ -1027,9 +1029,9 @@ if strcmpi(opts.method, 'RGF')
         warning('opts.nthreads_OMP is not used when opts.method = ''RGF''; will be ignored.');
         opts = rmfield(opts, 'nthreads_OMP');
     end
-    if isfield(opts, 'parallel_dependency_graph') && ~isempty(opts.parallel_dependency_graph)
-        warning('opts.parallel_dependency_graph is not used when opts.method = ''RGF''; will be ignored.');
-        opts = rmfield(opts, 'parallel_dependency_graph');
+    if isfield(opts, 'use_L0_threads') && ~isempty(opts.use_L0_threads)
+        warning('opts.use_L0_threads is not used when opts.method = ''RGF''; will be ignored.');
+        opts = rmfield(opts, 'use_L0_threads');
     end    
     use_RGF = true;
 else
@@ -1052,7 +1054,7 @@ if ~isfield(opts, 'm0'); opts.m0 = []; end
 %    opts.ordering
 %    opts.analysis_only
 %    opts.nthreads_OMP
-%    opts.parallel_dependency_graph
+%    opts.use_L0_threads
 %    opts.iterative_refinement
 
 % Set up the homogeneous-space channels on the two sides

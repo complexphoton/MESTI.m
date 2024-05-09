@@ -109,9 +109,11 @@ function [S, info] = mesti_matrix_solver(A, B, C, opts)
 %      opts.nthreads_OMP (positive integer scalar; optional):
 %         Number of OpenMP threads used in MUMPS; overwrites the OMP_NUM_THREADS
 %         environment variable.
-%      opts.parallel_dependency_graph (logical scalar; optional):
-%         If MUMPS is multithread, whether to use parallel dependency graph in MUMPS.
-%         This typically improve the time performance, but marginally increase 
+%      opts.use_L0_threads (logical scalar; optional, defaults to true):
+%         If MUMPS is multithread, whether to use tree parallelism (so-called
+%         L0-threads layer) in MUMPS. Please refer to Sec. 5.23 'Improved 
+%         multithreading using tree parallelism' in MUMPS 5.7.1 Users' guide.
+%         This typically enhances the time performance, but marginally increases
 %         the memory usage.
 %      opts.iterative_refinement (logical scalar; optional, defaults to false):
 %         Whether to use iterative refinement in MUMPS to lower round-off
@@ -388,10 +390,10 @@ if strcmpi(opts.solver, 'MUMPS')
     end
 
     %
-    if ~isfield(opts, 'parallel_dependency_graph') || isempty(opts.parallel_dependency_graph)
-        opts.parallel_dependency_graph = false;
-    elseif ~(islogical(opts.parallel_dependency_graph) && isscalar(opts.parallel_dependency_graph))
-        error('opts.parallel_dependency_graph must be a logical scalar, if given.');
+    if ~isfield(opts, 'use_L0_threads') || isempty(opts.use_L0_threads)
+        opts.use_L0_threads = true;
+    elseif ~(islogical(opts.use_L0_threads) && isscalar(opts.use_L0_threads))
+        error('opts.use_L0_threads must be a logical scalar, if given.');
     end
 else
     if isfield(opts, 'is_symmetric_A') && ~isempty(opts.is_symmetric_A)
@@ -422,9 +424,9 @@ else
         opts = rmfield(opts, 'nthreads_OMP');
     end
 
-    if isfield(opts, 'parallel_dependency_graph') && ~isempty(opts.parallel_dependency_graph)
-        warning('opts.parallel_dependency_graph is only used when opts.solver = ''MUMPS''; will be ignored.');
-        opts = rmfield(opts, 'parallel_dependency_graph');
+    if isfield(opts, 'use_L0_threads') && ~isempty(opts.use_L0_threads)
+        warning('opts.use_L0_threads is only used when opts.solver = ''MUMPS''; will be ignored.');
+        opts = rmfield(opts, 'use_L0_threads');
     end
 end
 
@@ -782,10 +784,10 @@ if isfield(opts, 'nthreads_OMP') && ~isempty(opts.nthreads_OMP)
     id.ICNTL(16) = opts.nthreads_OMP;
 end
 
-if opts.parallel_dependency_graph
-    % Split dependency graph and processed independently by OpenMP threads.
+if opts.use_L0_threads
+    % Utilize L0-threads feature.
     % This typically improve the time performance, but marginally increase the memory usage in full multithread.
-    id.KEEP(401) = 1;
+    id.ICNTL(48) = 1;
 end
 
 if nargin == 5

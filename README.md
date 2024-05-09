@@ -95,8 +95,9 @@ For example, typing <code>help mesti</code> in MATLAB brings up the documentatio
 
 ## Multithreading
 
-MESTI.m can use shared memory parallelization across the cores within one node/socket through multithreading if MUMPS was compiled with multithreading enabled. The multithreading speed-up comes mainly from using a multithreaded BLAS library inside MUMPS. Parts of the MUMPS code also use multithreading through OpenMP directives.
-With APF, most of the computing time is spent on factorization within MUMPS (*e.g.*, see Fig 2d of the [APF paper](https://doi.org/10.1038/s43588-022-00370-6)). The factorization and solving stages within MUMPS are parallelized. The building and analyzing stages are not performance critical and are not parallelized.
+MESTI.m can use shared memory parallelization across the cores within one node/socket through multithreading if MUMPS was compiled with multithreading enabled. The multithreading speed-up comes from using a multithreaded BLAS library and L0-threads feature in MUMPS. Parts of the MUMPS utilize multithreading with L0-threads through OpenMP directives. With APF, most of the computing time is spent on factorization within MUMPS (*e.g.*, see Fig 2d of the [APF paper](https://doi.org/10.1038/s43588-022-00370-6)). The factorization and solving stages within MUMPS are parallelized. The building and analyzing stages are not performance-critical and are not parallelized.
+
+L0-threads (see the MUMPS Users' guide for details) enhances the time performance, but marginally increases the memory usage. It is enabled by default. We can change from the default by setting the field <code>opts.use_L0_threads = false</code> in the input argument <code>opts</code>.
 
 The default number of threads is the number of cores available on the machine (either the number of physical cores, or the number of cores requested when running the job with a scheduler like Slurm on a cluster).
 
